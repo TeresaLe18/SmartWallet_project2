@@ -50,9 +50,9 @@ export default function AdminLayout() {
 
     try {
       const fraudRes = await adminAPI.getFraudLogs();
-      if (fraudRes.success && fraudRes.logs) {
-        const pendingFraud = fraudRes.logs.filter(l => !l.status || l.status.toLowerCase() === 'pending').length;
-        setFraudPendingCount(pendingFraud);
+      const fraudList = fraudRes.fraudLogs || fraudRes.logs || [];
+      if (fraudRes.success) {
+        setFraudPendingCount(fraudList.length);
       }
     } catch (e) { /* silent */ }
 

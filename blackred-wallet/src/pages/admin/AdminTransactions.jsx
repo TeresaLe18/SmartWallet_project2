@@ -5,9 +5,9 @@ import {
   Building2, TrendingUp, Calendar, Info
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { adminAPI } from "../../services/api";
+import { adminAPI, formatVND } from "../../services/api";
 
-const fmtCurrency = (n) => n.toLocaleString("vi-VN") + " ₫";
+const fmtCurrency = (n) => formatVND(n);
 
 const getUserBaseBalance = (email) => {
   if (!email) return 0;

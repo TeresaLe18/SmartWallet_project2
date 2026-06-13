@@ -14,9 +14,9 @@ const DEFAULT_VOUCHERS = [
 ];
 
 const fees = [
-  { id:1, name:"Phí chuyển tiền nội bộ", value:"0 ₫",     note:"Miễn phí giữa các ví SW" },
-  { id:2, name:"Phí chuyển ngân hàng",   value:"5,000 ₫", note:"Áp dụng mỗi giao dịch" },
-  { id:3, name:"Phí rút tiền",           value:"10,000 ₫",note:"Tối thiểu rút 50,000 ₫" },
+  { id:1, name:"Phí chuyển tiền nội bộ", value:"0 ₫",      note:"Miễn phí giữa các ví SW" },
+  { id:2, name:"Phí chuyển ngân hàng",   value:"5.000 ₫",  note:"Áp dụng mỗi giao dịch" },
+  { id:3, name:"Phí rút tiền",           value:"10.000 ₫", note:"Tối thiểu rút 50.000 ₫" },
 ];
 
 const categories = ["Ăn uống","Di chuyển","Mua sắm","Giải trí","Hóa đơn","Du lịch","Giáo dục","Sức khỏe"];
@@ -44,9 +44,9 @@ export default function AdminServices() {
       console.error("Failed to parse bw_admin_fees:", e);
     }
     return [
-      { id:1, name:"Phí chuyển tiền nội bộ", value:"0 ₫",     note:"Miễn phí giữa các ví SW" },
-      { id:2, name:"Phí chuyển ngân hàng",   value:"5,000 ₫", note:"Áp dụng mỗi giao dịch" },
-      { id:3, name:"Phí rút tiền",           value:"10,000 ₫",note:"Tối thiểu rút 50,000 ₫" },
+      { id:1, name:"Phí chuyển tiền nội bộ", value:"0 ₫",      note:"Miễn phí giữa các ví SW" },
+      { id:2, name:"Phí chuyển ngân hàng",   value:"5.000 ₫",  note:"Áp dụng mỗi giao dịch" },
+      { id:3, name:"Phí rút tiền",           value:"10.000 ₫", note:"Tối thiểu rút 50.000 ₫" },
     ];
   });
   const [showFeeModal, setShowFeeModal] = useState(false);

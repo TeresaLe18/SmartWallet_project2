@@ -3,11 +3,12 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowDownLeft, ArrowUpRight, QrCode, Building2, Plus,
   X, CreditCard, Check, Search,
-  Wallet, Upload, Smartphone, AlertCircle, Gift, Tag, Flame, Download, Copy
+  Wallet, Upload, Smartphone, AlertCircle, Gift, Tag, Flame, Download, Copy,
+  Shield, Snowflake, PhoneCall
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeCanvas as QRCode } from "qrcode.react";
-import { walletAPI, authAPI, payosAPI, formatVND } from "../../services/api";
+import { walletAPI, authAPI, bankAPI, payosAPI, formatVND } from "../../services/api";
 
 const BANKS = ["Vietcombank","Techcombank","BIDV","VietinBank","Agribank","MB Bank","VPBank","TPBank","ACB","Sacombank"];
 
@@ -25,94 +26,9 @@ const tagColors = {
   "Referral":"#8b5cf6","Nạp tiền":"#f59e0b","Hóa đơn":"#ec4899"
 };
 
-const getUserBaseBalance = (email) => {
-  if (!email) return 0;
-  const lower = email.toLowerCase();
-  if (lower === "nva@email.com") return 12500000;
-  if (lower === "ttb@email.com") return 3200000;
-  if (lower === "lvc@email.com") return 0;
-  if (lower === "ptd@email.com") return 8750000;
-  if (lower === "hme@email.com") return 1000000;
-  return 0;
-};
 
-const getMockUserEmailByName = (name) => {
-  if (!name) return null;
-  const lower = name.toLowerCase();
-  if (lower.includes("nguyễn văn a")) return "nva@email.com";
-  if (lower.includes("trần thị b")) return "ttb@email.com";
-  if (lower.includes("lê văn c")) return "lvc@email.com";
-  if (lower.includes("phạm thị d")) return "ptd@email.com";
-  if (lower.includes("hoàng minh e")) return "hme@email.com";
-  return null;
-};
+const fmtCurrency = (n) => formatVND(n);
 
-const mockTx = [
-  { id:"TX001", type:"receive", name:"Nguyễn Văn A", amount:500000, time:"10:32 25/05/2025", status:"success", note:"Trả tiền ăn", userEmail: "nva@email.com" },
-  { id:"TX002", type:"send",    name:"Trần Thị B",    amount:200000, time:"09:15 25/05/2025", status:"success", note:"Chuyển tiền", userEmail: "ttb@email.com" },
-  { id:"TX003", type:"receive", name:"Lê Văn C",       amount:1500000,time:"18:45 24/05/2025", status:"success", note:"", userEmail: "lvc@email.com" },
-  { id:"TX004", type:"send",    name:"Phạm Thị D",     amount:750000, time:"14:20 24/05/2025", status:"pending", note:"Chờ xác nhận", userEmail: "ptd@email.com" },
-  { id:"TX005", type:"receive", name:"Hoàng Minh E",   amount:300000, time:"11:00 23/05/2025", status:"success", note:"", userEmail: "hme@email.com" },
-  { id:"TX006", type:"send",    name:"Đinh Thị F",     amount:1200000,time:"09:30 23/05/2025", status:"failed",  note:"Sai số tài khoản", userEmail: "nva@email.com" },
-];
-
-const fmtCurrency = (n) => n.toLocaleString("vi-VN") + " ₫";
-
-// Lưu transactions: global pool (bw_transactions) + per-user key (chỉ GD của user đó)
-const saveTx = (list) => {
-  try {
-    const bwUser = localStorage.getItem("bw_user");
-    if (bwUser) {
-      const u = JSON.parse(bwUser);
-      if (u.email) {
-        // 1. Chỉ lưu GD của user hiện tại vào key per-user
-        localStorage.setItem(`bw_transactions_${u.email}`, JSON.stringify(list));
-
-        // 2. Gộp vào global pool mà không xoá GD của user khác
-        const savedGlobal = localStorage.getItem("bw_transactions");
-        let globalList = [];
-        if (savedGlobal) {
-          const parsedGlobal = JSON.parse(savedGlobal);
-          const otherTxs = parsedGlobal.filter(tx => {
-            if (tx.userEmail) return tx.userEmail !== u.email;
-            const mockEmail = getMockUserEmailByName(tx.name);
-            return mockEmail !== u.email;
-          });
-          globalList = [...list, ...otherTxs];
-        } else {
-          globalList = list;
-        }
-        localStorage.setItem("bw_transactions", JSON.stringify(globalList));
-
-        // 3. Tính balance chỉ từ GD của user này
-        const base = getUserBaseBalance(u.email);
-        const newBalance = Math.max(0, list.reduce((acc, tx) => {
-          if (tx.status !== "success") return acc;
-          if (tx.type === "receive") return acc + tx.amount;
-          if (tx.type === "send") return acc - tx.amount;
-          return acc;
-        }, base));
-        const balanceStr = newBalance.toLocaleString("vi-VN") + " ₫";
-
-        // 4. Sync vào bw_users
-        const stored = localStorage.getItem("bw_users");
-        if (stored) {
-          const users = JSON.parse(stored);
-          const idx = users.findIndex(usr => usr.email === u.email);
-          if (idx !== -1) {
-            users[idx].balance = balanceStr;
-            localStorage.setItem("bw_users", JSON.stringify(users));
-          }
-        }
-        // 5. Sync vào bw_user session
-        u.balance = balanceStr;
-        localStorage.setItem("bw_user", JSON.stringify(u));
-        
-        window.dispatchEvent(new CustomEvent("balance_updated", { detail: {} }));
-      }
-    }
-  } catch(e) { /* silent fail */ }
-};
 
 const parseTxTime = (timeStr) => {
   if (!timeStr) return new Date();
@@ -182,6 +98,17 @@ export default function WalletsPage() {
       return false;
     }
   });
+
+  const [kycStatus, setKycStatus] = useState(() => {
+    try {
+      const u = localStorage.getItem("bw_user");
+      return u ? (JSON.parse(u).kycStatus || "none") : "none";
+    } catch {
+      return "none";
+    }
+  });
+  const [walletStatus, setWalletStatus] = useState("active");
+  const [showFreezeConfirm, setShowFreezeConfirm] = useState(false);
   const [pinSetupInputs, setPinSetupInputs] = useState(["", "", "", ""]);
   const [pinSetupConfirmInputs, setPinSetupConfirmInputs] = useState(["", "", "", ""]);
   const [pinTransactionInputs, setPinTransactionInputs] = useState(["", "", "", ""]);
@@ -285,7 +212,35 @@ export default function WalletsPage() {
     }
   };
 
+  const handleSelfFreeze = async () => {
+    try {
+      const res = await walletAPI.freezeWallet();
+      if (res.success) {
+        setWalletStatus("frozen");
+        setShowFreezeConfirm(false);
+        showToast("Your wallet has been frozen. Contact support to unfreeze it.", "success");
+      } else {
+        showToast(res.message || "Failed to freeze wallet.", "error");
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || "System error. Please try again.", "error");
+    }
+  };
+
   const handleActionClick = (targetModal) => {
+    if ((targetModal === "deposit" || targetModal === "withdraw" || targetModal === "transfer") && walletStatus === "frozen") {
+      showToast("Your wallet is frozen. Please contact support to unfreeze it.", "error");
+      return;
+    }
+    if ((targetModal === "deposit" || targetModal === "withdraw" || targetModal === "transfer") && kycStatus !== "verified") {
+      showToast(
+        kycStatus === "pending"
+          ? `Your KYC is under review. Please wait for approval before you can ${targetModal}.`
+          : `KYC verification required before you can ${targetModal}. Go to the KYC section to complete it.`,
+        "error"
+      );
+      return;
+    }
     if (targetModal === "withdraw" || targetModal === "transfer") {
       if (!hasPin) {
         setPinActionType(targetModal);
@@ -392,42 +347,46 @@ export default function WalletsPage() {
     showToast(`Áp dụng thành công mã: ${v.code}!`);
   };
 
-  const syncBalanceToAdmin = (txs, userEmail) => {
+
+  // Normalize a bank record from the backend to the shape used by the UI
+  const mapBank = (b) => ({
+    id: b.id,
+    bank: b.bank_code,
+    account: b.account_number,
+    owner: b.account_name,
+    is_verified: b.is_verified,
+  });
+
+  const fetchBanks = async () => {
     try {
-      if (!userEmail) return;
-      const myTxs = txs.filter(tx => {
-        if (tx.userEmail) return tx.userEmail === userEmail;
-        const mockEmail = getMockUserEmailByName(tx.name);
-        return mockEmail === userEmail;
-      });
-      localStorage.setItem(`bw_transactions_${userEmail}`, JSON.stringify(myTxs));
-      const base = getUserBaseBalance(userEmail);
-      const newBalance = Math.max(0, myTxs.reduce((acc, tx) => {
-        if (tx.status !== "success") return acc;
-        if (tx.type === "receive") return acc + tx.amount;
-        if (tx.type === "send") return acc - tx.amount;
-        return acc;
-      }, base));
-      const balanceStr = newBalance.toLocaleString("vi-VN") + " ₫";
-      const storedUsers = localStorage.getItem("bw_users");
-      if (storedUsers) {
-        const users = JSON.parse(storedUsers);
-        const idx = users.findIndex(usr => usr.email === userEmail);
-        if (idx !== -1) {
-          users[idx].balance = balanceStr;
-          localStorage.setItem("bw_users", JSON.stringify(users));
-        }
+      const data = await bankAPI.getMyBanks();
+      if (Array.isArray(data)) {
+        const mapped = data.map(mapBank);
+        setLinkedBanks(mapped);
+        if (mapped.length > 0 && !selectedBankId) setSelectedBankId(mapped[0].id);
       }
-      const bwUser = localStorage.getItem("bw_user");
-      if (bwUser) {
-        const u = JSON.parse(bwUser);
-        if (u.email === userEmail) {
-          u.balance = balanceStr;
-          localStorage.setItem("bw_user", JSON.stringify(u));
+    } catch (err) {
+      console.error("Failed to load linked banks:", err);
+    }
+  };
+
+  const handleUnlinkBank = async (bankId, bankName) => {
+    if (!confirm(`Are you sure you want to unlink ${bankName}?`)) return;
+    try {
+      const res = await bankAPI.unlinkBank(bankId);
+      if (res.success) {
+        await fetchBanks();
+        if (selectedBankId === bankId) {
+          const remaining = linkedBanks.filter(x => x.id !== bankId);
+          setSelectedBankId(remaining[0]?.id || "");
         }
+        showToast("Bank account unlinked successfully!");
+      } else {
+        showToast(res.message || "Failed to unlink bank account.", "error");
       }
-      window.dispatchEvent(new CustomEvent("balance_updated", { detail: {} }));
-    } catch(e) { /* silent */ }
+    } catch (err) {
+      showToast(err.response?.data?.message || "Connection error. Please try again.", "error");
+    }
   };
 
   const fetchWalletData = async () => {
@@ -435,22 +394,28 @@ export default function WalletsPage() {
     const currentEmail = bwUser ? JSON.parse(bwUser).email : null;
     if (!currentEmail) return;
     try {
-      const statsData = await walletAPI.getStats();
-      if (statsData.success) {
-        setBalance(Number(statsData.stats.currentBalance));
-      }
+      const [statsData, txsData, profileData] = await Promise.all([
+        walletAPI.getStats(),
+        walletAPI.getTransactions(),
+        authAPI.getProfile(),
+      ]);
 
-      const txsData = await walletAPI.getTransactions();
+      if (statsData.success) setBalance(Number(statsData.stats.currentBalance));
+
       if (txsData.success) {
         const mapped = txsData.transactions.map(t => mapBackendTx(t, currentEmail));
         setTxList(mapped);
       }
 
-      const profileData = await authAPI.getProfile();
-      if (profileData.success) {
-        setHasPin(profileData.user.has_pin);
+      if (profileData.success && profileData.user) {
+        const kyc = (profileData.user.kyc_status || "none").toLowerCase();
+        const wStatus = (profileData.user.wallet_status || "ACTIVE").toLowerCase();
+        setHasPin(!!profileData.user.has_pin);
+        setKycStatus(kyc);
+        setWalletStatus(wStatus);
         const u = JSON.parse(bwUser);
-        u.has_pin = profileData.user.has_pin;
+        u.has_pin = !!profileData.user.has_pin;
+        u.kycStatus = kyc;
         localStorage.setItem("bw_user", JSON.stringify(u));
       }
     } catch (err) {
@@ -470,16 +435,7 @@ export default function WalletsPage() {
 
     if (currentEmail) {
       fetchWalletData();
-    }
-
-    const bankKey = currentEmail ? `bw_linked_banks_${currentEmail}` : "bw_linked_banks";
-    const savedBanks = localStorage.getItem(bankKey);
-    if (savedBanks) {
-      const parsedBanks = JSON.parse(savedBanks);
-      setLinkedBanks(parsedBanks);
-      if (parsedBanks.length > 0) {
-        setSelectedBankId(parsedBanks[0].id);
-      }
+      fetchBanks();
     }
 
     // Parse URL params for promo code & modal trigger using react-router-dom searchParams
@@ -546,8 +502,8 @@ export default function WalletsPage() {
     return () => clearInterval(intervalId);
   }, [depositMethod, depositPaymentData]);
 
-  // Bắt đầu quy trình nạp tiền: tạo PENDING order và hiển thị QR admin
-  const handleInitiateDeposit = async (method) => {
+  // Deposit via linked bank account
+  const handleInitiateDeposit = async () => {
     if (!depositForm.amount || Number(depositForm.amount) <= 0) {
       showToast("Vui lòng nhập số tiền hợp lệ để nạp!", "error");
       return;
@@ -556,21 +512,27 @@ export default function WalletsPage() {
       showToast("Số tiền nạp tối thiểu là 1.000đ!", "error");
       return;
     }
+    if (!selectedBankId) {
+      showToast("Vui lòng chọn hoặc liên kết tài khoản ngân hàng trước!", "error");
+      return;
+    }
 
     setDepositLoading(true);
     try {
       const amount = Number(depositForm.amount);
-      const note = depositForm.note || "Nap tien SmartWallet";
-      const data = await payosAPI.createPaymentLink(amount, note);
+      const note = depositForm.note || "Nạp tiền SmartWallet";
+      const data = await walletAPI.deposit(selectedBankId, amount, note);
 
-      if (data.success && data.data?.checkoutUrl) {
+      if (data.success) {
+        showToast("Nạp tiền thành công! Số dư đã được cập nhật.");
+        setBalance(prev => prev + amount);
+        await fetchWalletData();
         closeModal();
-        window.location.href = data.data.checkoutUrl;
       } else {
-        showToast(data.message || "Không thể tạo lệnh nạp tiền.", "error");
+        showToast(data.message || "Không thể nạp tiền.", "error");
       }
     } catch (err) {
-      console.error("Deposit initiate error:", err);
+      console.error("Deposit error:", err);
       showToast(err.response?.data?.message || "Lỗi kết nối máy chủ.", "error");
     } finally {
       setDepositLoading(false);
@@ -588,9 +550,9 @@ export default function WalletsPage() {
     showToast(`Đã sao chép ${label}!`);
   };
 
-  // Giữ lại alias cũ để không bị lỗi ref
-  const handleConfirmDepositBank = () => handleInitiateDeposit("bank");
-  const handleConfirmDepositQR = () => handleInitiateDeposit("qr");
+  // Aliases kept for button wiring
+  const handleConfirmDepositBank = () => handleInitiateDeposit();
+  const handleConfirmDepositQR = () => handleInitiateDeposit();
 
   const handleDownloadQR = () => {
     const canvas = qrCanvasRef.current?.querySelector("canvas");
@@ -615,7 +577,7 @@ export default function WalletsPage() {
 
   const MAX_BANKS = 3;
 
-  const handleLinkBank = () => {
+  const handleLinkBank = async () => {
     if (linkedBanks.length >= MAX_BANKS) {
       showToast(`Bạn chỉ được liên kết tối đa ${MAX_BANKS} ngân hàng!`, "error");
       return;
@@ -624,20 +586,23 @@ export default function WalletsPage() {
       showToast("Vui lòng nhập đầy đủ thông tin ngân hàng!", "error");
       return;
     }
-    const newBank = {
-      id: "BANK-" + Date.now(),
-      bank: bankForm.bank,
-      account: bankForm.account,
-      owner: bankForm.owner
-    };
-    const updatedBanks = [...linkedBanks, newBank];
-    setLinkedBanks(updatedBanks);
-    const bankKey = userEmail ? `bw_linked_banks_${userEmail}` : "bw_linked_banks";
-    localStorage.setItem(bankKey, JSON.stringify(updatedBanks));
-    setSelectedBankId(newBank.id);
-    setBankForm({ bank:"", account:"", owner:"" });
-    showToast("Liên kết ngân hàng thành công!");
-    closeModal();
+    try {
+      const res = await bankAPI.linkBank({
+        bank_code: bankForm.bank,
+        account_number: bankForm.account,
+        account_name: bankForm.owner,
+      });
+      if (res.success) {
+        await fetchBanks();
+        setBankForm({ bank: "", account: "", owner: "" });
+        showToast("Liên kết ngân hàng thành công!");
+        closeModal();
+      } else {
+        showToast(res.message || "Không thể liên kết ngân hàng.", "error");
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || "Lỗi kết nối khi liên kết ngân hàng.", "error");
+    }
   };
 
   const handleConfirmWithdraw = async () => {
@@ -682,13 +647,14 @@ export default function WalletsPage() {
       const res = await walletAPI.withdraw(payload);
       
       if (res.success) {
-        const newTx = mapBackendTx(res.transaction, userEmail);
-
-        setTxList(prev => [newTx, ...prev]);
-        setBalance(Number(res.wallet.balance));
-
+        if (res.transaction) {
+          const newTx = mapBackendTx(res.transaction, userEmail);
+          setTxList(prev => [newTx, ...prev]);
+        }
+        if (res.wallet?.balance !== undefined) setBalance(Number(res.wallet.balance));
         showToast("Đã rút tiền thành công!");
         closeModal();
+        await fetchWalletData();
       }
     } catch (err) {
       console.error("Withdrawal submission error:", err);
@@ -772,13 +738,14 @@ export default function WalletsPage() {
         const res = await walletAPI.transfer(dest_email, amount, note, pin);
         
         if (res.success) {
-          const newTx = mapBackendTx(res.transaction, userEmail);
-
-          setTxList(prev => [newTx, ...prev]);
-          setBalance(Number(res.wallet.balance));
-
+          if (res.transaction) {
+            const newTx = mapBackendTx(res.transaction, userEmail);
+            setTxList(prev => [newTx, ...prev]);
+          }
+          if (res.wallet?.balance !== undefined) setBalance(Number(res.wallet.balance));
           showToast("Chuyển tiền thành công!");
           closeModal();
+          await fetchWalletData();
         }
       } catch (err) {
         console.error("Transfer submission error:", err);
@@ -817,10 +784,11 @@ export default function WalletsPage() {
         const res = await walletAPI.withdraw(payload);
         
         if (res.success) {
-          const newTx = mapBackendTx(res.transaction, userEmail);
-
-          setTxList(prev => [newTx, ...prev]);
-          setBalance(Number(res.wallet.balance));
+          if (res.transaction) {
+            const newTx = mapBackendTx(res.transaction, userEmail);
+            setTxList(prev => [newTx, ...prev]);
+          }
+          if (res.wallet?.balance !== undefined) setBalance(Number(res.wallet.balance));
 
           showToast("Chuyển khoản liên ngân hàng thành công!");
           closeModal();
@@ -842,6 +810,45 @@ export default function WalletsPage() {
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:20, maxWidth:1000 }}>
       {/* Toast Notification */}
+      {/* Freeze Wallet Confirmation Modal */}
+      <AnimatePresence>
+        {showFreezeConfirm && (
+          <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}}
+            style={{ position:"fixed", inset:0, background:"rgba(0,0,0,0.65)", zIndex:200, display:"flex", alignItems:"center", justifyContent:"center", padding:16 }}
+            onClick={() => setShowFreezeConfirm(false)}
+          >
+            <motion.div initial={{scale:0.92,opacity:0}} animate={{scale:1,opacity:1}} exit={{scale:0.92,opacity:0}}
+              onClick={e => e.stopPropagation()}
+              style={{ background:"var(--bg-card)", borderRadius:20, padding:28, width:"100%", maxWidth:400, boxShadow:"0 20px 60px rgba(0,0,0,0.4)", border:"1px solid var(--border)" }}
+            >
+              <div style={{ display:"flex", alignItems:"center", gap:12, marginBottom:16 }}>
+                <div style={{ width:48, height:48, borderRadius:14, background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.2)", display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <Shield size={22} style={{ color:"#ef4444" }} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize:16, fontWeight:700 }}>Freeze Your Wallet?</h3>
+                  <p style={{ fontSize:12, color:"var(--text-muted)" }}>This action cannot be undone by you</p>
+                </div>
+              </div>
+              <p style={{ fontSize:13, color:"var(--text-secondary)", lineHeight:1.6, marginBottom:20 }}>
+                Freezing your wallet will <strong>immediately disable</strong> all deposits, withdrawals, and transfers.
+                Only our support team can unfreeze it. Use this if you suspect unauthorized access.
+              </p>
+              <div style={{ display:"flex", gap:10 }}>
+                <button onClick={() => setShowFreezeConfirm(false)}
+                  style={{ flex:1, background:"var(--bg-card2)", border:"1px solid var(--border)", borderRadius:10, padding:"11px", fontSize:13, fontWeight:600, color:"var(--text-secondary)", cursor:"pointer" }}>
+                  Cancel
+                </button>
+                <button onClick={handleSelfFreeze}
+                  style={{ flex:1, background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.25)", borderRadius:10, padding:"11px", fontSize:13, fontWeight:700, color:"#ef4444", cursor:"pointer" }}>
+                  Yes, Freeze Now
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -862,43 +869,122 @@ export default function WalletsPage() {
         )}
       </AnimatePresence>
       
+      {/* Frozen Wallet Banner */}
+      {walletStatus === "frozen" && (
+        <motion.div initial={{opacity:0,y:-8}} animate={{opacity:1,y:0}}
+          style={{
+            background:"linear-gradient(135deg, #1e1b4b 0%, #312e81 100%)",
+            border:"1px solid rgba(99,102,241,0.4)", borderRadius:16, padding:"18px 22px",
+            display:"flex", alignItems:"center", gap:16,
+            boxShadow:"0 4px 24px rgba(99,102,241,0.2)"
+          }}>
+          <div style={{ width:48, height:48, borderRadius:14, background:"rgba(99,102,241,0.25)", border:"1px solid rgba(99,102,241,0.4)", display:"flex", alignItems:"center", justifyContent:"center", flexShrink:0 }}>
+            <Snowflake size={24} style={{ color:"#a5b4fc" }} />
+          </div>
+          <div style={{ flex:1 }}>
+            <p style={{ fontWeight:700, fontSize:15, color:"#e0e7ff", marginBottom:3 }}>Wallet Frozen</p>
+            <p style={{ fontSize:12, color:"#a5b4fc", lineHeight:1.5 }}>
+              Your wallet has been frozen. All transactions (deposit, withdraw, transfer) are disabled.
+              To restore access, please contact our support team.
+            </p>
+          </div>
+          <div style={{ display:"flex", alignItems:"center", gap:8, flexShrink:0 }}>
+            <PhoneCall size={14} style={{ color:"#a5b4fc" }} />
+            <span style={{ fontSize:12, color:"#a5b4fc", fontWeight:600 }}>Contact Support</span>
+          </div>
+        </motion.div>
+      )}
+
       {/* Balance Card */}
       <motion.div initial={{opacity:0,y:-10}} animate={{opacity:1,y:0}}
         style={{
-          background:"linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
-          border:"1px solid rgba(37,99,235,0.15)", borderRadius:20, padding:28, position:"relative", overflow:"hidden",
+          background: walletStatus === "frozen"
+            ? "linear-gradient(135deg, #f0f4ff 0%, #e0e7ff 100%)"
+            : "linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%)",
+          border: walletStatus === "frozen" ? "1px solid rgba(99,102,241,0.25)" : "1px solid rgba(37,99,235,0.15)",
+          borderRadius:20, padding:28, position:"relative", overflow:"hidden",
           boxShadow:"0 4px 20px rgba(37,99,235,0.05)"
         }}>
         <div style={{ position:"absolute", top:-50, right:-50, width:200, height:200, background:"radial-gradient(circle, rgba(37,99,235,0.08) 0%, transparent 70%)", borderRadius:"50%" }} />
-        <p style={{ color: "var(--text-secondary)", fontSize:13, marginBottom:8 }}>Số dư khả dụng</p>
+
+        {/* Wallet status pill */}
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:8 }}>
+          <p style={{ color: "var(--text-secondary)", fontSize:13 }}>Available Balance</p>
+          <div style={{
+            display:"flex", alignItems:"center", gap:5, padding:"3px 10px", borderRadius:20,
+            background: walletStatus === "frozen" ? "rgba(99,102,241,0.12)" : "rgba(34,197,94,0.1)",
+            border: walletStatus === "frozen" ? "1px solid rgba(99,102,241,0.25)" : "1px solid rgba(34,197,94,0.2)",
+          }}>
+            {walletStatus === "frozen"
+              ? <><Snowflake size={11} style={{ color:"#6366f1" }} /><span style={{ fontSize:11, fontWeight:700, color:"#6366f1" }}>FROZEN</span></>
+              : <><div style={{ width:7, height:7, borderRadius:"50%", background:"#22c55e" }} /><span style={{ fontSize:11, fontWeight:700, color:"#22c55e" }}>ACTIVE</span></>
+            }
+          </div>
+        </div>
+
         {loading
           ? <div className="skeleton" style={{ height:40, width:220, marginBottom:12 }} />
-          : <h2 style={{ fontSize:36, fontWeight:900, letterSpacing:"-1px", marginBottom:12 }}>{fmtCurrency(balance)}</h2>
+          : <h2 style={{ fontSize:36, fontWeight:900, letterSpacing:"-1px", marginBottom:12,
+              color: walletStatus === "frozen" ? "#6366f1" : "inherit"
+            }}>{fmtCurrency(balance)}</h2>
         }
         <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-          <div style={{ width:8, height:8, borderRadius:"50%", background:"#22c55e" }} />
-          <span style={{ fontSize:12, color: "var(--text-muted)" }}>Tài khoản đã xác thực - dòng này chưa gắn logic mà chỉ gán cứng</span>
+          <div style={{ width:8, height:8, borderRadius:"50%", background: kycStatus === "verified" ? "#22c55e" : kycStatus === "pending" ? "#f59e0b" : "#ef4444" }} />
+          <span style={{ fontSize:12, color: "var(--text-muted)" }}>
+            {kycStatus === "verified" ? "Account verified ✓" : kycStatus === "pending" ? "KYC pending review ⏳" : "KYC not verified ⚠️"}
+          </span>
         </div>
 
         {/* Action Buttons */}
         <div style={{ display:"flex", gap:4, marginTop:24, flexWrap:"wrap" }}>
           {[
-            { label:"Nạp tiền", icon:ArrowDownLeft, color:"#22c55e", modal:"deposit" },
-            { label:"Rút tiền", icon:ArrowUpRight,  color:"#f59e0b", modal:"withdraw" },
-            { label:"Chuyển tiền", icon:CreditCard, color:"#3b82f6", modal:"transfer" },
-            { label:"Mã QR", icon:QrCode,           color:"#2563eb", modal:"qr" },
-          ].map(({ label, icon:Icon, color, modal:m }) => (
-            <button key={m} onClick={() => handleActionClick(m)} style={btnStyle(color)}
-              onMouseEnter={(e) => { e.currentTarget.style.background = `${color}15`; }}
+            { label:"Deposit",  icon:ArrowDownLeft, color:"#22c55e", modal:"deposit" },
+            { label:"Withdraw", icon:ArrowUpRight,  color:"#f59e0b", modal:"withdraw" },
+            { label:"Transfer", icon:CreditCard,    color:"#3b82f6", modal:"transfer" },
+            { label:"QR Code",  icon:QrCode,        color:"#2563eb", modal:"qr" },
+          ].map(({ label, icon:Icon, color, modal:m }) => {
+            const isFrozen = walletStatus === "frozen" && m !== "qr";
+            const isKycLocked = !isFrozen && (m === "deposit" || m === "withdraw" || m === "transfer") && kycStatus !== "verified";
+            const isLocked = isFrozen || isKycLocked;
+            const btnColor = isLocked ? "#94a3b8" : color;
+            return (
+              <button key={m} onClick={() => handleActionClick(m)}
+                style={{ ...btnStyle(btnColor), opacity: isLocked ? 0.5 : 1 }}
+                title={isFrozen ? "Wallet is frozen" : isKycLocked ? "KYC verification required" : undefined}
+                onMouseEnter={(e) => { if (!isLocked) e.currentTarget.style.background = `${color}15`; }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+              >
+                <div style={{ width:44, height:44, borderRadius:12, background:`${btnColor}20`, border:`1px solid ${btnColor}40`, display:"flex", alignItems:"center", justifyContent:"center" }}>
+                  <Icon size={20} style={{ color: btnColor }} />
+                </div>
+                <span style={{ fontSize:12, fontWeight:500, color: "var(--text-secondary)" }}>{label}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Self-Freeze Button */}
+        {walletStatus !== "frozen" && (
+          <div style={{ marginTop:20, paddingTop:16, borderTop:"1px solid rgba(37,99,235,0.1)" }}>
+            <button
+              onClick={() => setShowFreezeConfirm(true)}
+              style={{
+                display:"flex", alignItems:"center", gap:8,
+                background:"transparent", border:"1px solid rgba(239,68,68,0.25)",
+                borderRadius:8, padding:"7px 14px", color:"#ef4444",
+                fontSize:12, fontWeight:600, cursor:"pointer", transition:"all 0.2s"
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.06)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
             >
-              <div style={{ width:44, height:44, borderRadius:12, background:`${color}20`, border:`1px solid ${color}40`, display:"flex", alignItems:"center", justifyContent:"center" }}>
-                <Icon size={20} style={{ color }} />
-              </div>
-              <span style={{ fontSize:12, fontWeight:500, color: "var(--text-secondary)" }}>{label}</span>
+              <Shield size={13} />
+              Freeze My Wallet
             </button>
-          ))}
-        </div>
+            <p style={{ fontSize:11, color:"var(--text-muted)", marginTop:5 }}>
+              Temporarily disable all transactions if you suspect unauthorized access.
+            </p>
+          </div>
+        )}
       </motion.div>
 
       <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.15}}
@@ -1095,7 +1181,16 @@ export default function WalletsPage() {
                       
                       <div style={{ marginBottom:16 }}>
                         <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:8 }}>Số tiền (₫)</label>
-                        <input value={depositForm.amount} onChange={e => setDepositForm({...depositForm, amount:e.target.value})} placeholder="0" type="number" style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"12px 16px", color: "#000000", fontSize:18, fontWeight:700, outline:"none" }} />
+                        <div style={{ position:"relative" }}>
+                          <input
+                            type="text" inputMode="numeric"
+                            value={depositForm.amount ? Number(depositForm.amount).toLocaleString("vi-VN") : ""}
+                            onChange={e => { const raw = e.target.value.replace(/\D/g,""); setDepositForm({...depositForm, amount:raw}); }}
+                            placeholder="0"
+                            style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"12px 60px 12px 16px", color: "#000000", fontSize:18, fontWeight:700, outline:"none", boxSizing:"border-box" }}
+                          />
+                          <span style={{ position:"absolute", right:16, top:"50%", transform:"translateY(-50%)", fontSize:14, fontWeight:600, color:"var(--text-muted)", pointerEvents:"none" }}>₫</span>
+                        </div>
                         <div style={{ display:"flex", gap:8, marginTop:10, flexWrap:"wrap" }}>
                           {[100000,200000,500000,1000000].map(v => (
                             <button key={v} onClick={() => setDepositForm({...depositForm, amount:String(v)})} style={{ fontSize:12, padding:"6px 12px", borderRadius:8, background: "var(--bg-card2)", border: "1px solid var(--border)", color: "var(--text-secondary)", cursor:"pointer" }}>
@@ -1489,7 +1584,16 @@ export default function WalletsPage() {
 
                           <div style={{ marginBottom: 20 }}>
                             <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:8 }}>Số tiền muốn rút (₫)</label>
-                            <input value={depositForm.amount} onChange={e => setDepositForm({...depositForm, amount:e.target.value})} placeholder="0" type="number" style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"12px 16px", color: "#000000", fontSize:18, fontWeight:700, outline:"none" }} />
+                            <div style={{ position:"relative" }}>
+                              <input
+                                type="text" inputMode="numeric"
+                                value={depositForm.amount ? Number(depositForm.amount).toLocaleString("vi-VN") : ""}
+                                onChange={e => { const raw = e.target.value.replace(/\D/g,""); setDepositForm({...depositForm, amount:raw}); }}
+                                placeholder="0"
+                                style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"12px 60px 12px 16px", color: "#000000", fontSize:18, fontWeight:700, outline:"none", boxSizing:"border-box" }}
+                              />
+                              <span style={{ position:"absolute", right:16, top:"50%", transform:"translateY(-50%)", fontSize:14, fontWeight:600, color:"var(--text-muted)", pointerEvents:"none" }}>₫</span>
+                            </div>
                             <div style={{ display:"flex", gap:8, marginTop:10, flexWrap:"wrap" }}>
                               {[100000,200000,500000,1000000].map(v => (
                                 <button key={v} onClick={() => setDepositForm({...depositForm, amount:String(v)})} style={{ fontSize:12, padding:"6px 12px", borderRadius:8, background: "var(--bg-card2)", border: "1px solid var(--border)", color: "var(--text-secondary)", cursor:"pointer" }}>
@@ -1787,9 +1891,16 @@ export default function WalletsPage() {
                   {/* Common fields: Amount + Note */}
                   <div style={{ marginTop:16, marginBottom:14, textAlign:"left" }}>
                     <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Số tiền (₫) *</label>
-                    <input value={txForm.amount} onChange={e => setTxForm({...txForm, amount:e.target.value})}
-                      placeholder="0" type="number"
-                      style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"12px 16px", color: "#000000", fontSize:18, fontWeight:700, outline:"none" }} />
+                    <div style={{ position:"relative" }}>
+                      <input
+                        type="text" inputMode="numeric"
+                        value={txForm.amount ? Number(txForm.amount).toLocaleString("vi-VN") : ""}
+                        onChange={e => { const raw = e.target.value.replace(/\D/g,""); setTxForm({...txForm, amount:raw}); }}
+                        placeholder="0"
+                        style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"12px 60px 12px 16px", color: "#000000", fontSize:18, fontWeight:700, outline:"none", boxSizing:"border-box" }}
+                      />
+                      <span style={{ position:"absolute", right:16, top:"50%", transform:"translateY(-50%)", fontSize:14, fontWeight:600, color:"var(--text-muted)", pointerEvents:"none" }}>₫</span>
+                    </div>
                     <div style={{ display:"flex", gap:8, marginTop:10, flexWrap:"wrap" }}>
                       {[50000,100000,200000,500000].map(v => (
                         <button key={v} onClick={() => setTxForm({...txForm, amount:String(v)})}
@@ -1956,21 +2067,14 @@ export default function WalletsPage() {
                               </div>
                             </div>
                             <button
-                              onClick={() => {
-                                const updated = linkedBanks.filter(x => x.id !== b.id);
-                                setLinkedBanks(updated);
-                                const bankKey = userEmail ? `bw_linked_banks_${userEmail}` : "bw_linked_banks";
-                                localStorage.setItem(bankKey, JSON.stringify(updated));
-                                if (selectedBankId === b.id) setSelectedBankId(updated[0]?.id || "");
-                                showToast("Đã xoá liên kết ngân hàng!");
-                              }}
+                              onClick={() => handleUnlinkBank(b.id, b.bank)}
                               style={{
                                 background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.2)",
                                 borderRadius:6, padding:"4px 10px", color:"#ef4444",
                                 fontSize:11, fontWeight:700, cursor:"pointer"
                               }}
                             >
-                              Xoá
+                              Remove
                             </button>
                           </div>
                         ))}
@@ -2072,16 +2176,7 @@ export default function WalletsPage() {
                             </div>
                           </div>
                           <button
-                            onClick={() => {
-                              if (confirm(`Bạn có chắc chắn muốn huỷ liên kết với ngân hàng ${b.bank}?`)) {
-                                const updated = linkedBanks.filter(x => x.id !== b.id);
-                                setLinkedBanks(updated);
-                                const bankKey = userEmail ? `bw_linked_banks_${userEmail}` : "bw_linked_banks";
-                                localStorage.setItem(bankKey, JSON.stringify(updated));
-                                if (selectedBankId === b.id) setSelectedBankId(updated[0]?.id || "");
-                                showToast("Đã xoá liên kết ngân hàng!");
-                              }
-                            }}
+                            onClick={() => handleUnlinkBank(b.id, b.bank)}
                             style={{
                               background:"rgba(239,68,68,0.08)", border:"1px solid rgba(239,68,68,0.2)",
                               borderRadius:8, padding:"6px 12px", color:"#ef4444",
@@ -2090,7 +2185,7 @@ export default function WalletsPage() {
                             onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.15)"; }}
                             onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
                           >
-                            Huỷ liên kết
+                            Unlink
                           </button>
                         </div>
                       ))}

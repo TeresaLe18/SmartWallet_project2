@@ -1,26 +1,29 @@
 import { useState, useEffect } from "react";
 import { Upload, CheckCircle, Clock, AlertCircle, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
-import { authAPI } from "../../services/api";
+import { authAPI, kycAPI, getUploadUrl } from "../../services/api";
 
 const steps = [
-  { id:1, title:"Thông tin cá nhân", desc:"CCCD/CMND & họ tên" },
-  { id:2, title:"Tải ảnh giấy tờ", desc:"Mặt trước & sau CCCD" },
-  { id:3, title:"Chờ xác minh", desc:"1-3 ngày làm việc" },
+  { id:1, title:"Personal Info",    desc:"ID card & full name" },
+  { id:2, title:"Upload Documents", desc:"Front & back of ID card" },
+  { id:3, title:"Under Review",     desc:"1–3 business days" },
 ];
 
 export default function KycPage() {
   const [step, setStep] = useState(1);
-  const [form, setForm] = useState({ fullname:"", cccd:"", dob:"", frontImg:null, backImg:null, selfieImg:null });
+  const [form, setForm] = useState({ fullname:"", cccd:"", dob:"", gender:"Male", address:"", frontImg:null, backImg:null, selfieImg:null });
   const [submitted, setSubmitted] = useState(false);
   const [user, setUser] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
+  // KYC record loaded from backend — contains server-side image filenames
+  const [savedKyc, setSavedKyc] = useState(null);
 
   useEffect(() => {
     if (user && (user.kycStatus === "rejected" || user.kyc === "rejected")) {
       authAPI.getNotifications()
         .then(res => {
           if (res.success && res.notifications) {
+            // backend sends Vietnamese notification titles — search for rejection keyword
             const kycRejectNotif = res.notifications.find(n => n.title && n.title.includes("từ chối"));
             if (kycRejectNotif) {
               setRejectReason(kycRejectNotif.content);
@@ -47,18 +50,41 @@ export default function KycPage() {
     };
   }, []);
 
+  // Load the existing KYC record from backend whenever user has any KYC status
+  useEffect(() => {
+    if (!user) return;
+    const hasKyc = user.kyc === true || user.kyc === "verified" || user.kycStatus === "verified"
+      || user.kycStatus === "pending" || user.kycStatus === "rejected";
+    if (!hasKyc) return;
+
+    kycAPI.getMyKyc()
+      .then(kyc => {
+        if (kyc && !kyc.message) {
+          setSavedKyc(kyc);
+          // Pre-fill text fields for rejected/edit flow
+          setForm(f => ({
+            ...f,
+            fullname: f.fullname || kyc.full_name || "",
+            cccd: f.cccd || kyc.national_id || "",
+            dob: f.dob || (kyc.date_of_birth ? kyc.date_of_birth.split("T")[0] : ""),
+            gender: f.gender || kyc.gender || "Male",
+            address: f.address || kyc.address || "",
+          }));
+        }
+      })
+      .catch(() => {});
+  }, [user]);
+
   const handleFile = (key, e) => {
     const file = e.target.files[0];
     if (file) {
-      // Validate size (< 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert("Kích thước ảnh không được vượt quá 5MB.");
+        alert("Image size must not exceed 5 MB.");
         return;
       }
-      // Validate file extension
       const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
       if (!allowedTypes.includes(file.type)) {
-        alert("Định dạng file không được hỗ trợ. Chỉ chấp nhận ảnh JPG, JPEG, PNG, WEBP, GIF.");
+        alert("Unsupported file format. Only JPG, PNG, WEBP, or GIF images are accepted.");
         return;
       }
 
@@ -73,19 +99,19 @@ export default function KycPage() {
   const handleSubmit = async () => {
     if (step === 1) {
       if (!form.fullname.trim()) {
-        alert("Vui lòng nhập họ và tên theo CCCD.");
+        alert("Please enter your full name as shown on your ID card.");
         return;
       }
       if (!form.cccd.trim()) {
-        alert("Vui lòng nhập số CCCD / CMND.");
+        alert("Please enter your national ID number.");
         return;
       }
       if (!/^\d{9}$|^\d{12}$/.test(form.cccd.trim())) {
-        alert("Số CCCD / CMND không đúng định dạng (phải gồm đúng 9 hoặc 12 chữ số).");
+        alert("Invalid ID number format — must be exactly 9 or 12 digits.");
         return;
       }
       if (!form.dob) {
-        alert("Vui lòng nhập ngày sinh.");
+        alert("Please enter your date of birth.");
         return;
       }
       const birthDate = new Date(form.dob);
@@ -96,42 +122,51 @@ export default function KycPage() {
         age--;
       }
       if (age < 15) {
-        alert("Yêu cầu độ tuổi từ 15 tuổi trở lên.");
+        alert("You must be at least 15 years old to submit a KYC application.");
         return;
       }
       setStep(2);
       return;
     }
-    
-    if (!form.frontImg) {
-      alert("Vui lòng tải lên mặt trước CCCD.");
-      return;
+
+    // Images are only mandatory for a brand-new submission (no existing KYC record).
+    // On an update the user can leave any unchanged — the backend keeps the old files.
+    const isUpdate = !!savedKyc;
+
+    if (!isUpdate) {
+      if (!form.frontImg) {
+        alert("Please upload the front side of your ID card.");
+        return;
+      }
+      if (!form.backImg) {
+        alert("Please upload the back side of your ID card.");
+        return;
+      }
+      if (!form.selfieImg) {
+        alert("Please upload a selfie photo.");
+        return;
+      }
     }
-    if (!form.backImg) {
-      alert("Vui lòng tải lên mặt sau CCCD.");
-      return;
-    }
-    if (!form.selfieImg) {
-      alert("Vui lòng tải lên ảnh chân dung (Selfie).");
-      return;
-    }
-    
+
     try {
+      // Only send images that were newly selected — omitting them lets the backend keep the old ones
       const payload = {
         national_id: form.cccd,
         full_name: form.fullname,
         date_of_birth: form.dob,
-        front_image: form.frontImg,
-        back_image: form.backImg,
-        selfie_image: form.selfieImg,
-        gender: "Nam",
-        address: "Chưa cập nhật",
+        gender: form.gender || "Male",
+        address: form.address || "",
+        ...(form.frontImg  && { front_image:  form.frontImg }),
+        ...(form.backImg   && { back_image:   form.backImg }),
+        ...(form.selfieImg && { selfie_image: form.selfieImg }),
       };
 
-      const res = await authAPI.submitKyc(payload);
-      
+      // Use update if an existing KYC record is loaded, submit otherwise
+      const res = isUpdate
+        ? await kycAPI.update(payload)
+        : await kycAPI.submit(payload);
+
       if (res.success) {
-        // Sync local storage state
         const u = localStorage.getItem("bw_user");
         if (u) {
           const parsed = JSON.parse(u);
@@ -140,27 +175,28 @@ export default function KycPage() {
           parsed.cccd = form.cccd;
           parsed.name = form.fullname || parsed.name;
           parsed.dob = form.dob;
-          
           localStorage.setItem("bw_user", JSON.stringify(parsed));
           setUser(parsed);
         }
-        
         window.dispatchEvent(new Event("kyc_updated"));
         setSubmitted(true);
       } else {
-        alert(res.message || "Không thể nộp hồ sơ xác thực.");
+        alert(res.message || "Failed to submit KYC application.");
       }
     } catch (err) {
       console.error("KYC submission error:", err);
-      alert(err.response?.data?.message || "Lỗi kết nối máy chủ khi nộp hồ sơ.");
+      alert(err.response?.data?.message || "Server error during submission. Please try again.");
     }
   };
 
+  // ── Verified view ──────────────────────────────────────────────────────────
   if (user && (user.kyc === true || user.kyc === "verified" || user.kycStatus === "verified")) {
     return (
       <div style={{ maxWidth: 560 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>Xác thực danh tính (KYC)</h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 24 }}>Tài khoản của bạn đã được xác minh chính thức bởi Ban quản trị</p>
+        <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>Identity Verification (KYC)</h1>
+        <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 24 }}>
+          Your account has been officially verified by the Administration.
+        </p>
 
         <motion.div
           initial={{ opacity: 0, y: 16 }}
@@ -174,20 +210,24 @@ export default function KycPage() {
           <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, padding: "12px 16px", background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 10 }}>
             <CheckCircle size={20} style={{ color: "#22c55e" }} />
             <div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: "#22c55e" }}>Đã xác thực danh tính</p>
-              <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>Toàn bộ hạn mức giao dịch đã được nâng cấp lên mức tối đa.</p>
+              <p style={{ fontSize: 14, fontWeight: 700, color: "#22c55e" }}>Identity Verified</p>
+              <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>
+                Your transaction limits have been upgraded to the maximum level.
+              </p>
             </div>
           </div>
 
-          {/* Full Information Table */}
-          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-secondary)" }}>Thông tin cá nhân đã xác minh</h3>
+          {/* Information Table */}
+          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-secondary)" }}>
+            Verified Personal Information
+          </h3>
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
             {[
-              { label: "Họ và tên", value: user.name || "Chưa cập nhật" },
-              { label: "Số CCCD / CMND", value: user.cccd || "Chưa cập nhật" },
-              { label: "Ngày sinh", value: user.dob || "Chưa cập nhật" },
-              { label: "Giới tính", value: user.gender || "Nam" },
-              { label: "Địa chỉ thường trú", value: user.address || "Hà Nội, Việt Nam" },
+              { label: "Full Name",         value: savedKyc?.full_name || "Not provided" },
+              { label: "National ID",       value: savedKyc?.national_id || "Not provided" },
+              { label: "Date of Birth",     value: savedKyc?.date_of_birth ? new Date(savedKyc.date_of_birth).toLocaleDateString("en-GB") : "Not provided" },
+              { label: "Gender",            value: savedKyc?.gender || "Not provided" },
+              { label: "Permanent Address", value: savedKyc?.address || "Not provided" },
             ].map((item, idx) => (
               <div key={idx} style={{ display: "flex", justifyContent: "space-between", paddingBottom: 8, borderBottom: "1px solid var(--border)" }}>
                 <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{item.label}</span>
@@ -196,56 +236,44 @@ export default function KycPage() {
             ))}
           </div>
 
-          {/* Document images */}
-          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-secondary)" }}>Ảnh giấy tờ tùy thân & Chân dung</h3>
+          {/* Document Images */}
+          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-secondary)" }}>
+            ID Documents &amp; Portrait
+          </h3>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 28 }}>
-            <div>
-              <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>Mặt trước CCCD</p>
-              <div style={{ height: 110, background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 12, overflow: "hidden" }}>
-                {form.frontImg ? (
-                  <img src={form.frontImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <span>[Ảnh đã lưu]</span>
-                )}
+            {[
+              { label: "ID Card – Front", src: getUploadUrl(savedKyc?.front_image) },
+              { label: "ID Card – Back",  src: getUploadUrl(savedKyc?.back_image) },
+              { label: "Selfie",          src: getUploadUrl(savedKyc?.selfie_image) },
+            ].map(({ label, src }) => (
+              <div key={label}>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>{label}</p>
+                <div style={{ height: 110, background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 12, overflow: "hidden" }}>
+                  {src ? (
+                    <img src={src} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                  ) : (
+                    <span style={{ fontSize: 11 }}>No image</span>
+                  )}
+                </div>
               </div>
-            </div>
-            <div>
-              <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>Mặt sau CCCD</p>
-              <div style={{ height: 110, background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 12, overflow: "hidden" }}>
-                {form.backImg ? (
-                  <img src={form.backImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <span>[Ảnh đã lưu]</span>
-                )}
-              </div>
-            </div>
-            <div>
-              <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>Ảnh chân dung (Selfie)</p>
-              <div style={{ height: 110, background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 12, overflow: "hidden" }}>
-                {form.selfieImg ? (
-                  <img src={form.selfieImg} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-                ) : (
-                  <span>[Ảnh đã lưu]</span>
-                )}
-              </div>
-            </div>
+            ))}
           </div>
 
           {/* Edit Button */}
           <button
             onClick={() => {
               setForm({
-                fullname: user.name || "",
-                cccd: user.cccd || "",
-                dob: user.dob || "",
+                fullname: savedKyc?.full_name || "",
+                cccd: savedKyc?.national_id || "",
+                dob: savedKyc?.date_of_birth ? savedKyc.date_of_birth.split("T")[0] : "",
+                gender: savedKyc?.gender || "Male",
+                address: savedKyc?.address || "",
                 frontImg: null,
                 backImg: null,
-                selfieImg: null
+                selfieImg: null,
               });
               setStep(1);
               setSubmitted(false);
-              
-              // Tạm thời reset trạng thái kyc về "none" để người dùng sửa đổi và gửi lại
               const u = localStorage.getItem("bw_user");
               if (u) {
                 const parsed = JSON.parse(u);
@@ -264,13 +292,14 @@ export default function KycPage() {
             onMouseEnter={e => e.currentTarget.style.borderColor = "var(--primary)"}
             onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}
           >
-            ✏️ Yêu cầu chỉnh sửa thông tin KYC
+            ✏️ Request KYC Information Update
           </button>
         </motion.div>
       </div>
     );
   }
 
+  // ── Pending view ───────────────────────────────────────────────────────────
   if (submitted || (user && user.kycStatus === "pending")) {
     return (
       <div style={{ maxWidth:500, margin:"0 auto", textAlign:"center", paddingTop:40 }}>
@@ -278,19 +307,22 @@ export default function KycPage() {
           style={{ width:80, height:80, background:"rgba(245,158,11,0.15)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
           <Clock size={36} style={{ color:"#f59e0b" }} />
         </motion.div>
-        <h2 style={{ fontSize:22, fontWeight:800, marginBottom:8 }}>Đang xem xét hồ sơ</h2>
+        <h2 style={{ fontSize:22, fontWeight:800, marginBottom:8 }}>Application Under Review</h2>
         <p style={{ color: "var(--text-secondary)", fontSize:14, lineHeight:1.6 }}>
-          Chúng tôi đã nhận được hồ sơ KYC của bạn.<br />
-          Kết quả đang được ban quản trị xem xét. Vui lòng chờ phản hồi trong thời gian sớm nhất!
+          We have received your KYC application.<br />
+          It is currently being reviewed by the administration. Please wait for our response!
         </p>
       </div>
     );
   }
 
+  // ── Submission form ────────────────────────────────────────────────────────
   return (
     <div style={{ maxWidth:560 }}>
-      <h1 style={{ fontSize:20, fontWeight:800, marginBottom:4 }}>Xác thực danh tính (KYC)</h1>
-      <p style={{ color: "var(--text-secondary)", fontSize:14, marginBottom:28 }}>Xác thực để tăng hạn mức giao dịch và sử dụng đầy đủ tính năng</p>
+      <h1 style={{ fontSize:20, fontWeight:800, marginBottom:4 }}>Identity Verification (KYC)</h1>
+      <p style={{ color: "var(--text-secondary)", fontSize:14, marginBottom:28 }}>
+        Verify your identity to increase transaction limits and unlock all features.
+      </p>
 
       {rejectReason && (
         <div style={{
@@ -299,9 +331,11 @@ export default function KycPage() {
         }}>
           <AlertCircle size={20} style={{ color: "#ef4444", flexShrink: 0, marginTop: 2 }} />
           <div>
-            <p style={{ fontSize: 14, fontWeight: 700, color: "#ef4444", marginBottom: 4 }}>Yêu cầu KYC trước đó bị từ chối</p>
+            <p style={{ fontSize: 14, fontWeight: 700, color: "#ef4444", marginBottom: 4 }}>Previous KYC Application Rejected</p>
             <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>{rejectReason}</p>
-            <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6 }}>Vui lòng chỉnh sửa thông tin và gửi lại hồ sơ chính xác.</p>
+            <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6 }}>
+              Please correct the information and resubmit your application.
+            </p>
           </div>
         </div>
       )}
@@ -331,15 +365,16 @@ export default function KycPage() {
         ))}
       </div>
 
-      {/* Step 1 */}
+      {/* Step 1 — Personal Information */}
       {step === 1 && (
         <motion.div initial={{opacity:0,x:20}} animate={{opacity:1,x:0}}
           style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius:16, padding:28 }}>
-          <h3 style={{ fontSize:15, fontWeight:700, marginBottom:20 }}>Thông tin cá nhân</h3>
+          <h3 style={{ fontSize:15, fontWeight:700, marginBottom:20 }}>Personal Information</h3>
+
           {[
-            { label:"Họ và tên (theo CCCD)", key:"fullname", placeholder:"Nguyễn Văn A" },
-            { label:"Số CCCD / CMND", key:"cccd", placeholder:"012345678901" },
-            { label:"Ngày sinh", key:"dob", placeholder:"", type:"date" },
+            { label:"Full Name (as on ID card)", key:"fullname", placeholder:"e.g. John Smith" },
+            { label:"National ID Number",        key:"cccd",     placeholder:"9 or 12 digits" },
+            { label:"Date of Birth",             key:"dob",      placeholder:"", type:"date" },
           ].map(f => (
             <div key={f.key} style={{ marginBottom:16 }}>
               <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>{f.label}</label>
@@ -351,53 +386,100 @@ export default function KycPage() {
               />
             </div>
           ))}
+
+          {/* Gender */}
+          <div style={{ marginBottom:16 }}>
+            <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Gender</label>
+            <div style={{ display:"flex", gap:10 }}>
+              {["Male", "Female", "Other"].map(g => (
+                <button
+                  key={g}
+                  type="button"
+                  onClick={() => setForm(p => ({...p, gender: g}))}
+                  style={{
+                    flex:1, padding:"10px", borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer",
+                    background: form.gender === g ? "rgba(37,99,235,0.12)" : "var(--bg-card2)",
+                    border: `2px solid ${form.gender === g ? "#2563eb" : "var(--border)"}`,
+                    color: form.gender === g ? "#2563eb" : "var(--text-secondary)",
+                    transition:"all 0.15s"
+                  }}
+                >
+                  {g}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Address */}
+          <div style={{ marginBottom:16 }}>
+            <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Permanent Address</label>
+            <input
+              value={form.address}
+              onChange={e => setForm(p => ({...p, address: e.target.value}))}
+              type="text"
+              placeholder="House number, street, ward, district, city / province"
+              style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"11px 14px", color: "#000000", fontSize:14, outline:"none" }}
+              onFocus={e => { e.target.style.borderColor="#2563eb"; }}
+              onBlur={e => { e.target.style.borderColor="var(--border)"; }}
+            />
+          </div>
+
           <button onClick={handleSubmit} style={{ width:"100%", background:"linear-gradient(135deg,#2563eb,#1d4ed8)", color: "white", border:"none", borderRadius:10, padding:"13px", fontWeight:700, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginTop:8 }}>
-            Tiếp theo <ArrowRight size={16} />
+            Next <ArrowRight size={16} />
           </button>
         </motion.div>
       )}
 
-      {/* Step 2 */}
+      {/* Step 2 — Upload Documents */}
       {step === 2 && (
         <motion.div initial={{opacity:0,x:20}} animate={{opacity:1,x:0}}
           style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius:16, padding:28 }}>
-          <h3 style={{ fontSize:15, fontWeight:700, marginBottom:20 }}>Tải ảnh giấy tờ & nhận diện khuôn mặt</h3>
+          <h3 style={{ fontSize:15, fontWeight:700, marginBottom:20 }}>Upload ID Documents &amp; Selfie</h3>
           <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(130px, 1fr))", gap:12, marginBottom:24 }}>
             {[
-              { label:"Mặt trước CCCD", key:"frontImg" },
-              { label:"Mặt sau CCCD", key:"backImg" },
-              { label:"Ảnh chân dung (Selfie)", key:"selfieImg" },
-            ].map(f => (
-              <div key={f.key}>
-                <p style={{ fontSize:13, color: "var(--text-secondary)", marginBottom:8 }}>{f.label}</p>
-                <label style={{
-                  display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-                  height:140, border:`2px dashed ${form[f.key] ? "#22c55e" : "var(--border)"}`,
-                  borderRadius:12, cursor:"pointer", background: form[f.key] ? "rgba(34,197,94,0.05)" : "var(--bg-card2)",
-                  overflow:"hidden", transition:"all 0.2s", position:"relative"
-                }}>
-                  {form[f.key]
-                    ? <img src={form[f.key]} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
-                    : <>
-                        <Upload size={24} style={{ color: "var(--text-muted)", marginBottom:8 }} />
-                        <span style={{ fontSize:12, color: "var(--text-muted)" }}>Chọn ảnh</span>
-                      </>
-                  }
-                  <input type="file" accept="image/*" onChange={e => handleFile(f.key, e)} style={{ position:"absolute", inset:0, opacity:0, cursor:"pointer" }} />
-                </label>
-              </div>
-            ))}
+              { label:"ID Card – Front", key:"frontImg",  serverKey:"front_image" },
+              { label:"ID Card – Back",  key:"backImg",   serverKey:"back_image" },
+              { label:"Selfie Photo",    key:"selfieImg", serverKey:"selfie_image" },
+            ].map(f => {
+              const preview = form[f.key] || getUploadUrl(savedKyc?.[f.serverKey]);
+              const hasImage = !!preview;
+              return (
+                <div key={f.key}>
+                  <p style={{ fontSize:13, color: "var(--text-secondary)", marginBottom:8 }}>{f.label}</p>
+                  <label style={{
+                    display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
+                    height:140, border:`2px dashed ${hasImage ? "#22c55e" : "var(--border)"}`,
+                    borderRadius:12, cursor:"pointer", background: hasImage ? "rgba(34,197,94,0.05)" : "var(--bg-card2)",
+                    overflow:"hidden", transition:"all 0.2s", position:"relative"
+                  }}>
+                    {hasImage
+                      ? <img src={preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                      : <>
+                          <Upload size={24} style={{ color: "var(--text-muted)", marginBottom:8 }} />
+                          <span style={{ fontSize:12, color: "var(--text-muted)" }}>Choose image</span>
+                        </>
+                    }
+                    <input type="file" accept="image/*" onChange={e => handleFile(f.key, e)} style={{ position:"absolute", inset:0, opacity:0, cursor:"pointer" }} />
+                  </label>
+                  {form[f.key] && (
+                    <p style={{ fontSize:11, color:"#22c55e", marginTop:4, textAlign:"center" }}>✓ New image selected</p>
+                  )}
+                </div>
+              );
+            })}
           </div>
           <div style={{ background:"rgba(245,158,11,0.08)", border:"1px solid rgba(245,158,11,0.2)", borderRadius:10, padding:"12px 14px", marginBottom:20, display:"flex", gap:8 }}>
             <AlertCircle size={15} style={{ color:"#f59e0b", flexShrink:0, marginTop:2 }} />
-            <p style={{ fontSize:12, color:"#a16207", lineHeight:1.5 }}>Ảnh phải rõ ràng, không bị mờ, che khuất. Định dạng JPG/PNG/WEBP/GIF, tối đa 5MB.</p>
+            <p style={{ fontSize:12, color:"#a16207", lineHeight:1.5 }}>
+              Photos must be clear, unblurred, and unobstructed. Accepted formats: JPG / PNG / WEBP / GIF, max 5 MB.
+            </p>
           </div>
           <div style={{ display:"flex", gap:10 }}>
             <button onClick={() => setStep(1)} style={{ flex:1, background: "var(--bg-card2)", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius:10, padding:"12px", fontWeight:600, fontSize:14, cursor:"pointer" }}>
-              Quay lại
+              Back
             </button>
             <button onClick={handleSubmit} style={{ flex:2, background:"linear-gradient(135deg,#2563eb,#1d4ed8)", color: "white", border:"none", borderRadius:10, padding:"13px", fontWeight:700, fontSize:14, cursor:"pointer" }}>
-              Gửi xác minh
+              Submit for Verification
             </button>
           </div>
         </motion.div>

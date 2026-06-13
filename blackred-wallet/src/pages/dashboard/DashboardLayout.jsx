@@ -34,7 +34,6 @@ export default function DashboardLayout() {
     return [];
   });
   const [notifFilter, setNotifFilter] = useState("all");
-  const [userTxs, setUserTxs] = useState([]);
   const [newsPosts, setNewsPosts] = useState([]);
   const [dbNotifications, setDbNotifications] = useState([]);
 
@@ -42,14 +41,6 @@ export default function DashboardLayout() {
     if (!user?.email) return;
     
     const loadData = () => {
-      // Load Transactions
-      const savedTxs = localStorage.getItem(`bw_transactions_${user.email}`);
-      if (savedTxs) {
-        setUserTxs(JSON.parse(savedTxs));
-      } else {
-        setUserTxs([]);
-      }
-
       // Load News
       const savedNews = localStorage.getItem("bw_posts");
       if (savedNews) {
@@ -91,24 +82,25 @@ export default function DashboardLayout() {
     };
   }, [user, pathname]);
 
+  const fetchDbNotifications = () => {
+    const token = localStorage.getItem("bw_token");
+    if (!token) return;
+    authAPI.getNotifications()
+      .then(res => {
+        if (res.success && res.notifications) {
+          setDbNotifications(res.notifications);
+        }
+      })
+      .catch(err => {
+        console.error("Failed to fetch database notifications:", err);
+      });
+  };
+
   useEffect(() => {
     const token = localStorage.getItem("bw_token");
     if (!token) return;
-
-    const fetchDbNotifications = () => {
-      authAPI.getNotifications()
-        .then(res => {
-          if (res.success && res.notifications) {
-            setDbNotifications(res.notifications);
-          }
-        })
-        .catch(err => {
-          console.error("Failed to fetch database notifications:", err);
-        });
-    };
-
     fetchDbNotifications();
-    const interval = setInterval(fetchDbNotifications, 6000);
+    const interval = setInterval(fetchDbNotifications, 15000);
     return () => clearInterval(interval);
   }, [user]);
 
@@ -156,58 +148,19 @@ export default function DashboardLayout() {
       });
     }
 
-    // 2. Add Transaction Notifications
-    userTxs.forEach(tx => {
-      let title = "";
-      let desc = "";
-      const fmtAmt = tx.amount.toLocaleString("vi-VN") + " ₫";
-
-      if (tx.type === "deposit") {
-        if (tx.status === "success") {
-          title = "Nạp tiền thành công 💳";
-          desc = `Đã cộng ${fmtAmt} vào ví qua ngân hàng liên kết.`;
-        } else if (tx.status === "pending") {
-          title = "Yêu cầu nạp tiền đang xử lý ⏳";
-          desc = `Hệ thống đang xác minh giao dịch nạp ${fmtAmt}.`;
-        } else {
-          title = "Nạp tiền thất bại ❌";
-          desc = `Giao dịch nạp ${fmtAmt} đã bị hủy bỏ hoặc từ chối.`;
-        }
-      } else if (tx.type === "withdraw") {
-        if (tx.status === "success") {
-          title = "Rút tiền thành công 🏦";
-          desc = `Đã rút ${fmtAmt} về tài khoản ngân hàng của bạn.`;
-        } else if (tx.status === "pending") {
-          title = "Yêu cầu rút tiền đang chờ duyệt ⏳";
-          desc = `Yêu cầu rút ${fmtAmt} đang đợi Admin phê duyệt.`;
-        } else {
-          title = "Rút tiền thất bại ❌";
-          desc = `Yêu cầu rút ${fmtAmt} bị từ chối bởi hệ thống.`;
-        }
-      } else if (tx.type === "send") {
-        if (tx.status === "success") {
-          title = "Chuyển tiền thành công 💸";
-          desc = `Đã gửi ${fmtAmt} tới người nhận.`;
-        } else if (tx.status === "pending") {
-          title = "Yêu cầu chuyển tiền đang chờ duyệt ⏳";
-          desc = `Yêu cầu chuyển ${fmtAmt} đang được xử lý.`;
-        } else {
-          title = "Chuyển tiền thất bại ❌";
-          desc = `Giao dịch chuyển ${fmtAmt} không thành công.`;
-        }
-      } else if (tx.type === "receive") {
-        title = "Nhận tiền thành công 📥";
-        desc = `Bạn nhận được ${fmtAmt} từ đối tác.`;
-      }
-
-      list.push({
-        id: `tx_${tx.id}_${tx.status}`,
-        title,
-        desc,
-        time: tx.time,
-        type: "transaction"
+    // 2. Add Database Notifications (transaction & system — skip KYC ones already shown above)
+    const KYC_TITLE_KEYWORDS = ["KYC", "kyc", "xác minh", "từ chối"];
+    dbNotifications
+      .filter(dbNotif => !KYC_TITLE_KEYWORDS.some(kw => (dbNotif.title || "").includes(kw)))
+      .forEach(dbNotif => {
+        list.push({
+          id: `db_${dbNotif.id}`,
+          title: dbNotif.title,
+          desc: dbNotif.content,
+          time: new Date(dbNotif.created_at || dbNotif.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) + " " + new Date(dbNotif.created_at || dbNotif.createdAt).toLocaleDateString("vi-VN"),
+          type: "transaction"
+        });
       });
-    });
 
     // 3. Add News Notifications
     newsPosts.forEach(post => {
@@ -218,17 +171,6 @@ export default function DashboardLayout() {
         desc: contentText.length > 70 ? contentText.slice(0, 70) + "..." : contentText,
         time: post.time || "Vừa xong",
         type: "news"
-      });
-    });
-
-    // 4. Add Database Notifications
-    dbNotifications.forEach(dbNotif => {
-      list.push({
-        id: `db_${dbNotif.id}`,
-        title: dbNotif.title,
-        desc: dbNotif.content,
-        time: new Date(dbNotif.created_at || dbNotif.createdAt).toLocaleTimeString("vi-VN", {hour: "2-digit", minute:"2-digit"}) + " " + new Date(dbNotif.created_at || dbNotif.createdAt).toLocaleDateString("vi-VN"),
-        type: "system"
       });
     });
 
@@ -265,18 +207,20 @@ export default function DashboardLayout() {
     if (!token) { navigate("/login", { replace: true }); return; }
     if (userData) setUser(JSON.parse(userData));
 
-    // Fetch up-to-date user details from real backend Node.js server
+    // Fetch up-to-date user details from backend
     authAPI.getProfile()
       .then(data => {
-        if (data.success) {
+        if (data.success && data.user) {
+          const kycStatus = data.user.kyc_status || "none";
           const sessionUser = {
             email: data.user.email,
-            name: data.user.email.split("@")[0],
-            kyc: data.user.kyc_status === "VERIFIED",
-            kycStatus: data.user.kyc_status.toLowerCase(),
+            name: data.user.full_name || data.user.email.split("@")[0],
+            kyc: kycStatus === "VERIFIED",
+            kycStatus: kycStatus.toLowerCase(),
             phone: data.user.phone || undefined,
             status: data.user.status,
             id: data.user.id,
+            has_pin: !!data.user.has_pin,
           };
           localStorage.setItem("bw_user", JSON.stringify(sessionUser));
           setUser(sessionUser);
@@ -304,9 +248,8 @@ export default function DashboardLayout() {
   const isKycVerified = user?.kyc === true || user?.kyc === "verified" || user?.kycStatus === "verified";
   const isKycPending = !isKycVerified && (user?.kycStatus === "pending" || user?.kyc === "pending");
 
-  const handleLogout = () => {
-    localStorage.removeItem("bw_token");
-    localStorage.removeItem("bw_user");
+  const handleLogout = async () => {
+    await authAPI.logout();
     navigate("/login");
   };
 
@@ -475,7 +418,7 @@ export default function DashboardLayout() {
           {/* Notifications */}
           <div style={{ position: "relative" }}>
             <button
-              onClick={() => { setShowNotif(!showNotif); setShowUserMenu(false); }}
+              onClick={() => { const opening = !showNotif; setShowNotif(opening); setShowUserMenu(false); if (opening) fetchDbNotifications(); }}
               style={{
                 width: 40, height: 40, borderRadius: 10, background: "var(--bg-card2)",
                 border: "1px solid var(--border)", display: "flex", alignItems: "center",

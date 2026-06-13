@@ -165,8 +165,10 @@ export default function LoginPage() {
         if (data.user.role === "ADMIN") {
           // Admin account
           localStorage.removeItem("bw_token");
+          localStorage.removeItem("bw_refresh_token");
           localStorage.removeItem("bw_user");
           localStorage.setItem("bw_admin_token", data.accessToken);
+          localStorage.setItem("bw_refresh_token", data.refreshToken);
 
           localStorage.setItem("bw_admin", JSON.stringify({
             email: data.user.email,
@@ -179,16 +181,18 @@ export default function LoginPage() {
           localStorage.removeItem("bw_admin_token");
           localStorage.removeItem("bw_admin");
           localStorage.setItem("bw_token", data.accessToken);
+          localStorage.setItem("bw_refresh_token", data.refreshToken);
 
           const kycStatus = data.user?.kyc_status ?? "none";
           const sessionUser = {
             email: data.user.email,
             name: data.user.email.split("@")[0],
             kyc: kycStatus === "VERIFIED",
-            kycStatus: kycStatus.toLowerCase(),
+            kycStatus: (kycStatus || "none").toLowerCase(),
             phone: data.user.phone || null,
             status: data.user.status,
             id: data.user.id,
+            has_pin: !!data.user.has_pin,
           };
 
           localStorage.setItem("bw_user", JSON.stringify(sessionUser));

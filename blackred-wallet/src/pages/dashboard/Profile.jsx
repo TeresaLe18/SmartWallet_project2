@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { User, Camera, Phone, Mail, Lock, CheckCircle, RefreshCw, AlertCircle, Eye, EyeOff, ShieldCheck, X, Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { authAPI } from "../../services/api";
+import { authAPI, getUploadUrl } from "../../services/api";
 
 export default function ProfilePage() {
   // 1. Fetch current logged-in user from localStorage
@@ -15,9 +15,13 @@ export default function ProfilePage() {
     const loadProfile = async () => {
       try {
         const res = await authAPI.getProfile();
-        setUser(res.data);
+        const data = res.data || res.user || {};
+        setUser({
+          ...data,
+          avatar: getUploadUrl(data.avatar),
+        });
       } catch (err) {
-        console.log("Loi;", err);
+        console.log("Load profile error:", err);
       }
     };
 
@@ -29,11 +33,11 @@ export default function ProfilePage() {
   const [avatarSuccess, setAvatarSuccess] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Email & Phone update states
-  const [emailForm, setEmailForm] = useState({
-    email: user.email || "",
-    phone: user.phone || ""
-  });
+  // Contact update states — email and phone are independent
+  const [newEmail, setNewEmail] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  // "email" | "phone" — which field triggered the OTP modal
+  const [changeTarget, setChangeTarget] = useState("email");
   const [showOtpModal, setShowOtpModal] = useState(false);
   const [otpInputs, setOtpInputs] = useState(["", "", "", "", "", ""]);
   const [otpError, setOtpError] = useState("");
@@ -41,7 +45,7 @@ export default function ProfilePage() {
   const [otpSending, setOtpSending] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
-  const [emailPhoneSuccess, setEmailPhoneSuccess] = useState(false);
+  const [contactSuccess, setContactSuccess] = useState("");
   const otpRefs = useRef([]);
 
   // Password change states
@@ -57,8 +61,7 @@ export default function ProfilePage() {
   const [passSuccess, setPassSuccess] = useState(false);
   const [passLoading, setPassLoading] = useState(false);
 
-  // Modal mode: "profile" = update email/phone, "password" = change password
-  const [otpModalMode, setOtpModalMode] = useState("profile");
+  // OTP modal is only used for email/phone contact changes (not password — password uses direct old-password verification)
 
   // Resend OTP Countdown
   useEffect(() => {
@@ -81,69 +84,88 @@ export default function ProfilePage() {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      alert("Kích thước ảnh phải < 2MB");
+      alert("Image size must be less than 2MB");
       return;
     }
 
     setAvatarLoading(true);
 
     try {
-      const res = await userService.updateAvatar(file);
+      const res = await authAPI.updateAvatar(file);
 
-      // backend trả avatar mới
+      const newFilename = res.user?.avatar || res.data?.avatar;
       const updatedUser = {
         ...user,
-        avatar: res.data.avatar,
+        avatar: getUploadUrl(newFilename) || user.avatar,
       };
 
       setUser(updatedUser);
-
       setAvatarSuccess(true);
       setTimeout(() => setAvatarSuccess(false), 2000);
     } catch (err) {
       console.log(err);
-      alert("Upload avatar thất bại");
+      alert(err.response?.data?.message || "Avatar upload failed. Please try again.");
     } finally {
       setAvatarLoading(false);
     }
   };
   //-------------------------------------
 
-  // ─── Email & Phone OTP Logic (Real Email) ────────────────────────────────────
-  const handleRequestEmailPhoneChange = async (e) => {
-    if (e && e.preventDefault) e.preventDefault();
+  // ─── Contact Change OTP Logic ─────────────────────────────────────────────
+  // target: "email" | "phone"
+  const handleRequestContactChange = async (target) => {
     setOtpError("");
+    setContactSuccess("");
 
-    if (!emailForm.email) {
-      setOtpError("Email không được để trống.");
+    if (target === "email") {
+      if (!newEmail.trim()) {
+      setOtpError("Please enter a new email.");
       return;
-    }
-    if (!/\S+@\S+\.\S+/.test(emailForm.email)) {
-      setOtpError("Email không hợp lệ.");
-      return;
+      }
+      if (!/\S+@\S+\.\S+/.test(newEmail.trim())) {
+        setOtpError("Invalid email format.");
+        return;
+      }
+      if (newEmail.trim().toLowerCase() === user.email?.toLowerCase()) {
+        setOtpError("New email must be different from current email.");
+        return;
+      }
+    } else {
+      if (!newPhone.trim()) {
+        setOtpError("Please enter a new phone number.");
+        return;
+      }
+      if (!/^0\d{9}$/.test(newPhone.trim())) {
+        setOtpError("Invalid phone number (10 digits, starting with 0).");
+        return;
+      }
+      if (newPhone.trim() === user.phone) {
+        setOtpError("New phone number must be different from current.");
+        return;
+      }
     }
 
     setOtpSending(true);
+    setChangeTarget(target);
 
     try {
-      const res = await authAPI.requestChangeContact({
-        newEmail: emailForm.email,
-        newPhone: emailForm.phone,
-      });
+      const payload = target === "email"
+        ? { email: newEmail.trim() }
+        : { phone: newPhone.trim() };
+
+      const res = await authAPI.requestChangeContact(payload);
 
       if (res.success) {
-        setOtpModalMode("profile");
         setShowOtpModal(true);
         setCountdown(60);
         setCanResend(false);
         setOtpInputs(["", "", "", "", "", ""]);
+        setOtpError("");
       } else {
-        setOtpError(res.message || "Gửi OTP thất bại.");
+        setOtpError(res.message || "Failed to send OTP.");
       }
     } catch (err) {
-      setOtpError(
-        err.response?.data?.message || "Không thể gửi OTP. Vui lòng thử lại."
-      );
+      setOtpError(err.response?.data?.message || "Unable to send OTP. Please try again.");
     } finally {
       setOtpSending(false);
     }
@@ -164,11 +186,11 @@ export default function ProfilePage() {
     }
   };
 
-  const handleVerifyEmailPhoneChange = async () => {
+  const handleVerifyContactChange = async () => {
     const entered = otpInputs.join("");
 
     if (entered.length < 6) {
-      setOtpError("Vui lòng nhập đủ 6 chữ số mã OTP.");
+      setOtpError("Please enter all 6 digits of the OTP code.");
       return;
     }
 
@@ -176,33 +198,33 @@ export default function ProfilePage() {
     setOtpError("");
 
     try {
-      const res = await authAPI.verifyChangeContact({
-        otp: entered,
-        email: emailForm.email !== user.email ? emailForm.email : undefined,
-        phone: emailForm.phone !== user.phone ? emailForm.phone : undefined,
-      });
+      const res = await authAPI.verifyChangeContact({ otp: entered });
 
       if (res.success) {
+        // Backend returns { success, data: { email, phone } }
         const updatedUser = {
           ...user,
-          email: res.data?.email || emailForm.email,
-          phone: res.data?.phone || emailForm.phone,
+          email: res.data?.email ?? user.email,
+          phone: res.data?.phone ?? user.phone,
         };
 
         setUser(updatedUser);
-        setShowOtpModal(false);
 
-        setEmailPhoneSuccess(true);
-        setTimeout(() => setEmailPhoneSuccess(false), 3000);
+        // Clear the input that was just updated
+        if (changeTarget === "email") setNewEmail("");
+        if (changeTarget === "phone") setNewPhone("");
+
+        setShowOtpModal(false);
+        const label = changeTarget === "email" ? "Email" : "Phone number";
+        setContactSuccess(`✓ ${label} updated successfully!`);
+        setTimeout(() => setContactSuccess(""), 4000);
 
         window.dispatchEvent(new Event("kyc_updated"));
       } else {
-        setOtpError(res.message || "Mã OTP không chính xác.");
+        setOtpError(res.message || "Incorrect OTP code.");
       }
     } catch (err) {
-      setOtpError(
-        err.response?.data?.message || "Xác thực thất bại. Vui lòng thử lại."
-      );
+      setOtpError(err.response?.data?.message || "Verification failed. Please try again.");
     } finally {
       setOtpLoading(false);
     }
@@ -215,19 +237,19 @@ export default function ProfilePage() {
     setPassSuccess(false);
 
     if (!passForm.currentPass) {
-      setPassError("Vui lòng nhập mật khẩu hiện tại.");
+      setPassError("Please enter your current password.");
       return;
     }
     if (!passForm.newPass || !passForm.confirmPass) {
-      setPassError("Vui lòng điền đầy đủ mật khẩu mới.");
+      setPassError("Please fill in all new password fields.");
       return;
     }
     if (passForm.newPass.length < 8) {
-      setPassError("Mật khẩu mới phải tối thiểu 8 ký tự.");
+      setPassError("New password must be at least 8 characters.");
       return;
     }
     if (passForm.newPass !== passForm.confirmPass) {
-      setPassError("Mật khẩu xác nhận mới không khớp.");
+      setPassError("New passwords do not match.");
       return;
     }
 
@@ -251,70 +273,29 @@ export default function ProfilePage() {
 
         setTimeout(() => setPassSuccess(false), 3000);
       } else {
-        setPassError(res.message || "Không thể đổi mật khẩu.");
+        setPassError(res.message || "Unable to change password.");
       }
     } catch (err) {
       setPassError(
-        err.response?.data?.message || "Lỗi hệ thống. Vui lòng thử lại."
+        err.response?.data?.message || "System error. Please try again."
       );
     } finally {
       setPassLoading(false);
     }
   };
 
-  const handleVerifyPasswordChange = async () => {
-    const entered = otpInputs.join("");
-    if (entered.length < 6) {
-      setOtpError("Vui lòng nhập đủ 6 chữ số mã OTP.");
-      return;
-    }
-
-    setOtpLoading(true);
+  const handleResendOtp = async () => {
     setOtpError("");
     try {
-      const res = await authAPI.verifyProfileOtp(
-        entered,
-        undefined,
-        undefined,
-        passForm.newPass,
-        passForm.currentPass
-      );
-      if (res.success) {
-        setShowOtpModal(false);
-        setPassSuccess(true);
-        setPassForm({ currentPass: "", newPass: "", confirmPass: "" });
-        setTimeout(() => setPassSuccess(false), 3000);
-      } else {
-        setOtpError(res.message || "Mã OTP không chính xác.");
-      }
+      const payload = changeTarget === "email"
+        ? { email: newEmail.trim() }
+        : { phone: newPhone.trim() };
+      await authAPI.requestChangeContact(payload);
+      setCountdown(60);
+      setCanResend(false);
+      setOtpInputs(["", "", "", "", "", ""]);
     } catch (err) {
-      setOtpError(err.response?.data?.message || "Xác thực thất bại. Vui lòng thử lại.");
-    } finally {
-      setOtpLoading(false);
-    }
-  };
-
-  const handleResendOtp = () => {
-    if (otpModalMode === "password") {
-      // Re-request OTP for password change
-      authAPI.sendProfileOtp({ newPassword: passForm.newPass, currentPassword: passForm.currentPass })
-        .then(() => {
-          setCountdown(60);
-          setCanResend(false);
-          setOtpInputs(["", "", "", "", "", ""]);
-          setOtpError("");
-        })
-        .catch((err) => setOtpError(err.response?.data?.message || "Gửi lại OTP thất bại."));
-    } else {
-      // Re-request OTP for profile update
-      authAPI.sendProfileOtp({ newEmail: emailForm.email, newPhone: emailForm.phone })
-        .then(() => {
-          setCountdown(60);
-          setCanResend(false);
-          setOtpInputs(["", "", "", "", "", ""]);
-          setOtpError("");
-        })
-        .catch((err) => setOtpError(err.response?.data?.message || "Gửi lại OTP thất bại."));
+      setOtpError(err.response?.data?.message || "Failed to resend OTP.");
     }
   };
 
@@ -325,8 +306,8 @@ export default function ProfilePage() {
   return (
     <div style={{ maxWidth: 640, display: "flex", flexDirection: "column", gap: 24, paddingBottom: 40 }}>
       <div>
-        <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>Cài đặt tài khoản</h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>Quản lý ảnh đại diện, thông tin liên lạc và mật khẩu bảo mật của bạn.</p>
+        <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>Account Settings</h1>
+        <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>Manage your profile picture, contact information, and security password.</p>
       </div>
 
       {/* CARD 1: UPDATE AVATAR */}
@@ -338,7 +319,7 @@ export default function ProfilePage() {
           borderRadius: 16, padding: 24, boxShadow: "0 4px 20px rgba(0, 0, 0, 0.01)"
         }}
       >
-        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>1. Ảnh đại diện</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>1. Profile Picture</h3>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
           <div style={{ position: "relative", cursor: "pointer" }} onClick={handleAvatarClick}>
             <div style={{
@@ -372,25 +353,8 @@ export default function ProfilePage() {
           </div>
 
           <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{user.name || "Người dùng"}</p>
+            <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{user.name || "User"}</p>
             <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{user.email}</p>
-
-            {/* Status indicator */}
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 8 }}>
-              {isKycVerified ? (
-                <span style={{ fontSize: 11, color: "#22c55e", background: "rgba(34,197,94,0.08)", padding: "3px 8px", borderRadius: 20, fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}>
-                  <ShieldCheck size={12} /> Đã KYC
-                </span>
-              ) : isKycPending ? (
-                <span style={{ fontSize: 11, color: "#f59e0b", background: "rgba(245,158,11,0.06)", padding: "3px 8px", borderRadius: 20, fontWeight: 600 }}>
-                  ⏳ Chờ duyệt KYC
-                </span>
-              ) : (
-                <span style={{ fontSize: 11, color: "#ef4444", background: "rgba(239,68,68,0.08)", padding: "3px 8px", borderRadius: 20, fontWeight: 600 }}>
-                  ⚠️ Chưa xác thực KYC
-                </span>
-              )}
-            </div>
           </div>
 
           <div>
@@ -403,19 +367,19 @@ export default function ProfilePage() {
                 fontSize: 13, fontWeight: 600, cursor: "pointer"
               }}
             >
-              Chọn ảnh
+              Choose Photo
             </button>
           </div>
         </div>
 
         {avatarSuccess && (
           <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} style={{ color: "#22c55e", fontSize: 12, marginTop: 12, display: "flex", alignItems: "center", gap: 4 }}>
-            ✓ Ảnh đại diện đã được cập nhật thành công!
+            ✓ Profile picture updated successfully!
           </motion.div>
         )}
       </motion.div>
 
-      {/* CARD 2: UPDATE EMAIL & PHONE */}
+      {/* CARD 2: UPDATE EMAIL & PHONE (independent sections) */}
       <motion.div
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
@@ -425,14 +389,14 @@ export default function ProfilePage() {
           borderRadius: 16, padding: 24, boxShadow: "0 4px 20px rgba(0, 0, 0, 0.01)"
         }}
       >
-        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>2. Email & Số điện thoại</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>2. Email & Phone Number</h3>
         <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
-          Mã OTP xác thực sẽ được gửi tới email hiện tại: <strong>{user.email}</strong>
+          A verification OTP will be sent to your current email: <strong>{user.email}</strong>
         </p>
 
-        {emailPhoneSuccess && (
+        {contactSuccess && (
           <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 16, color: "#22c55e", fontSize: 13 }}>
-            ✓ Cập nhật Email và Số điện thoại thành công!
+            {contactSuccess}
           </div>
         )}
 
@@ -442,54 +406,77 @@ export default function ProfilePage() {
           </div>
         )}
 
-        <form onSubmit={handleRequestEmailPhoneChange} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-            {/* Email */}
-            <div>
-              <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Email mới</label>
-              <div style={{ position: "relative" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* ── Email section ── */}
+          <div style={{ background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>
+              Current email: <span style={{ color: "var(--text-primary)" }}>{user.email || "—"}</span>
+            </p>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <div style={{ flex: 1, position: "relative" }}>
                 <Mail size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                 <input
                   type="email"
-                  value={emailForm.email}
-                  onChange={(e) => setEmailForm({ ...emailForm, email: e.target.value })}
-                  style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "11px 14px 11px 38px", color: "#000000", fontSize: 13, outline: "none" }}
+                  placeholder="Enter new email"
+                  value={newEmail}
+                  onChange={(e) => { setNewEmail(e.target.value); setOtpError(""); }}
+                  style={{ width: "100%", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 14px 10px 38px", color: "#000000", fontSize: 13, outline: "none", boxSizing: "border-box" }}
                 />
               </div>
-            </div>
-
-            {/* Phone */}
-            <div>
-              <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Số điện thoại</label>
-              <div style={{ position: "relative" }}>
-                <Phone size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
-                <input
-                  type="tel"
-                  placeholder="Chưa cập nhật"
-                  value={emailForm.phone}
-                  onChange={(e) => setEmailForm({ ...emailForm, phone: e.target.value })}
-                  style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "11px 14px 11px 38px", color: "#000000", fontSize: 13, outline: "none" }}
-                />
-              </div>
+              <button
+                type="button"
+                disabled={otpSending && changeTarget === "email"}
+                onClick={() => handleRequestContactChange("email")}
+                style={{
+                  flexShrink: 0, background: "linear-gradient(135deg,#2563eb,#1d4ed8)",
+                  color: "white", border: "none", borderRadius: 10, padding: "10px 16px",
+                  fontWeight: 700, fontSize: 13, cursor: (otpSending && changeTarget === "email") ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap"
+                }}
+              >
+                {otpSending && changeTarget === "email" ? (
+                  <div style={{ width: 13, height: 13, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                ) : <Send size={13} />}
+                {otpSending && changeTarget === "email" ? "Sending..." : "Change Email"}
+              </button>
             </div>
           </div>
 
-          <button
-            type="submit"
-            disabled={otpSending}
-            style={{
-              alignSelf: "flex-end", background: "linear-gradient(135deg,#2563eb,#1d4ed8)",
-              color: "white", border: "none", borderRadius: 10, padding: "10px 20px",
-              fontWeight: 700, fontSize: 13, cursor: otpSending ? "not-allowed" : "pointer",
-              display: "flex", alignItems: "center", gap: 8, transition: "all 0.2s"
-            }}
-          >
-            {otpSending ? (
-              <div style={{ width: 14, height: 14, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-            ) : <Send size={14} />}
-            {otpSending ? "Đang gửi OTP..." : "Cập nhật & nhận OTP qua email"}
-          </button>
-        </form>
+          {/* ── Phone section ── */}
+          <div style={{ background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>
+              Current phone: <span style={{ color: "var(--text-primary)" }}>{user.phone || "Not set"}</span>
+            </p>
+            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+              <div style={{ flex: 1, position: "relative" }}>
+                <Phone size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
+                <input
+                  type="tel"
+                  placeholder="Enter new phone number (e.g. 0912345678)"
+                  value={newPhone}
+                  onChange={(e) => { setNewPhone(e.target.value); setOtpError(""); }}
+                  style={{ width: "100%", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 14px 10px 38px", color: "#000000", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                />
+              </div>
+              <button
+                type="button"
+                disabled={otpSending && changeTarget === "phone"}
+                onClick={() => handleRequestContactChange("phone")}
+                style={{
+                  flexShrink: 0, background: "linear-gradient(135deg,#2563eb,#1d4ed8)",
+                  color: "white", border: "none", borderRadius: 10, padding: "10px 16px",
+                  fontWeight: 700, fontSize: 13, cursor: (otpSending && changeTarget === "phone") ? "not-allowed" : "pointer",
+                  display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap"
+                }}
+              >
+                {otpSending && changeTarget === "phone" ? (
+                  <div style={{ width: 13, height: 13, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                ) : <Send size={13} />}
+                {otpSending && changeTarget === "phone" ? "Sending..." : "Change Phone"}
+              </button>
+            </div>
+          </div>
+        </div>
       </motion.div>
 
       {/* CARD 3: CHANGE PASSWORD */}
@@ -502,10 +489,7 @@ export default function ProfilePage() {
           borderRadius: 16, padding: 24, boxShadow: "0 4px 20px rgba(0, 0, 0, 0.01)"
         }}
       >
-        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>3. Thay đổi mật khẩu</h3>
-        <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
-          Mã OTP xác thực sẽ được gửi tới email: <strong>{user.email}</strong>
-        </p>
+        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>3. Change Password</h3>
 
         {passError && (
           <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 16, color: "#ef4444", fontSize: 13 }}>
@@ -515,19 +499,19 @@ export default function ProfilePage() {
 
         {passSuccess && (
           <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 16, color: "#22c55e", fontSize: 13 }}>
-            ✓ Mật khẩu đã được cập nhật thành công!
+            ✓ Password updated successfully!
           </div>
         )}
 
         <form onSubmit={handleChangePasswordSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {/* Current Password */}
           <div>
-            <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Mật khẩu hiện tại</label>
+            <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Current Password</label>
             <div style={{ position: "relative" }}>
               <Lock size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
               <input
                 type={showPassCurrent ? "text" : "password"}
-                placeholder="Nhập mật khẩu hiện tại"
+                placeholder="Enter current password"
                 value={passForm.currentPass}
                 onChange={(e) => setPassForm({ ...passForm, currentPass: e.target.value })}
                 style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "11px 42px 11px 38px", color: "#000000", fontSize: 13, outline: "none" }}
@@ -545,12 +529,12 @@ export default function ProfilePage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             {/* New Password */}
             <div>
-              <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Mật khẩu mới</label>
+              <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>New Password</label>
               <div style={{ position: "relative" }}>
                 <Lock size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                 <input
                   type={showPassNew ? "text" : "password"}
-                  placeholder="Tối thiểu 8 ký tự"
+                  placeholder="Minimum 8 characters"
                   value={passForm.newPass}
                   onChange={(e) => setPassForm({ ...passForm, newPass: e.target.value })}
                   style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "11px 42px 11px 38px", color: "#000000", fontSize: 13, outline: "none" }}
@@ -567,12 +551,12 @@ export default function ProfilePage() {
 
             {/* Confirm Password */}
             <div>
-              <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Xác nhận mật khẩu mới</label>
+              <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Confirm New Password</label>
               <div style={{ position: "relative" }}>
                 <Lock size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                 <input
                   type={showPassConfirm ? "text" : "password"}
-                  placeholder="Nhập lại mật khẩu mới"
+                  placeholder="Re-enter new password"
                   value={passForm.confirmPass}
                   onChange={(e) => setPassForm({ ...passForm, confirmPass: e.target.value })}
                   style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "11px 42px 11px 38px", color: "#000000", fontSize: 13, outline: "none" }}
@@ -600,7 +584,7 @@ export default function ProfilePage() {
           >
             {passLoading ? (
               <div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-            ) : "Đổi mật khẩu"}
+            ) : "Change Password"}
           </button>
         </form>
       </motion.div>
@@ -645,12 +629,12 @@ export default function ProfilePage() {
                   <Mail size={24} style={{ color: "var(--primary)" }} />
                 </div>
                 <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8 }}>
-                  {otpModalMode === "password" ? "Xác minh đổi mật khẩu" : "Xác minh thông tin mới"}
+                  Verify New Information
                 </h3>
                 <p style={{ color: "var(--text-secondary)", fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>
-                  Mã OTP đã được gửi tới email đăng ký của bạn:<br />
+                  An OTP code has been sent to your registered email:<br />
                   <strong style={{ color: "var(--primary)" }}>{user.email}</strong>
-                  <br /><span style={{ fontSize: 12 }}>Kiểm tra hòm thư (bao gồm mục Spam)</span>
+                  <br /><span style={{ fontSize: 12 }}>Check your inbox (including Spam folder)</span>
                 </p>
 
                 {otpError && (
@@ -689,10 +673,10 @@ export default function ProfilePage() {
                       onClick={handleResendOtp}
                       style={{ background: "none", border: "none", color: "var(--primary)", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
                     >
-                      <RefreshCw size={12} /> Gửi lại mã OTP
+                      <RefreshCw size={12} /> Resend OTP Code
                     </button>
                   ) : (
-                    <span>Gửi lại mã sau {countdown}s</span>
+                    <span>Resend in {countdown}s</span>
                   )}
                 </div>
 
@@ -705,10 +689,10 @@ export default function ProfilePage() {
                       fontSize: 14, cursor: "pointer"
                     }}
                   >
-                    Hủy
+                    Cancel
                   </button>
                   <button
-                    onClick={otpModalMode === "password" ? handleVerifyPasswordChange : handleVerifyEmailPhoneChange}
+                    onClick={handleVerifyContactChange}
                     disabled={otpLoading}
                     style={{
                       flex: 2, background: "linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%)",
@@ -719,7 +703,7 @@ export default function ProfilePage() {
                   >
                     {otpLoading ? (
                       <div style={{ width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                    ) : "Xác nhận & Cập nhật"}
+                    ) : "Confirm & Update"}
                   </button>
                 </div>
               </div>

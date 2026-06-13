@@ -10,7 +10,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell
 } from "recharts";
-import { newsAPI, walletAPI, authAPI } from "../../services/api";
+import { newsAPI, walletAPI, authAPI, formatVND } from "../../services/api";
 
 const getUserBaseBalance = (email) => {
   if (!email) return 0;
@@ -324,7 +324,7 @@ const getMonthlyStats = (txs) => {
 
 const fmtCurrency = (n) => {
   const abs = Math.abs(n);
-  return (n < 0 ? "-" : "+") + abs.toLocaleString("vi-VN") + " ₫";
+  return (n < 0 ? "-" : "+") + formatVND(abs);
 };
 
 const CustomTooltip = ({ active, payload, label }) => {
@@ -334,14 +334,14 @@ const CustomTooltip = ({ active, payload, label }) => {
       <p style={{ color: "var(--text-secondary)", fontSize: 12, marginBottom: 8 }}>{label}</p>
       {payload.map((p, i) => (
         <p key={i} style={{ color: p.color, fontSize: 13, fontWeight: 600 }}>
-          {p.name}: {p.value.toLocaleString("vi-VN")} ₫
+          {p.name}: {formatVND(p.value)}
         </p>
       ))}
     </div>
   );
 };
 
-const fmtCleanCurrency = (n) => n.toLocaleString("vi-VN") + " ₫";
+const fmtCleanCurrency = (n) => formatVND(n);
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
@@ -375,7 +375,7 @@ export default function DashboardPage() {
         .map(c => `${c.name} (${c.value}%)`)
         .join(", ");
 
-      const prompt = `Bạn là trợ lý tư vấn tài chính cá nhân của ví điện tử SmartWallet Wallet. Bạn tên là SmartWallet AI. Hãy tư vấn cho người dùng thật chuyên nghiệp, lịch sự, ngắn gọn và hữu ích về các mẹo tiết kiệm tiền, tối ưu hóa ngân sách, quản lý chi tiêu. Số dư hiện tại của người dùng là ${balance.toLocaleString("vi-VN")} đ. Chi tiêu tháng này là ${currentMonthCategoryData.totalExpense.toLocaleString("vi-VN")} đ cho các khoản: ${categoryBreakdownStr}. Trả lời thân thiện, ngắn gọn bằng tiếng Việt.\n\nLịch sử trò chuyện:\n${newMsgList.map(m => `${m.role === 'user' ? 'Người dùng' : 'SmartWallet AI'}: ${m.text}`).join('\n')}\nSmartWallet AI:`;
+      const prompt = `Bạn là trợ lý tư vấn tài chính cá nhân của ví điện tử SmartWallet Wallet. Bạn tên là SmartWallet AI. Hãy tư vấn cho người dùng thật chuyên nghiệp, lịch sự, ngắn gọn và hữu ích về các mẹo tiết kiệm tiền, tối ưu hóa ngân sách, quản lý chi tiêu. Số dư hiện tại của người dùng là ${balance.toLocaleString("vi-VN")} ₫. Chi tiêu tháng này là ${currentMonthCategoryData.totalExpense.toLocaleString("vi-VN")} ₫ cho các khoản: ${categoryBreakdownStr}. Trả lời thân thiện, ngắn gọn bằng tiếng Việt.\n\nLịch sử trò chuyện:\n${newMsgList.map(m => `${m.role === 'user' ? 'Người dùng' : 'SmartWallet AI'}: ${m.text}`).join('\n')}\nSmartWallet AI:`;
 
       let savedKey = localStorage.getItem("bw_gemini_api_key") || "";
 

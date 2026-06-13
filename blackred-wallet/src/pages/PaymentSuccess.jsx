@@ -84,7 +84,7 @@ export default function PaymentSuccess() {
               <div style={styles.balanceBox}>
                 <span style={styles.balanceLabel}>Số dư mới</span>
                 <span style={styles.balanceValue}>
-                  {newBalance.toLocaleString('vi-VN')}₫
+                  {newBalance.toLocaleString('vi-VN')} ₫
                 </span>
               </div>
             )}

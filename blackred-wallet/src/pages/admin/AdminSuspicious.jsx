@@ -67,8 +67,9 @@ export default function AdminSuspiciousPage() {
       }
 
       const logRes = await adminAPI.getFraudLogs();
-      if (logRes.success && logRes.logs) {
-        const mapped = logRes.logs.map(log => {
+      const fraudList = logRes.fraudLogs || logRes.logs || [];
+      if (logRes.success && fraudList.length >= 0) {
+        const mapped = fraudList.map(log => {
           const matchedUser = userList.find(x => x.id === log.user_id);
           const type = log.transaction_id ? "transaction" : "account";
           const severity = log.severity.toLowerCase();
