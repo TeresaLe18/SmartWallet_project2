@@ -1,0 +1,418 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql" 
+  url      = env("DATABASE_URL")
+}
+
+//===================== ENUMS ===================== 
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  LOCKED
+  BANNED
+}
+
+enum KycStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum KycReferenceStatus {
+  VALID
+  INVALID
+}
+
+enum LedgerType {
+  DEBIT
+  CREDIT
+}
+
+enum WalletStatus {
+  ACTIVE
+  FROZEN
+}
+
+enum TransactionType {
+  TRANSFER
+  WITHDRAW
+  PAYMENT
+  DEPOSIT
+}
+
+enum VoucherStatus {
+  ACTIVE
+  EXPIRED
+  DISABLED
+}
+
+enum VoucherType {
+  FIXED
+  PERCENT
+}
+
+enum TransactionStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+}
+
+enum PaymentMethod {
+  WALLET
+  BANK
+}
+
+enum FraudSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+//===================== USERS ===================== 
+
+model User {
+  id        Int        @id @default(autoincrement())
+  role      UserRole   @default(USER)
+  email     String     @unique
+  phone     String?    @unique
+  password  String
+  avatar    String?
+  status    UserStatus @default(ACTIVE)
+
+  pin_hash String? 
+  pin_failed_attempts Int @default(0)
+  pin_locked_until DateTime?
+  refreshToken String? @db.Text
+
+  wallet Wallet?
+  kyc    UserKyc?
+
+  posts                Post[] 
+  comments             PostComment[]
+  likes                PostLike[]
+  post_comment_replies PostCommentReply[]
+  fraud_logs           FraudLog[]
+  notifications        Notification[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("users")
+}
+
+//===================== KYC ===================== 
+
+model UserKyc {
+  id            Int       @id @default(autoincrement())
+  user_id       Int       @unique
+  national_id   String    @unique      // required — core identity
+  full_name     String                 // required — core identity
+  date_of_birth DateTime              // required — core identity
+  gender        String?               // optional — supplementary
+  address       String?               // optional — supplementary
+  front_image   String                // required — document photo
+  back_image    String                // required — document photo
+  selfie_image  String                // required — document photo
+  status        KycStatus @default(PENDING)
+
+  message       String?               // admin-only rejection note
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("user_kycs")
+}
+
+// ===================== WALLET ===================== 
+
+model Wallet {
+  id             Int          @id @default(autoincrement())
+  user_id        Int          @unique
+  balance        Decimal      @default(0) @db.Decimal(19, 2)
+  locked_balance Decimal      @default(0) @db.Decimal(19, 2)
+  currency       String       @default("VND")
+  status         WalletStatus @default(ACTIVE)
+
+  user User @relation(fields: [user_id], references: [id])
+
+  sent_transactions     Transaction[] @relation("sender")
+  received_transactions Transaction[] @relation("receiver")
+  bank_accounts         BankAccount[]
+  ledger_entries        LedgerEntry[]
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("wallets")
+}
+
+// ===================== BANK ACCOUNT ===================== 
+
+model BankAccount {
+  id             Int     @id @default(autoincrement())
+  wallet_id      Int
+  bank_code      String
+  account_number String
+  account_name   String
+  is_verified    Boolean @default(false)
+
+  wallet Wallet @relation(fields: [wallet_id], references: [id])
+
+  created_at DateTime @default(now())
+
+  @@unique([bank_code, account_number])
+
+  @@map("bank_accounts")
+}
+
+// ===================== VOUCHER =====================
+
+model Voucher {
+  id                     Int           @id @default(autoincrement())
+  code                   String        @unique
+  discount_type          VoucherType
+  discount_value         Decimal       @db.Decimal(19, 2)
+  min_transaction_amount Decimal       @default(0) @db.Decimal(19, 2)
+  quantity               Int
+  used_count             Int           @default(0)
+  expired_at             DateTime
+  status                 VoucherStatus
+
+  transactions Transaction[]
+
+  created_at DateTime @default(now())
+
+  @@map("vouchers")
+}
+
+// ===================== TRANSACTION ===================== 
+
+model Transaction {
+  id Int @id @default(autoincrement())
+
+  transaction_type TransactionType
+
+  created_at DateTime @default(now())
+
+  amount      Decimal @db.Decimal(19, 2)
+  fee_rule_id Int?
+  fee_amount  Decimal @default(0) @db.Decimal(19, 2)
+
+  voucher_id      Int?
+  discount_amount Decimal @default(0) @db.Decimal(19, 2)
+
+  final_amount Decimal @default(0) @db.Decimal(19, 2)
+
+  sender_wallet_id   Int?
+  receiver_wallet_id Int?
+
+  payment_method PaymentMethod
+
+  bank_code      String?
+  account_number String?
+  account_name   String?
+
+  provider_reference_code String? @unique
+
+  status TransactionStatus @default(PENDING)
+
+  category_id    Int?
+  message        String?
+  reference_code String? @unique
+
+  sender_wallet   Wallet? @relation("sender", fields: [sender_wallet_id], references: [id])
+  receiver_wallet Wallet? @relation("receiver", fields: [receiver_wallet_id], references: [id])
+  fee_rule TransactionFeeRule? @relation(fields: [fee_rule_id], references: [id])
+  voucher  Voucher?  @relation(fields: [voucher_id], references: [id])
+  category Category? @relation(fields: [category_id], references: [id])
+
+  ledger_entries LedgerEntry[]
+  fraud_logs FraudLog[]
+
+  @@map("transactions")
+}
+
+// ===================== FEE RULE ===================== 
+
+model TransactionFeeRule {
+  id Int @id @default(autoincrement())
+
+  transaction_type TransactionType @unique
+  fee_value        Decimal @db.Decimal(19, 2)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  transactions Transaction[]
+  
+  @@map("transaction_fee_rules")
+}
+
+//===================== LEDGER ===================== 
+
+model LedgerEntry {
+  id Int @id @default(autoincrement())
+
+  transaction_id Int
+  wallet_id      Int
+
+  type   LedgerType
+  amount Decimal @db.Decimal(19, 2)
+
+  balance_before Decimal @db.Decimal(19, 2)
+  balance_after  Decimal @db.Decimal(19, 2)
+
+  transaction Transaction @relation(fields: [transaction_id], references: [id])
+  wallet      Wallet      @relation(fields: [wallet_id], references: [id])
+
+  created_at DateTime @default(now())
+
+  @@unique([transaction_id, wallet_id, type])
+
+  @@map("ledger_entries")
+}
+
+// ===================== FRAUDLOG ===================== 
+
+model FraudLog {
+  id Int @id @default(autoincrement())
+
+  user_id Int
+
+  transaction_id Int?
+
+  reason String
+
+  severity FraudSeverity
+
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+
+  transaction Transaction? @relation(fields: [transaction_id], references: [id])
+
+  @@map("fraud_logs")
+}
+
+// ===================== CATEGORY ===================== 
+
+model Category {
+  id   Int    @id @default(autoincrement())
+  name String @unique
+
+  created_at DateTime @default(now())
+
+  transactions Transaction[]
+
+  @@map("categories")
+}
+
+// ===================== NOTIFICATIONS ===================== 
+
+model Notification {
+  id Int @id @default(autoincrement())
+
+  user_id Int
+
+  title String
+  content String
+
+  is_read Boolean @default(false)
+
+  created_at DateTime @default(now())
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("notifications")
+}
+
+// ===================== POSTS ===================== 
+
+model Post {
+  id      Int    @id @default(autoincrement())
+  content String
+
+  user_id Int
+
+  created_at DateTime @default(now())
+
+  updated_at DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id])
+
+  images   PostImage[]
+  comments PostComment[]
+  likes    PostLike[]
+
+  @@map("posts")
+}
+
+model PostImage {
+  id        Int    @id @default(autoincrement())
+  post_id   Int
+  image_url String
+
+  post Post @relation(fields: [post_id], references: [id])
+
+  @@map("post_images")
+}
+
+model PostComment {
+  id      Int    @id @default(autoincrement())
+  post_id Int
+  user_id Int
+  content String
+
+  post Post @relation(fields: [post_id], references: [id])
+  user User @relation(fields: [user_id], references: [id])
+
+  replies PostCommentReply[]
+
+  created_at DateTime @default(now())
+
+  @@map("post_comments")
+}
+
+model PostCommentReply {
+  id Int @id @default(autoincrement())
+
+  user_id    Int
+  comment_id Int
+  content    String
+
+  user    User        @relation(fields: [user_id], references: [id])
+  comment PostComment @relation(fields: [comment_id], references: [id])
+
+  created_at DateTime @default(now())
+
+  @@map("post_comment_replies")
+}
+
+model PostLike {
+  id Int @id @default(autoincrement())
+
+  post_id Int
+  user_id Int
+
+  post Post @relation(fields: [post_id], references: [id])
+  user User @relation(fields: [user_id], references: [id])
+
+  created_at DateTime @default(now())
+
+  @@unique([post_id, user_id])
+
+  @@map("post_likes")
+}
