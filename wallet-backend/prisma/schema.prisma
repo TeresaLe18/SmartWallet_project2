@@ -192,6 +192,12 @@ model Voucher {
   expired_at             DateTime
   status                 VoucherStatus
 
+  // Marketing (hiển thị trên trang Ưu đãi) — không ảnh hưởng logic giảm giá
+  title       String?
+  description String?  @db.Text
+  tag         String?
+  hot         Boolean  @default(false)
+
   transactions Transaction[]
 
   created_at DateTime @default(now())
@@ -415,4 +421,26 @@ model PostLike {
   @@unique([post_id, user_id])
 
   @@map("post_likes")
+}
+
+// ===================== NEWS POSTS =====================
+// Bài viết tin tức tài chính hiển thị trên dashboard (Task 21 - Quản lý bài viết).
+// `time` là CHUỖI hiển thị tự do ("Vừa xong", "2 giờ trước") — không phải timestamp.
+// `image`/`content` dùng LongText để chứa ảnh base64 / nội dung dài.
+
+model NewsPost {
+  id      Int     @id @default(autoincrement())
+  title   String
+  tag     String  @default("Kinh tế")
+  time    String  @default("Vừa xong")
+  image   String? @db.LongText
+  link    String?
+  content String  @db.LongText
+
+  active Boolean @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  @@map("news_posts")
 }

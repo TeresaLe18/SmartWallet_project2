@@ -10,7 +10,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell
 } from "recharts";
-import { newsAPI, walletAPI, authAPI, formatVND } from "../../services/api";
+import { newsAPI, walletAPI, authAPI, statisticsAPI, formatVND } from "../../services/api";
 
 const getUserBaseBalance = (email) => {
   if (!email) return 0;
@@ -263,17 +263,6 @@ const getMockUserEmailByName = (name) => {
   return null;
 };
 
-const getCategoryFromNote = (note) => {
-  if (!note) return "Khác";
-  const lower = note.toLowerCase();
-  if (lower.includes("ăn") || lower.includes("uống") || lower.includes("food") || lower.includes("cafe") || lower.includes("nhà hàng") || lower.includes("restaurant")) return "Ăn uống";
-  if (lower.includes("xe") || lower.includes("grab") || lower.includes("taxi") || lower.includes("di chuyển") || lower.includes("transport") || lower.includes("bus")) return "Di chuyển";
-  if (lower.includes("mua") || lower.includes("shopping") || lower.includes("tiki") || lower.includes("shopee") || lower.includes("lazada") || lower.includes("sắm")) return "Mua sắm";
-  if (lower.includes("phim") || lower.includes("cgv") || lower.includes("game") || lower.includes("giải trí") || lower.includes("netflix") || lower.includes("music") || lower.includes("play")) return "Giải trí";
-  if (lower.includes("điện") || lower.includes("nước") || lower.includes("hóa đơn") || lower.includes("bill") || lower.includes("internet") || lower.includes("wifi")) return "Hóa đơn";
-  return "Khác";
-};
-
 const mapBackendTx = (tx, currentEmail) => {
   const isSender = tx.sender_wallet && tx.sender_wallet.user && tx.sender_wallet.user.email === currentEmail;
   const type = isSender ? "send" : "receive";
@@ -346,7 +335,8 @@ const fmtCleanCurrency = (n) => formatVND(n);
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
   const [timeFilterMonth, setTimeFilterMonth] = useState("1y");
-  const [timeFilterCategory, setTimeFilterCategory] = useState("1m");
+  const [timeFilterCategory, setTimeFilterCategory] = useState("month");
+  const [categoryStats, setCategoryStats] = useState({ chartData: [], listData: [], totalExpense: 0 });
   const [transactions, setTransactions] = useState([]);
   const [user, setUser] = useState(null);
   const [posts, setPosts] = useState([]);
@@ -514,9 +504,29 @@ export default function DashboardPage() {
     };
   }, []);
 
+  // Pie "chi tiêu theo danh mục" lấy từ backend /statistics/spending (server-authoritative, theo tuần/tháng/năm)
+  useEffect(() => {
+    statisticsAPI.spending(timeFilterCategory).then(res => {
+      if (!res?.success) return;
+      const total = res.totalSpending || 0;
+      const COLORS = ["#2563eb", "#f59e0b", "#3b82f6", "#8b5cf6", "#ec4899", "#22c55e", "#06b6d4", "#ef4444"];
+      const listData = res.byCategory.map((c, i) => ({
+        name: c.categoryName,
+        value: total > 0 ? Math.round((c.total / total) * 100) : 0,
+        amount: c.total,
+        color: COLORS[i % COLORS.length],
+      }));
+      setCategoryStats({
+        chartData: total > 0 ? listData.filter(d => d.value > 0) : [{ name: "Chưa có chi tiêu", value: 100, color: "#27272a", amount: 0 }],
+        listData,
+        totalExpense: total,
+      });
+    }).catch(() => {});
+  }, [timeFilterCategory]);
+
   const { monthlyIncome, monthlyExpense } = getMonthlyStats(transactions);
   const dynamicSpendingData = getSpendingData(transactions, timeFilterMonth);
-  const { chartData: dynamicCategoryData, listData: categoryLegendData } = getCategoryData(transactions, timeFilterCategory);
+  const { chartData: dynamicCategoryData, listData: categoryLegendData } = categoryStats;
 
   const stats = [
     {
@@ -679,10 +689,9 @@ export default function DashboardPage() {
             <h3 style={{ fontSize: 15, fontWeight: 700 }}>Chi tiêu theo danh mục</h3>
             <div style={{ display: "flex", gap: 6 }}>
               {[
-                { key: "1d", label: "1 ngày" },
-                { key: "1w", label: "1 tuần" },
-                { key: "1m", label: "1 tháng" },
-                { key: "1y", label: "1 năm" }
+                { key: "week", label: "Tuần" },
+                { key: "month", label: "Tháng" },
+                { key: "year", label: "Năm" }
               ].map(f => (
                 <button key={f.key} onClick={() => setTimeFilterCategory(f.key)} style={{
                   padding: "4px 10px", borderRadius: 6, fontSize: 12, fontWeight: 500,

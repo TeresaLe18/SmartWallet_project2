@@ -44,19 +44,20 @@ export default function PaymentSuccess() {
         setStatus('failed');
         setMessage('Giao dịch đã bị huỷ.');
       } else {
-        // Chưa xử lý xong, thử lại
+        // Chưa PAID -> đối soát lại; KHÔNG báo thành công khi tiền chưa vào ví.
+        // Đối soát 3 lần (gồm lần đầu), mỗi lần cách ~10s (~20-30s), cho PayOS kịp xác nhận.
         pollCount.current += 1;
-        if (pollCount.current < 10) {
-          setTimeout(pollPaymentStatus, 2000);
+        if (pollCount.current < 3) {
+          setTimeout(pollPaymentStatus, 10000);
         } else {
-          setStatus('success');
-          setMessage('Giao dịch đang được xử lý. Số dư sẽ cập nhật sau vài phút.');
+          setStatus('pending');
+          setMessage('Chưa nhận được xác nhận thanh toán. Nếu bạn đã trả, số dư sẽ cập nhật sau ít phút — vui lòng kiểm tra lịch sử giao dịch trong ví.');
         }
       }
     } catch (err) {
       console.error(err);
-      setStatus('success');
-      setMessage('Giao dịch đang được xử lý. Vui lòng kiểm tra lịch sử giao dịch.');
+      setStatus('pending');
+      setMessage('Không kiểm tra được trạng thái thanh toán. Vui lòng mở ví và kiểm tra lịch sử giao dịch.');
     }
   };
 
@@ -107,6 +108,23 @@ export default function PaymentSuccess() {
             <p style={styles.subtitle}>{message}</p>
             <button style={styles.btn('#6366f1')} onClick={() => navigate('/dashboard/wallets')}>
               Thử lại
+            </button>
+          </>
+        )}
+
+        {status === 'pending' && (
+          <>
+            <div style={styles.iconCircle('#f59e0b')}>
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9"></circle>
+                <polyline points="12 7 12 12 15 14"></polyline>
+              </svg>
+            </div>
+            <h2 style={{ ...styles.title, color: '#f59e0b' }}>Đang xử lý thanh toán</h2>
+            <p style={styles.subtitle}>{message}</p>
+            <p style={styles.orderInfo}>Mã giao dịch: <strong>#{orderCode}</strong></p>
+            <button style={styles.btn('#6366f1')} onClick={() => navigate('/dashboard/wallets')}>
+              Về trang Ví kiểm tra
             </button>
           </>
         )}

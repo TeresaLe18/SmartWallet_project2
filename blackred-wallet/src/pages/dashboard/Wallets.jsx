@@ -8,18 +8,13 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeCanvas as QRCode } from "qrcode.react";
-import { walletAPI, authAPI, bankAPI, payosAPI, formatVND } from "../../services/api";
+import { walletAPI, authAPI, bankAPI, payosAPI, categoryAPI, voucherAPI, formatVND } from "../../services/api";
 
 const BANKS = ["Vietcombank","Techcombank","BIDV","VietinBank","Agribank","MB Bank","VPBank","TPBank","ACB","Sacombank"];
 
-const VOUCHERS_FALLBACK = [
-  { id:1, code:"CHUYENTIEN50", title:"Giảm 50K phí chuyển tiền", desc:"Áp dụng cho giao dịch từ 500K", exp:"31/12/2025", tag:"Chuyển tiền", hot:true, discount:"50K", value: 50000, minAmount: 500000 },
-  { id:2, code:"MUASAM2", title:"Hoàn tiền 2% mua sắm", desc:"Tối đa 200K/tháng", exp:"30/06/2025", tag:"Mua sắm", hot:false, discount:"2%", value: 0.02, isPercent: true },
-  { id:3, code:"FREERUT", title:"Miễn phí rút tiền lần đầu", desc:"Áp dụng tài khoản mới", exp:"15/07/2025", tag:"Rút tiền", hot:true, discount:"FREE", value: 10000 },
-  { id:4, code:"REF100K", title:"Tặng 100K khi giới thiệu bạn", desc:"Khi bạn bè hoàn thành KYC", exp:"31/12/2025", tag:"Referral", hot:false, discount:"100K", value: 100000 },
-  { id:5, code:"NAP20K", title:"Ưu đãi nạp tiền cuối tuần", desc:"Nạp từ 1 triệu, nhận thêm 20K", exp:"Hàng tuần", tag:"Nạp tiền", hot:true, discount:"20K", value: 20000, minAmount: 1000000 },
-  { id:6, code:"BILL30", title:"Giảm 30K bill điện nước", desc:"Thanh toán hóa đơn qua ví", exp:"30/06/2025", tag:"Hóa đơn", hot:false, discount:"30K", value: 30000 },
-];
+// Nhãn giảm giá + ngày suy từ voucher DB
+const discountLabel = (v) => v.discount_type === "PERCENT" ? `${Number(v.discount_value)}%` : `${Number(v.discount_value).toLocaleString("vi-VN")}₫`;
+const fmtVoucherDate = (d) => { try { return new Date(d).toLocaleDateString("vi-VN"); } catch { return ""; } };
 
 const tagColors = {
   "Chuyển tiền":"#2563eb","Mua sắm":"#3b82f6","Rút tiền":"#22c55e",
@@ -76,6 +71,7 @@ const mapBackendTx = (tx, currentEmail) => {
     time: timeStr,
     status: tx.status.toLowerCase(),
     note: tx.message || "",
+    category: tx.category?.name || "",
   };
 };
 
@@ -252,6 +248,7 @@ export default function WalletsPage() {
   };
   const [bankForm, setBankForm] = useState({ bank:"", account:"", owner:"" });
   const [txForm, setTxForm] = useState({ amount:"", target:"", note:"", category:"" });
+  const [categories, setCategories] = useState([]);
   const [depositForm, setDepositForm] = useState({ amount:"", note:"" });
   const [activeDepositTx, setActiveDepositTx] = useState(null);
   const [step, setStep] = useState(1);
@@ -275,76 +272,41 @@ export default function WalletsPage() {
   const [appliedVoucher, setAppliedVoucher] = useState(null);
   const [showPromoSelector, setShowPromoSelector] = useState(false);
   const [activePromoTab, setActivePromoTab] = useState("Tất cả");
-  const [voucherList, setVoucherList] = useState(VOUCHERS_FALLBACK);
+  const [voucherList, setVoucherList] = useState([]);
 
-  const loadVouchers = () => {
+  const loadVouchers = async () => {
+    try { const res = await voucherAPI.publicList(); if (res.success) setVoucherList(res.data); }
+    catch (e) { console.error("Load vouchers failed:", e); }
+  };
+
+  // Áp mã: hỏi backend (voucherAPI.check) -> giảm giá THẬT + validate (min/HSD/số lượng).
+  const handleApplyPromo = async () => {
+    if (!promoCode.trim()) { showToast("Vui lòng nhập mã ưu đãi!", "error"); return; }
+    const amt = Number(txForm.amount) || 0;
+    if (amt <= 0) { showToast("Vui lòng nhập số tiền trước khi áp mã!", "error"); return; }
     try {
-      const saved = localStorage.getItem("bw_admin_vouchers");
-      if (saved) {
-        const all = JSON.parse(saved);
-        const active = all.filter(v => v.active !== false).map(v => ({
-          ...v,
-          tag: v.type || v.tag || "Khác"
-        }));
-        setVoucherList(active.length > 0 ? active : VOUCHERS_FALLBACK);
-      }
-    } catch { /* fallback */ }
+      const res = await voucherAPI.check(promoCode.trim(), amt);
+      const v = voucherList.find(x => x.code.toUpperCase() === promoCode.trim().toUpperCase()) || { code: res.code, title: res.code };
+      setAppliedVoucher({ ...v, code: res.code, discountAmount: res.discountAmount });
+      setPromoCode(res.code);
+      showToast(`Áp dụng mã ${res.code} — giảm ${fmtCurrency(res.discountAmount)}!`);
+    } catch (e) {
+      showToast(e.response?.data?.message || "Mã ưu đãi không hợp lệ hoặc đã hết hạn!", "error");
+    }
   };
 
-  const calculateDiscount = (amountVal, v) => {
-    if (!v) return 0;
-    const amt = Number(amountVal) || 0;
-    if (v.code === "CHUYENTIEN50") {
-      if (amt < 500000) return 0;
-      return 50000;
+  const handleSelectVoucher = async (v) => {
+    const amt = Number(txForm.amount) || 0;
+    if (amt <= 0) { showToast("Vui lòng nhập số tiền trước khi chọn mã!", "error"); return; }
+    try {
+      const res = await voucherAPI.check(v.code, amt);
+      setAppliedVoucher({ ...v, discountAmount: res.discountAmount });
+      setPromoCode(v.code);
+      setShowPromoSelector(false);
+      showToast(`Áp dụng mã ${v.code} — giảm ${fmtCurrency(res.discountAmount)}!`);
+    } catch (e) {
+      showToast(e.response?.data?.message || "Không áp dụng được mã này!", "error");
     }
-    if (v.code === "MUASAM2") {
-      return Math.round(amt * 0.02);
-    }
-    if (v.code === "FREERUT") {
-      return 10000;
-    }
-    if (v.code === "REF100K") {
-      return 100000;
-    }
-    if (v.code === "NAP20K") {
-      if (amt < 1000000) return 0;
-      return 20000;
-    }
-    if (v.code === "BILL30") {
-      return 30000;
-    }
-    return 0;
-  };
-
-  const handleApplyPromo = () => {
-    if (!promoCode.trim()) {
-      showToast("Vui lòng nhập mã ưu đãi!", "error");
-      return;
-    }
-    const v = voucherList.find(x => x.code.toUpperCase() === promoCode.trim().toUpperCase());
-    if (!v) {
-      showToast("Mã ưu đãi không hợp lệ hoặc đã hết hạn!", "error");
-      return;
-    }
-    if (v.minAmount && (Number(txForm.amount) || 0) < v.minAmount) {
-      showToast(`Mã này chỉ áp dụng cho giao dịch từ ${fmtCurrency(v.minAmount)} trở lên!`, "error");
-      return;
-    }
-    setAppliedVoucher(v);
-    setPromoCode(v.code);
-    showToast(`Áp dụng thành công mã: ${v.code}!`);
-  };
-
-  const handleSelectVoucher = (v) => {
-    if (v.minAmount && (Number(txForm.amount) || 0) < v.minAmount) {
-      showToast(`Mã này chỉ áp dụng cho giao dịch từ ${fmtCurrency(v.minAmount)} trở lên!`, "error");
-      return;
-    }
-    setAppliedVoucher(v);
-    setPromoCode(v.code);
-    setShowPromoSelector(false);
-    showToast(`Áp dụng thành công mã: ${v.code}!`);
   };
 
 
@@ -417,6 +379,38 @@ export default function WalletsPage() {
         u.has_pin = !!profileData.user.has_pin;
         u.kycStatus = kyc;
         localStorage.setItem("bw_user", JSON.stringify(u));
+
+        // Mở modal theo URL (?modal=) CHỈ sau khi đã biết KYC/PIN mới nhất, đi qua cùng
+        // guard như nút bấm: chưa KYC / ví đóng băng -> KHÔNG mở bảng nạp/rút/chuyển.
+        const modalParam = searchParams.get("modal");
+        const promoParam = searchParams.get("promo");
+        if (modalParam) {
+          const needsKyc = modalParam === "deposit" || modalParam === "withdraw" || modalParam === "transfer";
+          let opened = false;
+          if (needsKyc && wStatus === "frozen") {
+            showToast("Your wallet is frozen. Please contact support to unfreeze it.", "error");
+          } else if (needsKyc && kyc !== "verified") {
+            showToast(
+              kyc === "pending"
+                ? `Your KYC is under review. Please wait for approval before you can ${modalParam}.`
+                : `KYC verification required before you can ${modalParam}. Go to the KYC section to complete it.`,
+              "error"
+            );
+          } else if ((modalParam === "withdraw" || modalParam === "transfer") && !profileData.user.has_pin) {
+            setPinActionType(modalParam);
+            setModal("pin_setup");
+            opened = true;
+          } else {
+            setModal(modalParam);
+            opened = true;
+          }
+          // Chỉ gợi ý "đã điền mã / nhập số tiền" khi modal THỰC SỰ mở (đã qua gate KYC/đóng băng).
+          if (opened && promoParam) {
+            setPromoCode(promoParam);
+            setTimeout(() => { showToast(`Đã điền mã ưu đãi: ${promoParam}. Nhập số tiền rồi bấm "Áp dụng".`); }, 900);
+          }
+          setSearchParams({}, { replace: true });
+        }
       }
     } catch (err) {
       console.error("Failed to load live wallet data from server:", err);
@@ -424,10 +418,11 @@ export default function WalletsPage() {
   };
 
   useEffect(() => {
+    categoryAPI.list().then(r => { if (r?.success) setCategories(r.data); }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     loadVouchers();
-    window.addEventListener("bw_vouchers_updated", loadVouchers);
-    const storageHandler = (e) => { if (e.key === "bw_admin_vouchers") loadVouchers(); };
-    window.addEventListener("storage", storageHandler);
 
     const bwUser = localStorage.getItem("bw_user");
     const currentEmail = bwUser ? JSON.parse(bwUser).email : null;
@@ -438,42 +433,11 @@ export default function WalletsPage() {
       fetchBanks();
     }
 
-    // Parse URL params for promo code & modal trigger using react-router-dom searchParams
-    const promo = searchParams.get("promo");
-    const modalParam = searchParams.get("modal");
-
-    if (modalParam) {
-      const u = localStorage.getItem("bw_user");
-      const userHasPin = u ? !!JSON.parse(u).has_pin : false;
-      if ((modalParam === "withdraw" || modalParam === "transfer") && !userHasPin) {
-        setPinActionType(modalParam);
-        setModal("pin_setup");
-      } else {
-        setModal(modalParam);
-      }
-      if (promo) {
-        const savedVouchers = (() => {
-          try {
-            const s = localStorage.getItem("bw_admin_vouchers");
-            return s ? JSON.parse(s).filter(v => v.active !== false) : VOUCHERS_FALLBACK;
-          } catch { return VOUCHERS_FALLBACK; }
-        })();
-        const v = savedVouchers.find(x => x.code.toUpperCase() === promo.toUpperCase());
-        if (v) {
-          setPromoCode(v.code);
-          setAppliedVoucher(v);
-          setTimeout(() => { showToast(`Tự động áp dụng ưu đãi: ${v.code}!`); }, 900);
-        }
-      }
-      // Clear searchParams to prevent opening modal on refresh
-      setSearchParams({}, { replace: true });
-    }
+    // (URL ?modal= / ?promo= được xử lý trong fetchWalletData, sau khi đã biết KYC/PIN mới nhất)
 
     setTimeout(() => setLoading(false), 800);
 
     return () => {
-      window.removeEventListener("bw_vouchers_updated", loadVouchers);
-      window.removeEventListener("storage", storageHandler);
     };
   }, [searchParams]);
 
@@ -552,7 +516,37 @@ export default function WalletsPage() {
 
   // Aliases kept for button wiring
   const handleConfirmDepositBank = () => handleInitiateDeposit();
-  const handleConfirmDepositQR = () => handleInitiateDeposit();
+
+  // Nạp tiền qua QR ngân hàng THẬT (PayOS): tạo link thanh toán rồi chuyển sang
+  // trang PayOS (hiển thị QR ngân hàng thật). PayOS redirect về /payment/success
+  // sau khi trả; webhook/polling cộng tiền vào ví.
+  const handleConfirmDepositQR = async () => {
+    if (!depositForm.amount || Number(depositForm.amount) <= 0) {
+      showToast("Vui lòng nhập số tiền hợp lệ để nạp!", "error");
+      return;
+    }
+    if (Number(depositForm.amount) < 1000) {
+      showToast("Số tiền nạp tối thiểu là 1.000đ!", "error");
+      return;
+    }
+    setDepositLoading(true);
+    try {
+      const amount = Number(depositForm.amount);
+      const note = depositForm.note || "Nap tien SmartWallet";
+      const data = await payosAPI.createPaymentLink(amount, note);
+      if (data.success && data.data?.checkoutUrl) {
+        closeModal();
+        window.location.href = data.data.checkoutUrl;
+      } else {
+        showToast(data.message || "Không thể tạo lệnh nạp tiền.", "error");
+      }
+    } catch (err) {
+      console.error("Deposit QR (PayOS) error:", err);
+      showToast(err.response?.data?.message || "Lỗi kết nối máy chủ.", "error");
+    } finally {
+      setDepositLoading(false);
+    }
+  };
 
   const handleDownloadQR = () => {
     const canvas = qrCanvasRef.current?.querySelector("canvas");
@@ -574,6 +568,36 @@ export default function WalletsPage() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
+
+  // Sau khi trả PayOS, returnUrl đưa user về Ví với ?deposit=<orderCode>.
+  // Đối soát NGAY tại đây 10 lần (mỗi ~10s, tối đa ~90s): PAID -> cộng tiền (backend) + refresh số dư.
+  // Gặp PAID (hoặc CANCELLED) là DỪNG ngay, không chờ hết 10 lần.
+  // CHỈ chạy khi quay về từ thanh toán (có param), KHÔNG chạy mỗi lần mở Ví.
+  const depositPolledRef = useRef(false);
+  useEffect(() => {
+    const orderCode = searchParams.get("deposit");
+    if (!orderCode || depositPolledRef.current) return;
+    depositPolledRef.current = true;
+    setSearchParams({}, { replace: true }); // dọn URL, tránh chạy lại khi refresh
+
+    const pollDeposit = async (tries) => {
+      try {
+        const res = await payosAPI.checkPaymentStatus(orderCode);
+        if (res.status === "PAID") {
+          showToast("Nạp tiền thành công! Số dư đã được cập nhật.", "success");
+          fetchWalletData();
+          return;
+        }
+        if (res.status === "CANCELLED") {
+          showToast("Giao dịch nạp tiền đã bị huỷ.", "error");
+          return;
+        }
+      } catch (e) { /* bỏ qua, thử lại lần sau */ }
+      if (tries < 9) setTimeout(() => pollDeposit(tries + 1), 10000);
+      // hết 10 lần vẫn chưa PAID -> im lặng, không báo thành công giả.
+    };
+    pollDeposit(0);
+  }, [searchParams]);
 
   const MAX_BANKS = 3;
 
@@ -735,7 +759,7 @@ export default function WalletsPage() {
         const amount = Number(txForm.amount);
         const note = txForm.note || `Chuyển ví SmartWallet tới ${txForm.target}`;
         
-        const res = await walletAPI.transfer(dest_email, amount, note, pin);
+        const res = await walletAPI.transfer(dest_email, amount, note, pin, txForm.category ? Number(txForm.category) : null, appliedVoucher?.code || null);
         
         if (res.success) {
           if (res.transaction) {
@@ -1808,12 +1832,9 @@ export default function WalletsPage() {
                     <select value={txForm.category} onChange={e => setTxForm({...txForm, category: e.target.value})}
                       style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "11px 14px", color: txForm.category ? "#000000" : "#52525b", fontSize: 14, outline: "none" }}>
                       <option value="">-- Chọn danh mục --</option>
-                      <option value="Mua sắm">🛒 Mua sắm</option>
-                      <option value="Ăn uống">🍔 Ăn uống</option>
-                      <option value="Giải trí">🎬 Giải trí</option>
-                      <option value="Di chuyển">🚗 Di chuyển</option>
-                      <option value="Hóa đơn">🧾 Hóa đơn</option>
-                      <option value="Khác">💡 Khác</option>
+                      {categories.map(c => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
                     </select>
                   </div>
 
@@ -1859,7 +1880,7 @@ export default function WalletsPage() {
                       </div>
 
                       {appliedVoucher && (() => {
-                        const discount = calculateDiscount(txForm.amount, appliedVoucher);
+                        const discount = appliedVoucher.discountAmount || 0;
                         return (
                           <div style={{ marginTop:10, padding:"8px 12px", background:"rgba(34,197,94,0.06)", border:"1px solid rgba(34,197,94,0.15)", borderRadius:8 }}>
                             <p style={{ fontSize:12, color:"#22c55e", fontWeight:700 }}>
@@ -1868,9 +1889,9 @@ export default function WalletsPage() {
                             <p style={{ fontSize:11, color: "var(--text-secondary)", marginTop:2 }}>
                               {appliedVoucher.title}
                             </p>
-                            {appliedVoucher.minAmount && (
+                            {appliedVoucher.min_transaction_amount > 0 && (
                               <p style={{ fontSize:10, color:"#f59e0b", marginTop:2 }}>
-                                * Giao dịch tối thiểu từ {fmtCurrency(appliedVoucher.minAmount)}
+                                * Giao dịch tối thiểu từ {fmtCurrency(appliedVoucher.min_transaction_amount)}
                               </p>
                             )}
                             {discount > 0 ? (
@@ -1924,7 +1945,7 @@ export default function WalletsPage() {
                   </div>
 
                   {appliedVoucher ? (() => {
-                    const discount = calculateDiscount(txForm.amount, appliedVoucher);
+                    const discount = appliedVoucher.discountAmount || 0;
                     const finalAmt = Math.max(0, (Number(txForm.amount) || 0) - discount);
                     return (
                       <button onClick={handleConfirmTransfer}
@@ -1971,8 +1992,8 @@ export default function WalletsPage() {
                       </div>
 
                       <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:10 }}>
-                        {voucherList.filter(v => activePromoTab === "Tất cả" || v.tag === activePromoTab || v.type === activePromoTab).map(v => {
-                          const isApplicable = !v.minAmount || (Number(txForm.amount) || 0) >= v.minAmount;
+                        {voucherList.filter(v => activePromoTab === "Tất cả" || v.tag === activePromoTab).map(v => {
+                          const isApplicable = !v.min_transaction_amount || (Number(txForm.amount) || 0) >= Number(v.min_transaction_amount);
                           return (
                             <div 
                               key={v.id} 
@@ -1987,16 +2008,16 @@ export default function WalletsPage() {
                                 <div style={{ textAlign:"left" }}>
                                   <span style={{ fontSize:10, padding:"2px 6px", borderRadius:4, background:`${tagColors[v.tag]}18`, color:tagColors[v.tag], fontWeight:600 }}>{v.tag}</span>
                                   <h5 style={{ fontSize:13, fontWeight:700, color: "#000000", marginTop:6 }}>{v.title}</h5>
-                                  <p style={{ fontSize:11, color: "var(--text-secondary)", marginTop:2 }}>{v.desc}</p>
-                                  {v.minAmount && (
+                                  <p style={{ fontSize:11, color: "var(--text-secondary)", marginTop:2 }}>{v.description}</p>
+                                  {v.min_transaction_amount > 0 && (
                                     <p style={{ fontSize:10, color:"#f59e0b", marginTop:2 }}>
-                                      Min GD: {fmtCurrency(v.minAmount)}
+                                      Min GD: {fmtCurrency(v.min_transaction_amount)}
                                     </p>
                                   )}
-                                  <p style={{ fontSize:10, color: "var(--text-muted)", marginTop:4 }}>HSD: {v.exp}</p>
+                                  <p style={{ fontSize:10, color: "var(--text-muted)", marginTop:4 }}>HSD: {fmtVoucherDate(v.expired_at)}</p>
                                 </div>
                                 <div style={{ textAlign:"right" }}>
-                                  <span style={{ fontSize:14, fontWeight:900, color:"#3b82f6" }}>{v.discount}</span>
+                                  <span style={{ fontSize:14, fontWeight:900, color:"#3b82f6" }}>{discountLabel(v)}</span>
                                   <div style={{ fontSize:10, fontWeight:700, color: "var(--text-muted)", marginTop:4 }}>Mã: {v.code}</div>
                                 </div>
                               </div>
