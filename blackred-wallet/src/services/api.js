@@ -132,6 +132,14 @@ export const authAPI = {
     const res = await api.get("/auth/notifications");
     return res.data;
   },
+  markNotificationRead: async (id) => {
+    const res = await api.patch(`/auth/notifications/${id}/read`);
+    return res.data;
+  },
+  markAllNotificationsRead: async () => {
+    const res = await api.patch("/auth/notifications/read-all");
+    return res.data;
+  },
   setPin: async (pin) => {
     const res = await api.post("/auth/set-pin", { pin });
     return res.data;
@@ -417,6 +425,50 @@ export const investmentAPI = {
     const res = await api.get("/investments/admin");
     return res.data;
   },
+};
+
+// ─── Statistics API (thống kê chi tiêu theo tuần/tháng/năm) ────────────────────
+export const statisticsAPI = {
+  spending: async (period) => (await api.get(`/statistics/spending?period=${period}`)).data,
+};
+
+// ─── Fee API (admin: quản lý phí dịch vụ theo loại giao dịch) ──────────────────
+export const feeAPI = {
+  getAll: async () => {
+    const res = await api.get("/admin/fees");
+    return res.data;
+  },
+  create: async (transactionType, feeValue) => {
+    const res = await api.post("/admin/fees", { transactionType, feeValue });
+    return res.data;
+  },
+  update: async (id, data) => {
+    const res = await api.patch(`/admin/fees/${id}`, data);
+    return res.data;
+  },
+  remove: async (id) => {
+    const res = await api.delete(`/admin/fees/${id}`);
+    return res.data;
+  },
+};
+
+// ─── Category API (danh mục chi tiêu) ─────────────────────────────────────────
+export const categoryAPI = {
+  list:      async () => (await api.get("/categories")).data,            // user: dropdown
+  adminList: async () => (await api.get("/admin/categories")).data,      // admin
+  create:    async (name) => (await api.post("/admin/categories", { name })).data,
+  update:    async (id, name) => (await api.patch(`/admin/categories/${id}`, { name })).data,
+  remove:    async (id) => (await api.delete(`/admin/categories/${id}`)).data,
+};
+
+// ─── Voucher API ──────────────────────────────────────────────────────────────
+export const voucherAPI = {
+  publicList: async () => (await api.get("/vouchers")).data,                 // user: Offers + dropdown
+  check:      async (code, amount) => (await api.post("/vouchers/check", { code, amount })).data,
+  adminList:  async () => (await api.get("/admin/vouchers")).data,
+  create:     async (data) => (await api.post("/admin/vouchers", data)).data,
+  update:     async (id, data) => (await api.patch(`/admin/vouchers/${id}`, data)).data,
+  remove:     async (id) => (await api.delete(`/admin/vouchers/${id}`)).data,
 };
 
 export default api;

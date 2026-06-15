@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE `vouchers` ADD COLUMN `description` TEXT NULL,
+    ADD COLUMN `hot` BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN `tag` VARCHAR(191) NULL,
+    ADD COLUMN `title` VARCHAR(191) NULL;

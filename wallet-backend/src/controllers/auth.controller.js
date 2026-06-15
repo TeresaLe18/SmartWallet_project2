@@ -547,6 +547,39 @@ const getNotifications = async (req, res) => {
     }
 };
 
+// PATCH /auth/notifications/:id/read — đánh dấu 1 thông báo đã đọc (lưu DB, đồng bộ đa thiết bị)
+const markNotificationRead = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid notification id' });
+        }
+        // updateMany + ownership guard: chỉ sửa thông báo của chính user
+        await prisma.notification.updateMany({
+            where: { id, user_id: userId },
+            data: { is_read: true },
+        });
+        return res.status(200).json({ success: true });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+// PATCH /auth/notifications/read-all — đánh dấu tất cả thông báo của user đã đọc
+const markAllNotificationsRead = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        await prisma.notification.updateMany({
+            where: { user_id: userId, is_read: false },
+            data: { is_read: true },
+        });
+        return res.status(200).json({ success: true });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     register,
     verifyRegister,
@@ -558,4 +591,6 @@ module.exports = {
     refreshTokenHandler,
     setPin,
     getNotifications,
+    markNotificationRead,
+    markAllNotificationsRead,
 };

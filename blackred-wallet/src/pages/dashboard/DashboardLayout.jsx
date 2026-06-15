@@ -155,6 +155,8 @@ export default function DashboardLayout() {
       .forEach(dbNotif => {
         list.push({
           id: `db_${dbNotif.id}`,
+          dbId: dbNotif.id,            // id thật trong DB → dùng để mark-read trên server
+          is_read: !!dbNotif.is_read,  // trạng thái đã đọc lấy từ DB
           title: dbNotif.title,
           desc: dbNotif.content,
           time: new Date(dbNotif.created_at || dbNotif.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" }) + " " + new Date(dbNotif.created_at || dbNotif.createdAt).toLocaleDateString("vi-VN"),
@@ -176,18 +178,37 @@ export default function DashboardLayout() {
 
     return list.map(item => ({
       ...item,
-      read: readNotifIds.includes(item.id)
+      // notif giao dịch (có row DB) lấy đã-đọc từ server; KYC/News synthetic dùng localStorage
+      read: item.dbId != null ? !!item.is_read : readNotifIds.includes(item.id)
     }));
   })();
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
-  const handleMarkAsRead = (id) => {
-    if (!readNotifIds.includes(id)) {
-      const updated = [...readNotifIds, id];
+  const handleMarkAsRead = (item) => {
+    if (item?.dbId != null) {
+      // Notif giao dịch: lưu đã-đọc lên DB (đồng bộ đa thiết bị) + cập nhật lạc quan
+      setDbNotifications(prev => prev.map(n => n.id === item.dbId ? { ...n, is_read: true } : n));
+      authAPI.markNotificationRead(item.dbId).catch(() => {});
+      return;
+    }
+    // KYC/News synthetic: không có row DB → giữ localStorage
+    if (item?.id && !readNotifIds.includes(item.id)) {
+      const updated = [...readNotifIds, item.id];
       setReadNotifIds(updated);
       localStorage.setItem("bw_read_notif_ids", JSON.stringify(updated));
     }
+  };
+
+  const handleMarkAllRead = () => {
+    // Notif giao dịch trên DB
+    setDbNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
+    authAPI.markAllNotificationsRead().catch(() => {});
+    // KYC/News synthetic → localStorage
+    const syntheticIds = notifications.filter(n => n.dbId == null).map(n => n.id);
+    const updated = Array.from(new Set([...readNotifIds, ...syntheticIds]));
+    setReadNotifIds(updated);
+    localStorage.setItem("bw_read_notif_ids", JSON.stringify(updated));
   };
 
   const filteredNotifs = notifications.filter(n => {
@@ -450,7 +471,15 @@ export default function DashboardLayout() {
                 >
                   <div style={{ padding: "16px 20px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <h3 style={{ fontSize: 14, fontWeight: 700 }}>Thông báo</h3>
-                    {unreadCount > 0 && <span style={{ fontSize: 11, background: "rgba(37,99,235,0.15)", color: "#2563eb", padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>{unreadCount} mới</span>}
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {unreadCount > 0 && <span style={{ fontSize: 11, background: "rgba(37,99,235,0.15)", color: "#2563eb", padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>{unreadCount} mới</span>}
+                      {unreadCount > 0 && (
+                        <button onClick={(e) => { e.stopPropagation(); handleMarkAllRead(); }}
+                          style={{ fontSize: 11, background: "none", border: "none", color: "#2563eb", fontWeight: 600, cursor: "pointer", padding: 0 }}>
+                          Đọc tất cả
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Filter Pills */}
@@ -484,8 +513,8 @@ export default function DashboardLayout() {
                       </div>
                     ) : (
                       filteredNotifs.map((n) => (
-                        <div key={n.id} 
-                          onClick={() => handleMarkAsRead(n.id)}
+                        <div key={n.id}
+                          onClick={() => handleMarkAsRead(n)}
                           style={{
                             padding: "14px 20px", borderBottom: "1px solid var(--border)",
                             background: !n.read ? "rgba(37,99,235,0.04)" : "transparent",

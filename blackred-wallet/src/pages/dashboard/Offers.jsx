@@ -2,8 +2,10 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Clock, ChevronRight, Flame } from "lucide-react";
 import { motion } from "framer-motion";
+import { voucherAPI } from "../../services/api";
 
-const STORAGE_KEY = "bw_admin_vouchers";
+const discountLabel = (v) => v.discount_type === "PERCENT" ? `${Number(v.discount_value)}%` : `${Number(v.discount_value).toLocaleString("vi-VN")}₫`;
+const fmtDate = (d) => { try { return new Date(d).toLocaleDateString("vi-VN"); } catch { return ""; } };
 
 const tagColors = {
   "Chuyển tiền":"#2563eb","Mua sắm":"#3b82f6","Rút tiền":"#22c55e",
@@ -15,33 +17,18 @@ export default function OffersPage() {
   const [activeTag, setActiveTag] = useState("Tất cả");
   const [vouchers, setVouchers] = useState([]);
 
-  const loadVouchers = () => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
-      try {
-        const all = JSON.parse(saved);
-        setVouchers(all.filter(v => v.active !== false));
-      } catch { setVouchers([]); }
-    }
+  const loadVouchers = async () => {
+    try { const res = await voucherAPI.publicList(); if (res.success) setVouchers(res.data); }
+    catch (e) { console.error("Load vouchers failed:", e); }
   };
 
-  useEffect(() => {
-    loadVouchers();
-    const handler = () => loadVouchers();
-    window.addEventListener("bw_vouchers_updated", handler);
-    const storageHandler = (e) => { if (e.key === STORAGE_KEY) loadVouchers(); };
-    window.addEventListener("storage", storageHandler);
-    return () => {
-      window.removeEventListener("bw_vouchers_updated", handler);
-      window.removeEventListener("storage", storageHandler);
-    };
-  }, []);
+  useEffect(() => { loadVouchers(); }, []);
 
   const tags = ["Tất cả", ...Object.keys(tagColors)];
-  const filtered = activeTag === "Tất cả" ? vouchers : vouchers.filter(v => v.type === activeTag || v.tag === activeTag);
+  const filtered = activeTag === "Tất cả" ? vouchers : vouchers.filter(v => v.tag === activeTag);
 
   const handleUseVoucher = (v) => {
-    const type = v.type || v.tag || "";
+    const type = v.tag || "";
     let modalType = "transfer";
     if (type === "Rút tiền") modalType = "withdraw";
     else if (type === "Nạp tiền") modalType = "deposit";
@@ -76,7 +63,7 @@ export default function OffersPage() {
       ) : (
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:16 }}>
           {filtered.map((v, i) => {
-            const type = v.type || v.tag || "Khác";
+            const type = v.tag || "Khác";
             const color = tagColors[type] || "#71717a";
             return (
               <motion.div key={v.id} initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{delay:i*0.07}}
@@ -95,18 +82,18 @@ export default function OffersPage() {
                 )}
                 {/* Discount badge */}
                 <div style={{ background:`linear-gradient(135deg, ${color}12, transparent)`, padding:"20px 20px 16px", borderBottom:"1px dashed var(--border)" }}>
-                  <div style={{ fontSize:32, fontWeight:900, color }}>{v.discount}</div>
+                  <div style={{ fontSize:32, fontWeight:900, color }}>{discountLabel(v)}</div>
                   <p style={{ fontSize:15, fontWeight:700, marginTop:4, color:"var(--text-primary)" }}>{v.title || v.code}</p>
                 </div>
                 <div style={{ padding:"14px 20px" }}>
-                  <p style={{ fontSize:12, color: "var(--text-secondary)", marginBottom:12 }}>{v.desc || ""}</p>
+                  <p style={{ fontSize:12, color: "var(--text-secondary)", marginBottom:12 }}>{v.description || ""}</p>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:6 }}>
                       <span style={{ fontSize:10, padding:"3px 8px", borderRadius:6, background:`${color}18`, color, fontWeight:600 }}>{type}</span>
-                      {v.exp && (
+                      {v.expired_at && (
                         <div style={{ display:"flex", alignItems:"center", gap:4, color: "var(--text-muted)" }}>
                           <Clock size={11} />
-                          <span style={{ fontSize:11 }}>HSD: {v.exp}</span>
+                          <span style={{ fontSize:11 }}>HSD: {fmtDate(v.expired_at)}</span>
                         </div>
                       )}
                     </div>
