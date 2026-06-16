@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect } from "react";
-import { User, Camera, Phone, Mail, Lock, CheckCircle, RefreshCw, AlertCircle, Eye, EyeOff, ShieldCheck, X, Send } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { User, Camera, Phone, Mail, Lock, CheckCircle, RefreshCw, AlertCircle, Eye, EyeOff, ShieldCheck, X, Send, UserX } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { authAPI, getUploadUrl } from "../../services/api";
 
 export default function ProfilePage() {
+  const navigate = useNavigate();
   // 1. Fetch current logged-in user from localStorage
   const [user, setUser] = useState({
     avatar: "",
@@ -61,6 +63,10 @@ export default function ProfilePage() {
   const [passSuccess, setPassSuccess] = useState(false);
   const [passLoading, setPassLoading] = useState(false);
 
+  const [showDisableConfirm, setShowDisableConfirm] = useState(false);
+  const [disableLoading, setDisableLoading] = useState(false);
+  const [disableError, setDisableError] = useState("");
+
   // OTP modal is only used for email/phone contact changes (not password — password uses direct old-password verification)
 
   // Resend OTP Countdown
@@ -73,6 +79,24 @@ export default function ProfilePage() {
     }
     return () => clearTimeout(timer);
   }, [showOtpModal, countdown]);
+
+  const handleDisableAccount = async () => {
+    setDisableLoading(true);
+    setDisableError("");
+    try {
+      const res = await authAPI.disableAccount();
+      if (res.success) {
+        await authAPI.logout();
+        navigate("/login", { replace: true, state: { message: "Your account has been disabled. Contact support to reactivate it." } });
+        return;
+      }
+      setDisableError(res.message || "Failed to disable account.");
+    } catch (err) {
+      setDisableError(err.response?.data?.message || "System error. Please try again.");
+    } finally {
+      setDisableLoading(false);
+    }
+  };
 
   // Handle Avatar selection & base64 conversion
   const handleAvatarClick = () => {
@@ -588,6 +612,128 @@ export default function ProfilePage() {
           </button>
         </form>
       </motion.div>
+
+      {/* CARD 4: DISABLE ACCOUNT */}
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.25 }}
+        style={{
+          background: "var(--bg-card)", border: "1px solid rgba(239,68,68,0.2)",
+          borderRadius: 16, padding: 24, boxShadow: "0 4px 20px rgba(0, 0, 0, 0.01)"
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
+          <div style={{
+            width: 40, height: 40, borderRadius: 10, flexShrink: 0,
+            background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)",
+            display: "flex", alignItems: "center", justifyContent: "center"
+          }}>
+            <UserX size={18} style={{ color: "#ef4444" }} />
+          </div>
+          <div>
+            <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>4. Disable Account</h3>
+            <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }}>
+              Permanently disable your account and freeze your wallet. You will be logged out immediately
+              and will not be able to sign in until an administrator reactivates your account.
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={() => { setDisableError(""); setShowDisableConfirm(true); }}
+          style={{
+            background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)",
+            borderRadius: 10, padding: "10px 18px", color: "#ef4444",
+            fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all 0.2s"
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.14)"; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
+        >
+          Disable My Account
+        </button>
+      </motion.div>
+
+      {/* Disable account confirmation modal */}
+      <AnimatePresence>
+        {showDisableConfirm && (
+          <div
+            style={{
+              position: "fixed", inset: 0, zIndex: 100,
+              display: "flex", alignItems: "center", justifyContent: "center",
+              background: "rgba(0, 0, 0, 0.4)", backdropFilter: "blur(6px)", padding: 20
+            }}
+            onClick={() => !disableLoading && setShowDisableConfirm(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                background: "var(--bg-card)", border: "1px solid var(--border)",
+                borderRadius: 20, padding: 28, width: "100%", maxWidth: 420,
+                boxShadow: "0 20px 60px rgba(0,0,0,0.2)"
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <div style={{
+                  width: 44, height: 44, borderRadius: 12,
+                  background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)",
+                  display: "flex", alignItems: "center", justifyContent: "center"
+                }}>
+                  <UserX size={20} style={{ color: "#ef4444" }} />
+                </div>
+                <div>
+                  <h3 style={{ fontSize: 16, fontWeight: 700 }}>Disable your account?</h3>
+                  <p style={{ fontSize: 12, color: "var(--text-muted)" }}>This action requires admin to reactivate</p>
+                </div>
+              </div>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 16 }}>
+                Your account will be set to <strong>Disabled</strong>, your wallet will be frozen,
+                and you will be signed out. Contact support if you need your account restored.
+              </p>
+              {disableError && (
+                <div style={{
+                  background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
+                  borderRadius: 10, padding: "10px 14px", marginBottom: 16, color: "#ef4444", fontSize: 13
+                }}>
+                  {disableError}
+                </div>
+              )}
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setShowDisableConfirm(false)}
+                  disabled={disableLoading}
+                  style={{
+                    flex: 1, background: "var(--bg-card2)", border: "1px solid var(--border)",
+                    borderRadius: 10, padding: "12px", fontSize: 13, fontWeight: 600,
+                    color: "var(--text-secondary)", cursor: disableLoading ? "not-allowed" : "pointer"
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDisableAccount}
+                  disabled={disableLoading}
+                  style={{
+                    flex: 1, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)",
+                    borderRadius: 10, padding: "12px", fontSize: 13, fontWeight: 700,
+                    color: "#ef4444", cursor: disableLoading ? "not-allowed" : "pointer",
+                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8
+                  }}
+                >
+                  {disableLoading ? (
+                    <div style={{ width: 16, height: 16, border: "2px solid rgba(239,68,68,0.3)", borderTopColor: "#ef4444", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
+                  ) : "Yes, Disable Account"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* ─── OTP CONFIRMATION MODAL (shared for profile & password) ─────────── */}
       <AnimatePresence>

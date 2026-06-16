@@ -6,88 +6,17 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { adminAPI, getUploadUrl, formatVND } from "../../services/api";
 
-const mockUsers = [
-  { id:"U001", name:"Nguyễn Văn A", email:"nva@email.com", phone:"0901234567", kyc:"verified", status:"active", balance:formatVND(12500000), joined:"01/01/2025", cccd:"034095009876", dob:"12/04/1995", gender:"Male", address:"Hà Nội" },
-  { id:"U002", name:"Trần Thị B",    email:"ttb@email.com", phone:"0912345678", kyc:"pending",  status:"active", balance:formatVND(3200000),  joined:"15/02/2025", cccd:"079102008888", dob:"20/09/2002", gender:"Female", address:"TP. Hồ Chí Minh" },
-  { id:"U003", name:"Lê Văn C",      email:"lvc@email.com", phone:"0923456789", kyc:"none",     status:"locked", balance:formatVND(0),          joined:"20/03/2025", cccd:null, dob:null, gender:null, address:null },
-  { id:"U004", name:"Phạm Thị D",    email:"ptd@email.com", phone:"0934567890", kyc:"verified", status:"active", balance:formatVND(8750000),  joined:"05/04/2025", cccd:"036098006543", dob:"18/11/1998", gender:"Female", address:"Hải Phòng" },
-  { id:"U005", name:"Hoàng Minh E",  email:"hme@email.com", phone:"0945678901", kyc:"pending",  status:"active", balance:formatVND(1000000),  joined:"12/04/2025", cccd:"038101007777", dob:"05/05/2001", gender:"Male", address:"Đà Nẵng" },
-];
-
 const kycBadge = { verified:{ bg:"rgba(34,197,94,0.12)", color:"#22c55e", text:"KYC Verified" }, pending:{ bg:"rgba(245,158,11,0.12)", color:"#f59e0b", text:"Pending Review" }, none:{ bg:"rgba(100,116,139,0.12)", color:"#94a3b8", text:"Not KYC'd" } };
-const statusBadge = { active:{ bg:"rgba(34,197,94,0.12)", color:"#22c55e", text:"Active" }, locked:{ bg:"rgba(239,68,68,0.12)", color:"#ef4444", text:"Locked" } };
-
-const getUserBaseBalance = (email) => {
-  if (!email) return 0;
-  const lower = email.toLowerCase();
-  if (lower === "nva@email.com") return 12500000;
-  if (lower === "ttb@email.com") return 3200000;
-  if (lower === "lvc@email.com") return 0;
-  if (lower === "ptd@email.com") return 8750000;
-  if (lower === "hme@email.com") return 1000000;
-  return 0;
-};
-
-const getMockUserEmailByName = (name) => {
-  if (!name) return null;
-  const lower = name.toLowerCase();
-  if (lower.includes("nguyễn văn a")) return "nva@email.com";
-  if (lower.includes("trần thị b")) return "ttb@email.com";
-  if (lower.includes("lê văn c")) return "lvc@email.com";
-  if (lower.includes("phạm thị d")) return "ptd@email.com";
-  if (lower.includes("hoàng minh e")) return "hme@email.com";
-  return null;
-};
-
-const calcUserBalance = (userEmail) => {
-  try {
-    const bwUser = localStorage.getItem("bw_user");
-    if (bwUser) {
-      const u = JSON.parse(bwUser);
-      if (u.email === userEmail && u.balance) return u.balance;
-    }
-    const emailTx = localStorage.getItem(`bw_transactions_${userEmail}`);
-    if (emailTx) {
-      const txs = JSON.parse(emailTx);
-      const base = getUserBaseBalance(userEmail);
-      const total = Math.max(0, txs.reduce((acc, tx) => {
-        if (tx.status !== "success") return acc;
-        if (tx.type === "receive") return acc + tx.amount;
-        if (tx.type === "send") return acc - tx.amount;
-        return acc;
-      }, base));
-      return total.toLocaleString("vi-VN") + " ₫";
-    }
-    return null;
-  } catch { return null; }
+const statusBadge = {
+  active: { bg: "rgba(34,197,94,0.12)", color: "#22c55e", text: "Active" },
+  locked: { bg: "rgba(239,68,68,0.12)", color: "#ef4444", text: "Locked" },
+  disabled: { bg: "rgba(100,116,139,0.12)", color: "#64748b", text: "Disabled" },
 };
 
 const shortId = (id = "") => {
   if (!id) return "—";
   if (id.length <= 12) return id;
   return id.slice(0, 7) + "…" + id.slice(-4);
-};
-
-const parseTxTime = (timeStr) => {
-  if (!timeStr) return new Date();
-  try {
-    const parts = timeStr.trim().split(" ");
-    if (parts.length === 2 && parts[1].includes("/")) {
-      const [hour, minute] = parts[0].split(":");
-      const [day, month, year] = parts[1].split("/");
-      return new Date(
-        Number(year),
-        Number(month) - 1,
-        Number(day),
-        Number(hour || 0),
-        Number(minute || 0)
-      );
-    }
-    const d = new Date(timeStr);
-    return isNaN(d.getTime()) ? new Date() : d;
-  } catch (e) {
-    return new Date();
-  }
 };
 
 export default function AdminUsersPage() {
@@ -191,29 +120,67 @@ export default function AdminUsersPage() {
 
   const handleToggleLock = async (id) => {
     const targetUser = users.find(u => u.id === id);
-    if (!targetUser) return;
-    const nextStatus = targetUser.status === "active" ? "LOCKED" : "ACTIVE";
+    if (!targetUser || targetUser.status === "disabled") return;
+
+    const isLocking = targetUser.status === "active";
+    const label = targetUser.name || targetUser.email;
+    const confirmed = window.confirm(
+      isLocking
+        ? `Lock account for ${label}?\n\nThe user will not be able to sign in or use wallet features until unlocked.`
+        : `Unlock account for ${label}?\n\nThe user will regain access to their account and wallet.`
+    );
+    if (!confirmed) return;
+
     try {
-      await adminAPI.updateUserStatus(id, nextStatus);
+      if (isLocking) {
+        await adminAPI.lockUser(id);
+        alert("🔒 Account locked successfully.");
+      } else if (targetUser.status === "locked") {
+        await adminAPI.unlockUser(id);
+        alert("✅ Account unlocked successfully.");
+      }
       await fetchUsers();
-      alert(nextStatus === "LOCKED" ? "🔒 Account locked successfully." : "✅ Account unlocked successfully.");
     } catch (error) {
       console.error("Failed to toggle user status:", error);
-      alert("System error while changing account status.");
+      alert(error.response?.data?.message || "System error while changing account status.");
+    }
+  };
+
+  const handleReactivate = async (id) => {
+    const targetUser = users.find(u => u.id === id);
+    if (!targetUser || targetUser.status !== "disabled") return;
+    if (!window.confirm(`Reactivate account for ${targetUser.name || targetUser.email}?`)) return;
+    try {
+      await adminAPI.reactivateAccount(id);
+      await fetchUsers();
+      alert("✅ Account reactivated successfully.");
+    } catch (error) {
+      console.error("Failed to reactivate account:", error);
+      alert(error.response?.data?.message || "System error while reactivating account.");
     }
   };
 
   const handleToggleFreeze = async (id) => {
     const targetUser = users.find(u => u.id === id);
     if (!targetUser) return;
-    const nextStatus = targetUser.walletStatus === "frozen" ? "ACTIVE" : "FROZEN";
+
+    const isFreezing = targetUser.walletStatus !== "frozen";
+    const label = targetUser.name || targetUser.email;
+    const confirmed = window.confirm(
+      isFreezing
+        ? `Freeze wallet for ${label}?\n\nAll deposits, withdrawals, and transfers will be blocked until unfrozen.`
+        : `Unfreeze wallet for ${label}?\n\nThe user will be able to use wallet features again.`
+    );
+    if (!confirmed) return;
+
+    const nextStatus = isFreezing ? "FROZEN" : "ACTIVE";
     try {
       await adminAPI.updateWalletStatus(id, nextStatus);
       await fetchUsers();
       alert(nextStatus === "FROZEN" ? "❄️ Wallet frozen successfully." : "✅ Wallet unfrozen successfully.");
     } catch (error) {
       console.error("Failed to toggle wallet status:", error);
-      alert("System error while changing wallet status.");
+      alert(error.response?.data?.message || "System error while changing wallet status.");
     }
   };
 
@@ -287,8 +254,8 @@ export default function AdminUsersPage() {
             <span style={{ ...kycBadge[u.kyc], fontSize:11, padding:"3px 8px", borderRadius:6, fontWeight:600, display:"inline-block" }}>
               {kycBadge[u.kyc].text}
             </span>
-            <span style={{ ...statusBadge[u.status], fontSize:11, padding:"3px 8px", borderRadius:6, fontWeight:600, display:"inline-block" }}>
-              {statusBadge[u.status].text}
+            <span style={{ ...(statusBadge[u.status] || statusBadge.active), fontSize:11, padding:"3px 8px", borderRadius:6, fontWeight:600, display:"inline-block" }}>
+              {(statusBadge[u.status] || statusBadge.active).text}
             </span>
             <span style={{ fontSize:13, fontWeight:600 }}>{u.balance}</span>
             <button onClick={() => { setSelectedUser(u); setModalTab("info"); }} style={{ background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:6, padding:"6px 10px", color: "var(--text-secondary)", cursor:"pointer", display:"flex", alignItems:"center", gap:4, fontSize:12 }}>
@@ -677,6 +644,7 @@ export default function AdminUsersPage() {
                 )}
                 <button
                   onClick={() => handleToggleLock(selectedUser.id)}
+                  disabled={selectedUser.status === "disabled"}
                   style={{
                     flex: 1,
                     background: selectedUser.status === "active" ? "rgba(239,68,68,0.1)" : "rgba(34,197,94,0.1)",
@@ -686,12 +654,32 @@ export default function AdminUsersPage() {
                     padding: "10px",
                     fontWeight: 600,
                     fontSize: 13,
-                    cursor: "pointer",
+                    cursor: selectedUser.status === "disabled" ? "not-allowed" : "pointer",
+                    opacity: selectedUser.status === "disabled" ? 0.45 : 1,
                     transition: "all 0.2s"
                   }}
                 >
-                  {selectedUser.status === "active" ? "Lock Account" : "Unlock Account"}
+                  {selectedUser.status === "active" ? "Lock Account" : selectedUser.status === "locked" ? "Unlock Account" : "Lock Account"}
                 </button>
+                {selectedUser.status === "disabled" && (
+                  <button
+                    onClick={() => handleReactivate(selectedUser.id)}
+                    style={{
+                      flex: 1,
+                      background: "rgba(34,197,94,0.1)",
+                      border: "1px solid rgba(34,197,94,0.2)",
+                      color: "#22c55e",
+                      borderRadius: 8,
+                      padding: "10px",
+                      fontWeight: 600,
+                      fontSize: 13,
+                      cursor: "pointer",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    ✅ Reactivate Account
+                  </button>
+                )}
                 <button
                   onClick={() => handleToggleFreeze(selectedUser.id)}
                   style={{

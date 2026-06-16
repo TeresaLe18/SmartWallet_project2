@@ -108,7 +108,7 @@ const verifyRegister = async (req, res) => {
             });
         }
 
-        // create user
+        // create user and wallet
         const user = await prisma.user.create({
             data: {
                 email,
@@ -256,6 +256,20 @@ const login = async (req, res) => {
             return res.status(400).json({
                 success: false,
                 message: 'Invalid credentials'
+            });
+        }
+
+        if (user.status === 'LOCKED') {
+            return res.status(403).json({
+                success: false,
+                message: 'Account is locked. Please contact support for assistance.',
+            });
+        }
+
+        if (user.status === 'DISABLED') {
+            return res.status(403).json({
+                success: false,
+                message: 'Account is disabled. Please contact support to reactivate your account.',
             });
         }
 

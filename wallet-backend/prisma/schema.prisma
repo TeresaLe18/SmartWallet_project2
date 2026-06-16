@@ -22,7 +22,7 @@ enum UserRole {
 enum UserStatus {
   ACTIVE
   LOCKED
-  BANNED
+  DISABLED
 }
 
 enum KycStatus {
@@ -44,6 +44,13 @@ enum LedgerType {
 enum WalletStatus {
   ACTIVE
   FROZEN
+}
+
+enum WalletFreezeReason {
+  ACCOUNT_DISABLED
+  ACCOUNT_LOCKED
+  USER_REQUEST
+  ADMIN_REQUEST
 }
 
 enum TransactionType {
@@ -146,6 +153,7 @@ model Wallet {
   locked_balance Decimal      @default(0) @db.Decimal(19, 2)
   currency       String       @default("VND")
   status         WalletStatus @default(ACTIVE)
+  freeze_reason  WalletFreezeReason?
 
   user User @relation(fields: [user_id], references: [id])
 

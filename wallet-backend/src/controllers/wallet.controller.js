@@ -649,4 +649,137 @@ const transfer = async (req, res) => {
   }
 };
 
-module.exports = { getStats, getTransactions, deposit, withdraw, transfer };
+// ─── POST /wallet/payment (wallet to bank) ────────────────────────────────────
+
+const payment = async (req, res) => {
+  let transaction = null;
+  try {
+    const userId = req.user.userId;
+    const { amount, bank_code, account_number, account_name, note, category_id } = req.body;
+
+    if (!amount || Number(amount) <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid amount' });
+    }
+    if (!bank_code || !account_number || !account_name) {
+      return res.status(400).json({ success: false, message: 'Bank details are required' });
+    }
+
+    const kyc = await prisma.userKyc.findUnique({ where: { user_id: userId } });
+    if (!kyc || kyc.status !== 'VERIFIED') {
+      return res.status(403).json({
+        success: false,
+        message: 'KYC verification required. Please complete identity verification before making a bank payment.',
+      });
+    }
+
+    const wallet = await prisma.wallet.findUnique({ where: { user_id: userId } });
+    if (!wallet) {
+      return res.status(404).json({ success: false, message: 'Wallet not found' });
+    }
+
+    const feeRule = await prisma.transactionFeeRule.findUnique({
+      where: { transaction_type: 'PAYMENT' },
+    });
+    const feeAmount = feeRule ? feeRule.fee_value : new Prisma.Decimal(0);
+    const feeRuleId = feeRule?.id ?? null;
+    const finalAmount = new Prisma.Decimal(amount).plus(feeAmount);
+
+    const available = wallet.balance.minus(wallet.locked_balance);
+    if (available.lt(finalAmount)) {
+      return res.status(400).json({ success: false, message: 'Insufficient balance' });
+    }
+
+    const referenceCode = 'PAY-' + Date.now() + '-' + crypto.randomBytes(4).toString('hex');
+
+    transaction = await prisma.transaction.create({
+      data: {
+        transaction_type: 'PAYMENT',
+        amount: new Prisma.Decimal(amount),
+        fee_rule_id: feeRuleId,
+        fee_amount: feeAmount,
+        discount_amount: new Prisma.Decimal(0),
+        final_amount: finalAmount,
+        sender_wallet_id: wallet.id,
+        receiver_wallet_id: null,
+        payment_method: 'BANK',
+        bank_code,
+        account_number,
+        account_name,
+        message: note || `Bank payment to ${bank_code} - ${account_number}`,
+        category_id: category_id || null,
+        reference_code: referenceCode,
+        status: 'PENDING',
+      },
+    });
+
+    await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM wallets WHERE id = ${wallet.id} FOR UPDATE`;
+      const currentWallet = await tx.wallet.findUnique({ where: { id: wallet.id } });
+
+      const currentAvailable = currentWallet.balance.minus(currentWallet.locked_balance);
+      if (currentAvailable.lt(finalAmount)) throw new Error('Insufficient balance');
+
+      const balanceBefore = currentWallet.balance;
+      const balanceAfter = balanceBefore.minus(finalAmount);
+
+      await tx.wallet.update({
+        where: { id: wallet.id },
+        data: { balance: { decrement: finalAmount } },
+      });
+
+      await tx.ledgerEntry.create({
+        data: {
+          transaction_id: transaction.id,
+          wallet_id: wallet.id,
+          type: 'DEBIT',
+          amount: finalAmount,
+          balance_before: balanceBefore,
+          balance_after: balanceAfter,
+        },
+      });
+
+      await tx.transaction.update({
+        where: { id: transaction.id },
+        data: { status: 'SUCCESS' },
+      });
+    });
+
+    const updatedWallet = await prisma.wallet.findUnique({ where: { id: wallet.id } });
+    const fullTx = await prisma.transaction.findUnique({
+      where: { id: transaction.id },
+      include: {
+        sender_wallet: { include: { user: { select: { email: true } } } },
+        receiver_wallet: { include: { user: { select: { email: true } } } },
+      },
+    });
+
+    await prisma.notification.create({
+      data: {
+        user_id: userId,
+        title: 'Bank payment successful 🏦',
+        content: `${Number(amount).toLocaleString('vi-VN')} ₫ has been sent to ${bank_code} (Account: ${account_number}). Reference: ${referenceCode}.`,
+      },
+    }).catch(() => { /* non-critical */ });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Bank payment successful',
+      transactionId: transaction.id,
+      referenceCode,
+      transaction: fullTx,
+      wallet: { balance: Number(updatedWallet.balance) - Number(updatedWallet.locked_balance) },
+    });
+  } catch (error) {
+    if (transaction?.id) {
+      try {
+        const current = await prisma.transaction.findUnique({ where: { id: transaction.id } });
+        if (current && current.status !== 'SUCCESS') {
+          await prisma.transaction.update({ where: { id: transaction.id }, data: { status: 'FAILED' } });
+        }
+      } catch (_) { /* silent */ }
+    }
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};  
+
+module.exports = { getStats, getTransactions, deposit, withdraw, transfer, payment };

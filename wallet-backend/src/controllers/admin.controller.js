@@ -80,82 +80,278 @@ const userDetail = async (req, res) => {
   }
 };
 
-const banUser = async (req, res) => {
+// REACTIVATE ACCOUNT
+const reactivateAccount = async (req, res) => {
   try {
     const userId = Number(req.params.id);
-    if (isNaN(userId)) return res.status(400).json({ success: false, message: 'Invalid user id' });
 
-    const user = await prisma.user.update({
+    if (isNaN(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user id',
+      });
+    }
+
+    const existingUser = await prisma.user.findUnique({
       where: { id: userId },
-      data: { status: 'BANNED' },
-      select: { id: true, email: true, role: true, status: true },
+      select: { id: true, status: true },
     });
-    return res.status(200).json({ success: true, message: 'User banned', data: user });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
-};
 
-const unbanUser = async (req, res) => {
-  try {
-    const userId = Number(req.params.id);
-    if (isNaN(userId)) return res.status(400).json({ success: false, message: 'Invalid user id' });
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
 
-    const user = await prisma.user.update({
-      where: { id: userId },
-      data: { status: 'ACTIVE' },
-      select: { id: true, email: true, role: true, status: true },
+    if (existingUser.status !== 'DISABLED') {
+      return res.status(409).json({
+        success: false,
+        message: 'Only disabled accounts can be reactivated',
+      });
+    }
+
+    const user = await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id: userId },
+        data: { status: 'ACTIVE' },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          status: true,
+        },
+      });
+
+      await tx.wallet.updateMany({
+        where: {
+          user_id: userId,
+          status: 'FROZEN',
+          freeze_reason: 'ACCOUNT_DISABLED',
+        },
+        data: {
+          status: 'ACTIVE',
+          freeze_reason: null,
+        },
+      });
+
+      return updatedUser;
     });
-    return res.status(200).json({ success: true, message: 'User unbanned', data: user });
+
+    return res.status(200).json({
+      success: true,
+      message: 'Account reactivated successfully',
+      data: user,
+    });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
 const lockUser = async (req, res) => {
   try {
     const userId = Number(req.params.id);
-    if (isNaN(userId)) return res.status(400).json({ success: false, message: 'Invalid user id' });
 
-    const user = await prisma.user.update({
+    if (isNaN(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user id',
+      });
+    }
+
+    const existingUser = await prisma.user.findUnique({
       where: { id: userId },
-      data: { status: 'LOCKED' },
-      select: { id: true, email: true, role: true, status: true },
+      select: { id: true, status: true },
     });
-    return res.status(200).json({ success: true, message: 'User locked', data: user });
+
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    if (existingUser.status === 'LOCKED') {
+      return res.status(409).json({
+        success: false,
+        message: 'User is already locked',
+      });
+    }
+
+    if (existingUser.status === 'DISABLED') {
+      return res.status(409).json({
+        success: false,
+        message: 'Disabled account cannot be locked',
+      });
+    }
+
+    const user = await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id: userId },
+        data: { status: 'LOCKED' },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          status: true,
+        },
+      });
+
+      await tx.wallet.updateMany({
+        where: {
+          user_id: userId,
+          status: 'ACTIVE',
+        },
+        data: {
+          status: 'FROZEN',
+          freeze_reason: 'ACCOUNT_LOCKED',
+        },
+      });
+
+      return updatedUser;
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'User locked successfully',
+      data: user,
+    });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
 
 const unlockUser = async (req, res) => {
   try {
     const userId = Number(req.params.id);
-    if (isNaN(userId)) return res.status(400).json({ success: false, message: 'Invalid user id' });
 
-    const user = await prisma.user.update({
+    if (isNaN(userId)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid user id',
+      });
+    }
+
+    const existingUser = await prisma.user.findUnique({
       where: { id: userId },
-      data: { status: 'ACTIVE' },
-      select: { id: true, email: true, role: true, status: true },
+      select: { id: true, status: true },
     });
-    return res.status(200).json({ success: true, message: 'User unlocked', data: user });
+
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found',
+      });
+    }
+
+    if (existingUser.status !== 'LOCKED') {
+      return res.status(409).json({
+        success: false,
+        message: 'User is not locked',
+      });
+    }
+
+    const user = await prisma.$transaction(async (tx) => {
+      const updatedUser = await tx.user.update({
+        where: { id: userId },
+        data: { status: 'ACTIVE' },
+        select: {
+          id: true,
+          email: true,
+          role: true,
+          status: true,
+        },
+      });
+
+      await tx.wallet.updateMany({
+        where: {
+          user_id: userId,
+          status: 'FROZEN',
+          freeze_reason: 'ACCOUNT_LOCKED',
+        },
+        data: {
+          status: 'ACTIVE',
+          freeze_reason: null,
+        },
+      });
+
+      return updatedUser;
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: 'User unlocked successfully',
+      data: user,
+    });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
   }
 };
-
 // ─── Wallets ──────────────────────────────────────────────────────────────────
 
 const freezeWallet = async (req, res) => {
   try {
     const userId = Number(req.params.id);
-    if (isNaN(userId)) return res.status(400).json({ success: false, message: 'Invalid user id' });
+    if (isNaN(userId)) {
+      return res.status(400).json({ success: false, message: 'Invalid user id' });
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        status: true,
+        wallet: { select: { id: true, status: true, freeze_reason: true } },
+      },
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (existingUser.status === 'DISABLED') {
+      return res.status(409).json({
+        success: false,
+        message: 'Cannot freeze wallet: account is disabled. Reactivate the account instead.',
+      });
+    }
+
+    if (existingUser.status === 'LOCKED') {
+      return res.status(409).json({
+        success: false,
+        message: 'Cannot freeze wallet: account is locked. Unlock the account instead.',
+      });
+    }
+
+    if (!existingUser.wallet) {
+      return res.status(404).json({ success: false, message: 'Wallet not found' });
+    }
+
+    if (existingUser.wallet.status === 'FROZEN') {
+      return res.status(409).json({
+        success: false,
+        message: 'Wallet is already frozen',
+      });
+    }
 
     const wallet = await prisma.wallet.update({
       where: { user_id: userId },
-      data: { status: 'FROZEN' },
-      select: { id: true, balance: true, locked_balance: true, status: true },
+      data: {
+        status: 'FROZEN',
+        freeze_reason: 'ADMIN_REQUEST',
+      },
+      select: { id: true, balance: true, locked_balance: true, status: true, freeze_reason: true },
     });
+
     return res.status(200).json({ success: true, message: 'Wallet frozen', data: wallet });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -165,13 +361,68 @@ const freezeWallet = async (req, res) => {
 const unfreezeWallet = async (req, res) => {
   try {
     const userId = Number(req.params.id);
-    if (isNaN(userId)) return res.status(400).json({ success: false, message: 'Invalid user id' });
+    if (isNaN(userId)) {
+      return res.status(400).json({ success: false, message: 'Invalid user id' });
+    }
+
+    const existingUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        id: true,
+        status: true,
+        wallet: { select: { id: true, status: true, freeze_reason: true } },
+      },
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    if (existingUser.status === 'DISABLED') {
+      return res.status(409).json({
+        success: false,
+        message: 'Cannot unfreeze wallet: account is disabled. Reactivate the account first.',
+      });
+    }
+
+    if (existingUser.status === 'LOCKED') {
+      return res.status(409).json({
+        success: false,
+        message: 'Cannot unfreeze wallet: account is locked. Unlock the account instead.',
+      });
+    }
+
+    if (!existingUser.wallet) {
+      return res.status(404).json({ success: false, message: 'Wallet not found' });
+    }
+
+    if (existingUser.wallet.status !== 'FROZEN') {
+      return res.status(409).json({
+        success: false,
+        message: 'Wallet is not frozen',
+      });
+    }
+
+    const { freeze_reason: freezeReason } = existingUser.wallet;
+    if (freezeReason === 'ACCOUNT_DISABLED' || freezeReason === 'ACCOUNT_LOCKED') {
+      return res.status(409).json({
+        success: false,
+        message:
+          freezeReason === 'ACCOUNT_DISABLED'
+            ? 'Cannot unfreeze wallet: frozen because account is disabled. Reactivate the account instead.'
+            : 'Cannot unfreeze wallet: frozen because account is locked. Unlock the account instead.',
+      });
+    }
 
     const wallet = await prisma.wallet.update({
       where: { user_id: userId },
-      data: { status: 'ACTIVE' },
-      select: { id: true, balance: true, locked_balance: true, status: true },
+      data: {
+        status: 'ACTIVE',
+        freeze_reason: null,
+      },
+      select: { id: true, balance: true, locked_balance: true, status: true, freeze_reason: true },
     });
+
     return res.status(200).json({ success: true, message: 'Wallet unfrozen', data: wallet });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -347,8 +598,7 @@ const resolveFraudLog = async (req, res) => {
 module.exports = {
   listUsers,
   userDetail,
-  banUser,
-  unbanUser,
+  reactivateAccount,
   lockUser,
   unlockUser,
   freezeWallet,

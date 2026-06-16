@@ -284,79 +284,54 @@ const changePassword = async (req, res) => {
     }
 };
 
-//LOCK ACCOUNT
-const lockAccount = async (req, res) => {
+//DISABLED ACCOUNT
+const disableAccount = async (req, res) => {
     try {
         const userId = req.user.userId;
 
-        const user = await prisma.user.findUnique({
+        const existingUser = await prisma.user.findUnique({
             where: { id: userId },
+            select: { id: true, status: true },
         });
 
-        if (!user) {
+        if (!existingUser) {
             return res.status(404).json({
                 success: false,
                 message: 'User not found',
             });
         }
 
-        if (user.status === 'LOCKED') {
-            return res.status(400).json({
+        if (existingUser.status === 'DISABLED') {
+            return res.status(409).json({
                 success: false,
-                message: 'Already locked',
+                message: 'Account is already disabled',
             });
         }
 
-        const updated = await prisma.user.update({
-            where: { id: userId },
-            data: { status: 'LOCKED' },
+        const result = await prisma.$transaction(async (tx) => {
+            const updatedUser = await tx.user.update({
+                where: { id: userId },
+                data: { status: 'DISABLED' },
+            });
+
+            await tx.wallet.updateMany({
+                where: {
+                    user_id: userId,
+                    status: 'ACTIVE',
+                },
+                data: {
+                    status: 'FROZEN',
+                    freeze_reason: 'ACCOUNT_DISABLED',
+                },
+            });
+
+            return updatedUser;
         });
 
         return res.status(200).json({
             success: true,
-            message: 'Account locked successfully',
-            user: updated,
-        });
-    } catch (error) {
-        return res.status(500).json({
-            success: false,
-            message: error.message,
-        });
-    }
-};
-
-//UNLOCK ACCOUNT
-const unlockAccount = async (req, res) => {
-    try {
-        const userId = req.user.userId;
-
-        const user = await prisma.user.findUnique({
-            where: { id: userId },
-        });
-
-        if (!user) {
-            return res.status(404).json({
-                success: false,
-                message: 'User not found',
-            });
-        }
-
-        if (user.status === 'ACTIVE') {
-            return res.status(400).json({
-                success: false,
-                message: 'Already active',
-            });
-        }
-
-        const updated = await prisma.user.update({
-            where: { id: userId },
-            data: { status: 'ACTIVE' },
-        });
-
-        return res.status(200).json({
-            success: true,
-            message: 'Account unlocked successfully',
-            user: updated,
+            message: 'Account disabled successfully',
+            user: result,
         });
     } catch (error) {
         return res.status(500).json({
@@ -382,9 +357,19 @@ const freezeWallet = async (req, res) => {
             });
         }
 
+        if (wallet.status === 'FROZEN') {
+            return res.status(200).json({
+                success: true,
+                message: 'Wallet already frozen',
+            });
+        }
+
         const updated = await prisma.wallet.update({
             where: { user_id: userId },
-            data: { status: 'FROZEN' },
+            data: { 
+                status: 'FROZEN',
+                freeze_reason: 'USER_REQUEST',
+            },
         });
 
         return res.status(200).json({
@@ -407,7 +392,6 @@ module.exports = {
     requestChangeContact,
     verifyChangeContact,
     changePassword,
-    lockAccount,
-    unlockAccount,
+    disableAccount,
     freezeWallet,
 };

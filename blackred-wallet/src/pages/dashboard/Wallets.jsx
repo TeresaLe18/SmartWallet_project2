@@ -54,6 +54,7 @@ const mapBackendTx = (tx, currentEmail) => {
   let name = "";
   if (tx.transaction_type === 'DEPOSIT') name = "Wallet Deposit";
   else if (tx.transaction_type === 'WITHDRAW') name = `Withdraw to ${tx.bank_code || 'bank'}`;
+  else if (tx.transaction_type === 'PAYMENT') name = `Bank payment to ${tx.bank_code || 'bank'}`;
   else if (tx.transaction_type === 'TRANSFER') {
     name = isSender 
       ? `Transfer to ${tx.receiver_wallet?.user?.email || 'recipient'}`
@@ -796,17 +797,16 @@ export default function WalletsPage() {
       
       try {
         const amount = Number(txForm.amount);
-        const payload = {
+        const res = await walletAPI.payment({
           amount,
           bank_code: bankTransferForm.bank,
           account_number: bankTransferForm.account,
           account_name: bankTransferForm.ownerName || "Interbank Recipient",
           note: txForm.note || `Interbank transfer to account ${bankTransferForm.account} - ${bankTransferForm.bank}`,
           pin_code: pin,
-        };
-        
-        const res = await walletAPI.withdraw(payload);
-        
+          category_id: txForm.category ? Number(txForm.category) : null,
+        });
+
         if (res.success) {
           if (res.transaction) {
             const newTx = mapBackendTx(res.transaction, userEmail);
@@ -814,12 +814,13 @@ export default function WalletsPage() {
           }
           if (res.wallet?.balance !== undefined) setBalance(Number(res.wallet.balance));
 
-          showToast("Interbank transfer successful!");
+          showToast("Bank payment successful!");
           closeModal();
+          await fetchWalletData();
         }
       } catch (err) {
-        console.error("Bank transfer error:", err);
-        showToast(err.response?.data?.message || "System error during transfer.", "error");
+        console.error("Bank payment error:", err);
+        showToast(err.response?.data?.message || "System error during bank payment.", "error");
         setPinTransactionInputs(["", "", "", ""]);
       }
     }
@@ -1838,6 +1839,35 @@ export default function WalletsPage() {
                     </select>
                   </div>
 
+                  {/* Common fields: Amount + Note */}
+                  <div style={{ marginTop:16, marginBottom:14, textAlign:"left" }}>
+                    <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Amount (₫) *</label>
+                    <div style={{ position:"relative" }}>
+                      <input
+                        type="text" inputMode="numeric"
+                        value={txForm.amount ? Number(txForm.amount).toLocaleString("vi-VN") : ""}
+                        onChange={e => { const raw = e.target.value.replace(/\D/g,""); setTxForm({...txForm, amount:raw}); }}
+                        placeholder="0"
+                        style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"12px 60px 12px 16px", color: "#000000", fontSize:18, fontWeight:700, outline:"none", boxSizing:"border-box" }}
+                      />
+                      <span style={{ position:"absolute", right:16, top:"50%", transform:"translateY(-50%)", fontSize:14, fontWeight:600, color:"var(--text-muted)", pointerEvents:"none" }}>₫</span>
+                    </div>
+                    <div style={{ display:"flex", gap:8, marginTop:10, flexWrap:"wrap" }}>
+                      {[50000,100000,200000,500000].map(v => (
+                        <button key={v} onClick={() => setTxForm({...txForm, amount:String(v)})}
+                          style={{ fontSize:12, padding:"5px 10px", borderRadius:8, background: "var(--bg-card2)", border: "1px solid var(--border)", color: "var(--text-secondary)", cursor:"pointer" }}>
+                          +{fmtCurrency(v)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ marginBottom:16, textAlign:"left" }}>
+                    <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Note (optional)</label>
+                    <input value={txForm.note} onChange={e => setTxForm({...txForm, note:e.target.value})}
+                      placeholder="Transfer note"
+                      style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"11px 14px", color: "#000000", fontSize:14, outline:"none" }} />
+                  </div>
+
                   {/* Promo Code Selection */}
                   {transferMethod === "smartwallet" && (
                     <div style={{ marginTop:16, marginBottom:16, border: "1px solid var(--border)", borderRadius:12, padding:14, background: "var(--bg-card2)", textAlign:"left" }}>
@@ -1908,35 +1938,6 @@ export default function WalletsPage() {
                       })()}
                     </div>
                   )}
-
-                  {/* Common fields: Amount + Note */}
-                    <div style={{ marginTop:16, marginBottom:14, textAlign:"left" }}>
-                    <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Amount (₫) *</label>
-                    <div style={{ position:"relative" }}>
-                      <input
-                        type="text" inputMode="numeric"
-                        value={txForm.amount ? Number(txForm.amount).toLocaleString("vi-VN") : ""}
-                        onChange={e => { const raw = e.target.value.replace(/\D/g,""); setTxForm({...txForm, amount:raw}); }}
-                        placeholder="0"
-                        style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"12px 60px 12px 16px", color: "#000000", fontSize:18, fontWeight:700, outline:"none", boxSizing:"border-box" }}
-                      />
-                      <span style={{ position:"absolute", right:16, top:"50%", transform:"translateY(-50%)", fontSize:14, fontWeight:600, color:"var(--text-muted)", pointerEvents:"none" }}>₫</span>
-                    </div>
-                    <div style={{ display:"flex", gap:8, marginTop:10, flexWrap:"wrap" }}>
-                      {[50000,100000,200000,500000].map(v => (
-                        <button key={v} onClick={() => setTxForm({...txForm, amount:String(v)})}
-                          style={{ fontSize:12, padding:"5px 10px", borderRadius:8, background: "var(--bg-card2)", border: "1px solid var(--border)", color: "var(--text-secondary)", cursor:"pointer" }}>
-                          +{fmtCurrency(v)}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                    <div style={{ marginBottom:20, textAlign:"left" }}>
-                    <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Note (optional)</label>
-                    <input value={txForm.note} onChange={e => setTxForm({...txForm, note:e.target.value})}
-                      placeholder="Transfer note"
-                      style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"11px 14px", color: "#000000", fontSize:14, outline:"none" }} />
-                  </div>
 
                   {/* Available balance display */}
                     <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 12px", background: "var(--bg-card2)", borderRadius:8, marginBottom:16 }}>

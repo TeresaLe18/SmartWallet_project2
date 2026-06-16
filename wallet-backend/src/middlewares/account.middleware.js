@@ -18,14 +18,14 @@ const accountMiddleware = async (req, res, next) => {
     if (user.status === 'LOCKED') {
       return res.status(403).json({
         success: false,
-        message: 'Account is locked. Please unlock to continue.',
+        message: 'Account is locked. Please contact support for assistance.',
       });
     }
 
-    if (user.status === 'BANNED') {
+    if (user.status === 'DISABLED') {
       return res.status(403).json({
         success: false,
-        message: 'Account is banned. Please contact support for assistance.',
+        message: 'Account is disabled. Please contact support for assistance.',
       });
     }
 

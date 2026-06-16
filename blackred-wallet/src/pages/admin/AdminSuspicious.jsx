@@ -111,14 +111,32 @@ export default function AdminSuspiciousPage() {
       return;
     }
     const currentStatus = matchedUser.status.toLowerCase();
-    const nextStatus = currentStatus === "active" ? "LOCKED" : "ACTIVE";
+    if (currentStatus === "disabled") {
+      alert("Disabled accounts must be reactivated from the Users page.");
+      return;
+    }
+
+    const isLocking = currentStatus === "active";
+    const label = matchedUser.email;
+    const confirmed = window.confirm(
+      isLocking
+        ? `Lock account for ${label}?\n\nThe user will not be able to sign in or use wallet features until unlocked.`
+        : `Unlock account for ${label}?\n\nThe user will regain access to their account and wallet.`
+    );
+    if (!confirmed) return;
+
     try {
-      await adminAPI.updateUserStatus(matchedUser.id, nextStatus);
+      if (isLocking) {
+        await adminAPI.lockUser(matchedUser.id);
+        alert("🔒 Account locked successfully.");
+      } else {
+        await adminAPI.unlockUser(matchedUser.id);
+        alert("🔓 Account unlocked successfully.");
+      }
       await loadData();
-      alert(`${nextStatus === "LOCKED" ? "🔒 Account locked" : "🔓 Account unlocked"} successfully!`);
     } catch (error) {
       console.error("Failed to update user status:", error);
-      alert("System error while updating account status.");
+      alert(error.response?.data?.message || "System error while updating account status.");
     }
   };
 
@@ -129,14 +147,23 @@ export default function AdminSuspiciousPage() {
       return;
     }
     const walletStatus = matchedUser.wallet ? matchedUser.wallet.status.toLowerCase() : "active";
-    const nextStatus = walletStatus === "frozen" ? "ACTIVE" : "FROZEN";
+    const isFreezing = walletStatus !== "frozen";
+    const label = matchedUser.email;
+    const confirmed = window.confirm(
+      isFreezing
+        ? `Freeze wallet for ${label}?\n\nAll deposits, withdrawals, and transfers will be blocked until unfrozen.`
+        : `Unfreeze wallet for ${label}?\n\nThe user will be able to use wallet features again.`
+    );
+    if (!confirmed) return;
+
+    const nextStatus = isFreezing ? "FROZEN" : "ACTIVE";
     try {
       await adminAPI.updateWalletStatus(matchedUser.id, nextStatus);
       await loadData();
       alert(`${nextStatus === "FROZEN" ? "❄️ Wallet frozen" : "🔓 Wallet unfrozen"} successfully!`);
     } catch (error) {
       console.error("Failed to update wallet status:", error);
-      alert("System error while updating wallet status.");
+      alert(error.response?.data?.message || "System error while updating wallet status.");
     }
   };
 

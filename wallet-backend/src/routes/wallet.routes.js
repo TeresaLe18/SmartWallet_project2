@@ -37,4 +37,12 @@ router.post(
   walletController.transfer,
 );
 
+router.post(
+  '/payment',
+  authMiddleware,
+  accountMiddleware,
+  walletMiddleware,
+  pinMiddleware,
+  walletController.payment,
+);
 module.exports = router;

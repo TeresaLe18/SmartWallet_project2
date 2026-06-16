@@ -152,6 +152,10 @@ export const authAPI = {
     localStorage.removeItem("bw_refresh_token");
     localStorage.removeItem("bw_user");
   },
+  disableAccount: async () => {
+    const res = await api.patch("/users/account/disable");
+    return res.data;
+  },
 };
 
 // ─── KYC API ──────────────────────────────────────────────────────────────────
@@ -230,6 +234,18 @@ export const walletAPI = {
     });
     return res.data;
   },
+  payment: async ({ amount, bank_code, account_number, account_name, note, pin_code, category_id }) => {
+    const res = await api.post("/wallet/payment", {
+      amount,
+      bank_code,
+      account_number,
+      account_name,
+      note,
+      pin_code,
+      ...(category_id ? { category_id } : {}),
+    });
+    return res.data;
+  },
   getTransactions: async () => {
     const res = await api.get("/wallet/transactions");
     return res.data;
@@ -288,21 +304,24 @@ export const adminAPI = {
     const res = await api.get(`/admin/users/${id}`);
     return res.data;
   },
-  // status: 'BANNED' | 'LOCKED' | 'ACTIVE'
+  // status: 'LOCKED' | 'ACTIVE'
   updateUserStatus: async (id, status) => {
     let route;
-    if (status === "BANNED") route = `/admin/users/${id}/ban`;
-    else if (status === "LOCKED") route = `/admin/users/${id}/lock`;
-    else route = `/admin/users/${id}/unban`;
+    if (status === "LOCKED") route = `/admin/users/${id}/lock`;
+    else route = `/admin/users/${id}/unlock`;
     const res = await api.patch(route);
     return res.data;
   },
-  banUser: async (id) => {
-    const res = await api.patch(`/admin/users/${id}/ban`);
+  lockUser: async (id) => {
+    const res = await api.patch(`/admin/users/${id}/lock`);
     return res.data;
   },
-  unbanUser: async (id) => {
-    const res = await api.patch(`/admin/users/${id}/unban`);
+  unlockUser: async (id) => {
+    const res = await api.patch(`/admin/users/${id}/unlock`);
+    return res.data;
+  },
+  reactivateAccount: async (id) => {
+    const res = await api.patch(`/admin/users/${id}/reactivate`);
     return res.data;
   },
   // walletStatus: 'FROZEN' | 'ACTIVE'

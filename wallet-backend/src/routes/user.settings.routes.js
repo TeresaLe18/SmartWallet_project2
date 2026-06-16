@@ -41,9 +41,8 @@ router.post(
   userController.verifyChangeContact,
 );
 
-// lock/unlock account
-router.patch('/account/lock', authMiddleware, userController.lockAccount);
-router.patch('/account/unlock', authMiddleware, userController.unlockAccount);
+// disable account
+router.patch('/account/disable', authMiddleware, accountMiddleware, userController.disableAccount);
 
 //freeze wallet
 router.patch(

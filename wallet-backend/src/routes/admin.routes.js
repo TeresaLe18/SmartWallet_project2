@@ -10,8 +10,7 @@ const guard = [authMiddleware, adminMiddleware];
 // ─── Users ────────────────────────────────────────────────────────────────────
 router.get('/users', ...guard, adminController.listUsers);
 router.get('/users/:id', ...guard, adminController.userDetail);
-router.patch('/users/:id/ban', ...guard, adminController.banUser);
-router.patch('/users/:id/unban', ...guard, adminController.unbanUser);
+router.patch('/users/:id/reactivate', ...guard, adminController.reactivateAccount);
 router.patch('/users/:id/lock', ...guard, adminController.lockUser);
 router.patch('/users/:id/unlock', ...guard, adminController.unlockUser);
 
