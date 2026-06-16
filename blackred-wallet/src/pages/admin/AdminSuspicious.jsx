@@ -9,10 +9,10 @@ const initialSuspiciousItems = [
     userEmail: "nva@email.com",
     userName: "Nguyễn Văn A",
     type: "account",
-    title: "Số dư tăng đột biến",
+    title: "Sudden Balance Spike",
     severity: "high",
-    reason: "Phát hiện số dư ví tăng vọt 5,000,000 ₫ qua giao dịch chuyển tiền tự động liên tục trong 15 giây mà không thông qua xác nhận nạp tiền bình thường.",
-    time: "10 phút trước",
+    reason: "Wallet balance surged by 5,000,000 ₫ through a series of automated transfers within 15 seconds without going through normal top-up confirmation.",
+    time: "10 minutes ago",
     status: "pending"
   },
   {
@@ -20,10 +20,10 @@ const initialSuspiciousItems = [
     userEmail: "ttb@email.com",
     userName: "Trần Thị B",
     type: "transaction",
-    title: "Spam giao dịch nạp rút",
+    title: "Deposit/Withdrawal Spam",
     severity: "medium",
-    reason: "Thực hiện liên tục 6 giao dịch nạp tiền rồi rút tiền ngay lập tức với cùng trị giá 500,000 ₫ trong vòng 3 phút, có hành vi rửa tiền hoặc thử nghiệm cổng thanh toán bất thường.",
-    time: "25 phút trước",
+    reason: "Performed 6 consecutive top-up and immediate withdrawal transactions at the same value of 500,000 ₫ within 3 minutes — indicating potential money laundering or abnormal payment gateway probing.",
+    time: "25 minutes ago",
     status: "pending"
   },
   {
@@ -31,10 +31,10 @@ const initialSuspiciousItems = [
     userEmail: "ptd@email.com",
     userName: "Phạm Thị D",
     type: "account",
-    title: "Giao dịch lớn chưa KYC",
+    title: "Large Transactions Without KYC",
     severity: "high",
-    reason: "Tổng khối lượng giao dịch tích lũy trong 24 giờ qua vượt quá 50,000,000 ₫ mặc dù tài khoản này chưa hoàn tất bất kỳ bước xác thực danh tính (KYC) nào.",
-    time: "1 giờ trước",
+    reason: "Cumulative transaction volume over the past 24 hours exceeded 50,000,000 ₫ despite this account not having completed any identity verification (KYC) step.",
+    time: "1 hour ago",
     status: "pending"
   },
   {
@@ -42,10 +42,10 @@ const initialSuspiciousItems = [
     userEmail: "lvc@email.com",
     userName: "Lê Văn C",
     type: "transaction",
-    title: "Chuyển tiền liên tục đến ví lạ",
+    title: "Repeated Transfers to Unknown Wallets",
     severity: "low",
-    reason: "Phát hiện tài khoản thực hiện chuyển tiền liên tiếp 10 lần trị giá 20,000 ₫ đến các số tài khoản ví mới chưa từng giao dịch trước đây, nghi ngờ hành động rải tiền tự động robot.",
-    time: "3 giờ trước",
+    reason: "Account made 10 consecutive transfers of 20,000 ₫ to new wallet accounts with no prior transaction history — suspected automated fund-scattering bot behavior.",
+    time: "3 hours ago",
     status: "pending"
   }
 ];
@@ -78,9 +78,9 @@ export default function AdminSuspiciousPage() {
             id: String(log.id),
             userId: log.user_id,
             userEmail: log.user?.email || matchedUser?.email || "—",
-            userName: log.user?.kyc?.full_name || matchedUser?.kyc?.full_name || log.user?.email || "Người dùng",
+            userName: log.user?.kyc?.full_name || matchedUser?.kyc?.full_name || log.user?.email || "User",
             type,
-            title: severity === "critical" || severity === "high" ? "Cảnh báo nguy cấp" : "Cảnh báo bảo mật",
+            title: severity === "critical" || severity === "high" ? "Critical Alert" : "Security Alert",
             severity,
             reason: log.reason,
             time: new Date(log.created_at || log.createdAt).toLocaleTimeString("vi-VN", {hour:"2-digit", minute:"2-digit"}) + " " + new Date(log.created_at || log.createdAt).toLocaleDateString("vi-VN"),
@@ -107,7 +107,7 @@ export default function AdminSuspiciousPage() {
   const handleToggleLockUser = async (email) => {
     const matchedUser = users.find(x => x.email === email);
     if (!matchedUser) {
-      alert("Không tìm thấy thông tin tài khoản người dùng.");
+      alert("User account information not found.");
       return;
     }
     const currentStatus = matchedUser.status.toLowerCase();
@@ -115,17 +115,17 @@ export default function AdminSuspiciousPage() {
     try {
       await adminAPI.updateUserStatus(matchedUser.id, nextStatus);
       await loadData();
-      alert(`${nextStatus === "LOCKED" ? "🔒 Đã khóa" : "🔓 Đã mở khóa"} tài khoản thành công!`);
+      alert(`${nextStatus === "LOCKED" ? "🔒 Account locked" : "🔓 Account unlocked"} successfully!`);
     } catch (error) {
       console.error("Failed to update user status:", error);
-      alert("Lỗi hệ thống khi thay đổi trạng thái tài khoản.");
+      alert("System error while updating account status.");
     }
   };
 
   const handleToggleFreezeWallet = async (email) => {
     const matchedUser = users.find(x => x.email === email);
     if (!matchedUser) {
-      alert("Không tìm thấy thông tin tài khoản người dùng.");
+      alert("User account information not found.");
       return;
     }
     const walletStatus = matchedUser.wallet ? matchedUser.wallet.status.toLowerCase() : "active";
@@ -133,10 +133,10 @@ export default function AdminSuspiciousPage() {
     try {
       await adminAPI.updateWalletStatus(matchedUser.id, nextStatus);
       await loadData();
-      alert(`${nextStatus === "FROZEN" ? "❄️ Đã đóng băng" : "🔓 Đã giải phóng"} ví thành công!`);
+      alert(`${nextStatus === "FROZEN" ? "❄️ Wallet frozen" : "🔓 Wallet unfrozen"} successfully!`);
     } catch (error) {
       console.error("Failed to update wallet status:", error);
-      alert("Lỗi hệ thống khi thay đổi trạng thái ví.");
+      alert("System error while updating wallet status.");
     }
   };
 
@@ -144,10 +144,10 @@ export default function AdminSuspiciousPage() {
     try {
       await adminAPI.resolveFraudLog(id);
       await loadData();
-      alert("✅ Đã xử lý giải quyết cảnh báo rủi ro thành công.");
+      alert("✅ Risk alert resolved successfully.");
     } catch (error) {
       console.error("Failed to resolve fraud warning:", error);
-      alert("Lỗi hệ thống khi xử lý cảnh báo.");
+      alert("System error while processing alert.");
     }
   };
 
@@ -165,25 +165,25 @@ export default function AdminSuspiciousPage() {
     <div style={{ maxWidth: 1000, display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
         <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
-          <ShieldAlert size={22} style={{ color: "#ef4444" }} /> Quản lý giao dịch & Tài khoản bất thường
+          <ShieldAlert size={22} style={{ color: "#ef4444" }} /> Suspicious Transactions & Accounts
         </h1>
         <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
-          Danh sách các tài khoản hoặc giao dịch được hệ thống cảnh báo có dấu hiệu rủi ro, gian lận, lỗi hệ thống.
+          Accounts and transactions flagged by the system as showing signs of risk, fraud, or system anomalies.
         </p>
       </div>
 
       {/* Overview Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 14, padding: 16 }}>
-          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Tổng cảnh báo</p>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Total Alerts</p>
           <p style={{ fontSize: 24, fontWeight: 800, marginTop: 4, color: "#ef4444" }}>{items.length}</p>
         </div>
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 14, padding: 16 }}>
-          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Đang chờ xử lý</p>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Pending Review</p>
           <p style={{ fontSize: 24, fontWeight: 800, marginTop: 4, color: "#f59e0b" }}>{items.filter(x => x.status === "pending").length}</p>
         </div>
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 14, padding: 16 }}>
-          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Đã giải quyết</p>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Resolved</p>
           <p style={{ fontSize: 24, fontWeight: 800, marginTop: 4, color: "#22c55e" }}>{items.filter(x => x.status === "resolved").length}</p>
         </div>
       </div>
@@ -191,8 +191,8 @@ export default function AdminSuspiciousPage() {
       {/* Main List */}
       <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700 }}>Danh sách cảnh báo phát hiện</h3>
-          <span style={{ fontSize: 11, background: "rgba(239,68,68,0.1)", color: "#ef4444", padding: "2px 8px", borderRadius: 20, fontWeight: 600 }}>Tự động kiểm tra: Real-time</span>
+          <h3 style={{ fontSize: 14, fontWeight: 700 }}>Detected Alerts</h3>
+          <span style={{ fontSize: 11, background: "rgba(239,68,68,0.1)", color: "#ef4444", padding: "2px 8px", borderRadius: 20, fontWeight: 600 }}>Auto-monitoring: Real-time</span>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -218,16 +218,16 @@ export default function AdminSuspiciousPage() {
                       background: item.severity === "high" ? "rgba(239,68,68,0.12)" : item.severity === "medium" ? "rgba(245,158,11,0.12)" : "rgba(59,130,246,0.12)",
                       color: item.severity === "high" ? "#ef4444" : item.severity === "medium" ? "#f59e0b" : "#3b82f6"
                     }}>
-                      {item.severity === "high" ? "Nguy cấp" : item.severity === "medium" ? "Trung bình" : "Thấp"}
+                      {item.severity === "high" ? "Critical" : item.severity === "medium" ? "Medium" : "Low"}
                     </span>
                     <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{item.title}</span>
                     {item.status === "resolved" && (
-                      <span style={{ fontSize: 10, background: "rgba(34,197,94,0.1)", color: "#22c55e", padding: "1px 6px", borderRadius: 4, fontWeight: 600 }}>Đã xử lý</span>
+                      <span style={{ fontSize: 10, background: "rgba(34,197,94,0.1)", color: "#22c55e", padding: "1px 6px", borderRadius: 4, fontWeight: 600 }}>Resolved</span>
                     )}
                   </div>
                   
                   <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>
-                    Người dùng: <strong>{item.userName}</strong> ({item.userEmail}) • {item.time}
+                    User: <strong>{item.userName}</strong> ({item.userEmail}) • {item.time}
                   </p>
 
                   <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
@@ -238,10 +238,10 @@ export default function AdminSuspiciousPage() {
                 {/* Status Badges */}
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {uStatus === "locked" && (
-                    <span style={{ fontSize: 11, background: "rgba(239,68,68,0.1)", color: "#ef4444", padding: "3px 8px", borderRadius: 6, fontWeight: 600 }}>🔒 Đã khóa user</span>
+                    <span style={{ fontSize: 11, background: "rgba(239,68,68,0.1)", color: "#ef4444", padding: "3px 8px", borderRadius: 6, fontWeight: 600 }}>🔒 User Locked</span>
                   )}
                   {wStatus === "frozen" && (
-                    <span style={{ fontSize: 11, background: "rgba(59,130,246,0.1)", color: "#3b82f6", padding: "3px 8px", borderRadius: 6, fontWeight: 600 }}>❄️ Ví bị đóng băng</span>
+                    <span style={{ fontSize: 11, background: "rgba(59,130,246,0.1)", color: "#3b82f6", padding: "3px 8px", borderRadius: 6, fontWeight: 600 }}>❄️ Wallet Frozen</span>
                   )}
                 </div>
 
@@ -255,7 +255,7 @@ export default function AdminSuspiciousPage() {
                       cursor: "pointer", display: "flex", alignItems: "center", gap: 4
                     }}
                   >
-                    <Eye size={14} /> Xem lý do chi tiết
+                    <Eye size={14} /> View Details
                   </button>
                   {item.status === "pending" && (
                     <button
@@ -266,7 +266,7 @@ export default function AdminSuspiciousPage() {
                         cursor: "pointer"
                       }}
                     >
-                      Bỏ qua cảnh báo
+                      Dismiss Alert
                     </button>
                   )}
                 </div>
@@ -301,18 +301,18 @@ export default function AdminSuspiciousPage() {
 
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
                 <AlertTriangle size={24} style={{ color: selectedItem.severity === "high" ? "#ef4444" : "#f59e0b" }} />
-                <h3 style={{ fontSize: 18, fontWeight: 800 }}>Chi tiết cảnh báo bất thường</h3>
+                <h3 style={{ fontSize: 18, fontWeight: 800 }}>Suspicious Alert Details</h3>
               </div>
 
               {/* Alert Meta details */}
               <div style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--bg-card2)", padding: 16, borderRadius: 12, border: "1px solid var(--border)", marginBottom: 20 }}>
                 {[
-                  { label: "Mã cảnh báo", value: selectedItem.id },
-                  { label: "Tên tài khoản", value: selectedItem.userName },
-                  { label: "Email liên kết", value: selectedItem.userEmail },
-                  { label: "Loại hành vi", value: selectedItem.title },
-                  { label: "Thời gian ghi nhận", value: selectedItem.time },
-                  { label: "Mức độ nguy hại", value: selectedItem.severity === "high" ? "🔴 Nguy cấp (High)" : selectedItem.severity === "medium" ? "🟡 Trung bình (Medium)" : "🔵 Thấp (Low)" },
+                  { label: "Alert ID", value: selectedItem.id },
+                  { label: "Account Name", value: selectedItem.userName },
+                  { label: "Linked Email", value: selectedItem.userEmail },
+                  { label: "Behavior Type", value: selectedItem.title },
+                  { label: "Time Detected", value: selectedItem.time },
+                  { label: "Severity Level", value: selectedItem.severity === "high" ? "🔴 Critical (High)" : selectedItem.severity === "medium" ? "🟡 Medium" : "🔵 Low" },
                 ].map(item => (
                   <div key={item.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
                     <span style={{ color: "var(--text-secondary)" }}>{item.label}:</span>
@@ -322,7 +322,7 @@ export default function AdminSuspiciousPage() {
               </div>
 
               {/* Suspicious Reasons detailed description */}
-              <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 8, textTransform: "uppercase" }}>Lý do hệ thống gắn cờ (Flagged Reason)</h4>
+              <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 8, textTransform: "uppercase" }}>System Flagged Reason</h4>
               <div style={{
                 background: "rgba(239,68,68,0.03)", border: "1px solid rgba(239,68,68,0.15)",
                 borderRadius: 10, padding: 14, marginBottom: 24, fontSize: 13, lineHeight: 1.6, color: "var(--text-primary)"
@@ -331,7 +331,7 @@ export default function AdminSuspiciousPage() {
               </div>
 
               {/* Quick Actions Footer */}
-              <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 12, textTransform: "uppercase" }}>Xử lý rủi ro ngay lập tức</h4>
+              <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 12, textTransform: "uppercase" }}>Immediate Risk Actions</h4>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 {/* Lock account button */}
                 <button
@@ -346,9 +346,9 @@ export default function AdminSuspiciousPage() {
                   }}
                 >
                   {getUserStatus(selectedItem.userEmail) === "locked" ? (
-                    <><UserCheck size={14} /> Mở khóa User</>
+                    <><UserCheck size={14} /> Unlock User</>
                   ) : (
-                    <><UserMinus size={14} /> Khóa tài khoản</>
+                    <><UserMinus size={14} /> Lock Account</>
                   )}
                 </button>
 
@@ -365,9 +365,9 @@ export default function AdminSuspiciousPage() {
                   }}
                 >
                   {getWalletStatus(selectedItem.userEmail) === "frozen" ? (
-                    <> Mở băng ví</>
+                    <> Unfreeze Wallet</>
                   ) : (
-                    <>❄️ Đóng băng ví</>
+                    <>❄️ Freeze Wallet</>
                   )}
                 </button>
               </div>
@@ -381,7 +381,7 @@ export default function AdminSuspiciousPage() {
                     fontSize: 13, cursor: "pointer", marginTop: 12
                   }}
                 >
-                  ✓ Giải quyết (Bỏ qua cảnh báo)
+                  ✓ Resolve (Dismiss Alert)
                 </button>
               )}
             </motion.div>

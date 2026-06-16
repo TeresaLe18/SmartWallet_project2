@@ -50,7 +50,7 @@ export default function VerifyOtpPage() {
 
   const handleVerify = async () => {
     const code = otp.join("");
-    if (code.length < 6) { setError("Vui lòng nhập đủ 6 số OTP"); return; }
+    if (code.length < 6) { setError("Please enter the complete 6-digit OTP"); return; }
     setLoading(true);
     setError("");
     try {
@@ -63,12 +63,12 @@ export default function VerifyOtpPage() {
           navigate("/login");
         }, 2000);
       } else {
-        setError(res.message || "Xác thực OTP không thành công.");
+        setError(res.message || "OTP verification failed.");
       }
     } catch (err) {
       setLoading(false);
       console.error("OTP verification request error:", err);
-      setError(err.response?.data?.message || "Mã OTP không hợp lệ hoặc đã hết hạn.");
+      setError(err.response?.data?.message || "Invalid or expired OTP code.");
     }
   };
 
@@ -82,13 +82,13 @@ export default function VerifyOtpPage() {
     try {
       const res = await authAPI.resendOtp(email);
       if (res.success) {
-        alert(`Mã OTP mới đã được gửi tới email ${email} của bạn. Vui lòng kiểm tra hòm thư.`);
+        alert(`A new OTP code has been sent to ${email}. Please check your inbox.`);
       } else {
-        setError(res.message || "Gửi lại OTP không thành công.");
+        setError(res.message || "Failed to resend OTP.");
       }
     } catch (err) {
       console.error("OTP resend request error:", err);
-      setError(err.response?.data?.message || "Lỗi hệ thống khi gửi lại mã OTP.");
+      setError(err.response?.data?.message || "System error while resending OTP code.");
     }
   };
 
@@ -113,8 +113,8 @@ export default function VerifyOtpPage() {
             <div style={{ width: 80, height: 80, background: "rgba(34,197,94,0.15)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
               <CheckCircle size={40} style={{ color: "#22c55e" }} />
             </div>
-            <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Xác thực thành công!</h2>
-            <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>Tài khoản của bạn đã được kích hoạt. Đang chuyển hướng...</p>
+            <h2 style={{ fontSize: 22, fontWeight: 700, marginBottom: 8 }}>Verification Successful!</h2>
+            <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>Your account has been activated. Redirecting...</p>
           </motion.div>
         ) : (
           <>
@@ -123,7 +123,7 @@ export default function VerifyOtpPage() {
               onClick={() => navigate(-1)}
               style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", fontSize: 14, marginBottom: 24 }}
             >
-              <ArrowLeft size={16} /> Quay lại
+              <ArrowLeft size={16} /> Go Back
             </button>
 
             {/* Card */}
@@ -133,9 +133,9 @@ export default function VerifyOtpPage() {
                 <Mail size={32} style={{ color: "#2563eb" }} />
               </div>
 
-              <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Xác thực Email</h1>
+              <h1 style={{ fontSize: 24, fontWeight: 800, marginBottom: 8 }}>Email Verification</h1>
               <p style={{ color: "var(--text-secondary)", fontSize: 14, lineHeight: 1.6, marginBottom: 32 }}>
-                Chúng tôi đã gửi mã OTP 6 số đến<br />
+                We've sent a 6-digit OTP code to<br />
                 <strong style={{ color: "var(--text-secondary)" }}>{email}</strong>
               </p>
 
@@ -187,7 +187,7 @@ export default function VerifyOtpPage() {
               >
                 {loading ? (
                   <div style={{ width: 20, height: 20, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                ) : "Xác nhận OTP"}
+                ) : "Verify OTP"}
               </button>
 
               {/* Resend */}
@@ -197,11 +197,11 @@ export default function VerifyOtpPage() {
                     onClick={handleResend}
                     style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "none", border: "none", color: "#2563eb", cursor: "pointer", fontWeight: 600, fontSize: 14 }}
                   >
-                    <RefreshCw size={14} /> Gửi lại mã OTP
+                    <RefreshCw size={14} /> Resend OTP
                   </button>
                 ) : (
                   <span>
-                    Gửi lại sau{" "}
+                    Resend in{" "}
                     <span style={{ color: "#2563eb", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
                       {String(Math.floor(countdown / 60)).padStart(2, "0")}:{String(countdown % 60).padStart(2, "0")}
                     </span>

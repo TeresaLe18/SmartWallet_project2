@@ -16,16 +16,16 @@ export default function PaymentCancel() {
             <line x1="12" y1="16" x2="12.01" y2="16"></line>
           </svg>
         </div>
-        <h2 style={styles.title}>Giao dịch đã bị huỷ</h2>
-        <p style={styles.subtitle}>Bạn đã huỷ giao dịch nạp tiền.</p>
+        <h2 style={styles.title}>Transaction Cancelled</h2>
+        <p style={styles.subtitle}>You have cancelled the top-up transaction.</p>
         {orderCode && (
-          <p style={styles.orderInfo}>Mã giao dịch: <strong>#{orderCode}</strong></p>
+          <p style={styles.orderInfo}>Transaction ID: <strong>#{orderCode}</strong></p>
         )}
         <button style={styles.btnPrimary} onClick={() => navigate('/dashboard/wallets')}>
-          Quay về trang Ví
+          Back to Wallet
         </button>
         <button style={styles.btnSecondary} onClick={() => navigate('/dashboard/wallets')}>
-          Thử nạp tiền lại
+          Try Top-up Again
         </button>
       </div>
       <style>{`

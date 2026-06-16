@@ -7,12 +7,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { investmentAPI, walletAPI, formatVND } from "../../services/api";
 
 const TERMS = [
-  { term: 0, label: "Không kỳ hạn", rate: 0.20, bankRate: 0.10, desc: "Lãi suất trả mỗi ngày, rút bất kỳ lúc nào" },
-  { term: 1, label: "1 Tháng", rate: 5.00, bankRate: 2.50, desc: "Lãi nhận cuối kỳ, phù hợp ngắn hạn" },
-  { term: 3, label: "3 Tháng", rate: 5.80, bankRate: 2.90, desc: "Tối ưu hóa dòng tiền ngắn hạn" },
-  { term: 6, label: "6 Tháng", rate: 7.60, bankRate: 3.80, desc: "Lãi suất cao vượt trội ngân hàng" },
-  { term: 12, label: "12 Tháng", rate: 9.40, bankRate: 4.70, desc: "Đầu tư tích lũy dài hạn hiệu quả" },
-  { term: 24, label: "24 Tháng", rate: 9.80, bankRate: 4.90, desc: "Tối đa hóa lợi nhuận tốt nhất" }
+  { term: 0, label: "Flexible", rate: 0.20, bankRate: 0.10, desc: "Interest paid daily, withdraw anytime" },
+  { term: 1, label: "1 Month", rate: 5.00, bankRate: 2.50, desc: "Interest at maturity, ideal for short-term" },
+  { term: 3, label: "3 Months", rate: 5.80, bankRate: 2.90, desc: "Optimize short-term cash flow" },
+  { term: 6, label: "6 Months", rate: 7.60, bankRate: 3.80, desc: "Superior interest rate vs. bank" },
+  { term: 12, label: "12 Months", rate: 9.40, bankRate: 4.70, desc: "Effective long-term savings" },
+  { term: 24, label: "24 Months", rate: 9.80, bankRate: 4.90, desc: "Maximize your returns" }
 ];
 
 export default function Investment() {
@@ -53,7 +53,7 @@ export default function Investment() {
       }
     } catch (error) {
       console.error("Failed to load savings/investment data:", error);
-      showToast("Lỗi khi kết nối đến máy chủ. Vui lòng thử lại sau.", "error");
+      showToast("Unable to connect to server. Please try again later.", "error");
     } finally {
       setLoading(false);
     }
@@ -80,12 +80,12 @@ export default function Investment() {
     const amount = Number(depositAmount);
     
     if (isNaN(amount) || amount < 50000) {
-      showToast("Số tiền gửi tiết kiệm tối thiểu là 50.000 ₫.", "error");
+      showToast("Minimum deposit amount is 50,000 ₫.", "error");
       return;
     }
 
     if (amount > walletBalance) {
-      showToast("Số dư ví thanh toán không đủ để thực hiện gửi tiết kiệm.", "error");
+      showToast("Insufficient wallet balance to make this deposit.", "error");
       return;
     }
 
@@ -93,18 +93,18 @@ export default function Investment() {
     try {
       const res = await investmentAPI.create(amount, selectedTerm);
       if (res.success) {
-        showToast(`Mở sổ tiết kiệm ${formatVND(amount)} kỳ hạn ${selectedTerm === 0 ? "không kỳ hạn" : selectedTerm + " tháng"} thành công!`);
+        showToast(`Savings account opened: ${formatVND(amount)} for ${selectedTerm === 0 ? "flexible term" : selectedTerm + " months"} — success!`);
         setDepositAmount("1000000");
         
         // Sync layout and reload
         window.dispatchEvent(new CustomEvent("balance_updated"));
         loadData();
       } else {
-        showToast(res.message || "Lỗi khi mở sổ tiết kiệm.", "error");
+        showToast(res.message || "Failed to open savings account.", "error");
       }
     } catch (error) {
       console.error("Create investment error:", error);
-      showToast(error.response?.data?.message || "Lỗi hệ thống khi mở sổ tiết kiệm.", "error");
+      showToast(error.response?.data?.message || "System error while opening savings account.", "error");
     } finally {
       setSubmitting(false);
     }
@@ -125,7 +125,7 @@ export default function Investment() {
     try {
       const res = await investmentAPI.withdraw(id);
       if (res.success) {
-        showToast(`Tất toán thành công! Nhận ${formatVND(res.payout)} về ví chính.`);
+        showToast(`Withdrawal successful! ${formatVND(res.payout)} returned to your main wallet.`);
         setShowEarlyModal(false);
         setSelectedInv(null);
         
@@ -133,11 +133,11 @@ export default function Investment() {
         window.dispatchEvent(new CustomEvent("balance_updated"));
         loadData();
       } else {
-        showToast(res.message || "Lỗi tất toán sổ tiết kiệm.", "error");
+        showToast(res.message || "Failed to close savings account.", "error");
       }
     } catch (error) {
       console.error("Withdraw investment error:", error);
-      showToast(error.response?.data?.message || "Lỗi hệ thống khi tất toán.", "error");
+      showToast(error.response?.data?.message || "System error during withdrawal.", "error");
     } finally {
       setSubmitting(false);
     }
@@ -163,7 +163,7 @@ export default function Investment() {
   };
 
   const getTermDetails = (termMonths) => {
-    return TERMS.find(t => t.term === termMonths) || { label: "Không rõ", rate: 0, tcbRate: 0 };
+    return TERMS.find(t => t.term === termMonths) || { label: "Unknown", rate: 0, tcbRate: 0 };
   };
 
   // Calculator helper
@@ -221,13 +221,13 @@ export default function Investment() {
         }}>
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>Số dư ví thanh toán</span>
+              <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>Payment Wallet Balance</span>
               <Wallet size={20} color="rgba(255,255,255,0.8)" />
             </div>
             <h2 style={{ fontSize: 26, fontWeight: 800 }}>{formatVND(walletBalance)}</h2>
           </div>
           <p style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 20 }}>
-            Tiền mặt sẵn sàng chuyển vào tích lũy sinh lời cao
+            Cash available to transfer into high-yield savings
           </p>
         </div>
 
@@ -237,12 +237,12 @@ export default function Investment() {
           borderRadius: 20, padding: 24, display: "flex", flexDirection: "column"
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>Đang gửi tiết kiệm</span>
+            <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>Active Savings</span>
             <Lock size={20} style={{ color: "var(--primary)" }} />
           </div>
           <h2 style={{ fontSize: 26, fontWeight: 800, color: "var(--text-primary)" }}>{formatVND(activeStats.totalPrincipal)}</h2>
           <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 20 }}>
-            Đang sinh lãi trong {activeStats.count} sổ tiết kiệm active
+            Earning interest across {activeStats.count} active savings accounts
           </p>
         </div>
 
@@ -252,12 +252,12 @@ export default function Investment() {
           borderRadius: 20, padding: 24, display: "flex", flexDirection: "column"
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>Lãi dự kiến nhận tạm tính</span>
+            <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>Projected Interest (Accrued)</span>
             <TrendingUp size={20} style={{ color: "#22c55e" }} />
           </div>
           <h2 style={{ fontSize: 26, fontWeight: 800, color: "#22c55e" }}>{formatVND(activeStats.totalInterest)}</h2>
           <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 20 }}>
-            Lãi tích lũy cộng dồn hàng ngày theo thời gian thực
+            Interest accruing daily in real time
           </p>
         </div>
       </div>
@@ -273,15 +273,15 @@ export default function Investment() {
               <PlusCircle size={18} style={{ color: "var(--primary)" }} />
             </div>
             <div>
-              <h3 style={{ fontSize: 16, fontWeight: 800 }}>Mở Sổ Tiết Kiệm Tích Lũy</h3>
-              <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Đăng ký trực tuyến nhận lãi suất gấp đôi ngân hàng</p>
+              <h3 style={{ fontSize: 16, fontWeight: 800 }}>Open a Savings Account</h3>
+              <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Register online to earn double the bank interest rate</p>
             </div>
           </div>
 
           <form onSubmit={handleOpenSavings}>
             <div style={{ marginBottom: 18 }}>
               <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
-                Số tiền muốn gửi (Tối thiểu 50.000 ₫)
+                Deposit amount (Minimum 50,000 ₫)
               </label>
               <div style={{ position: "relative" }}>
                 <input
@@ -289,7 +289,7 @@ export default function Investment() {
                   value={depositAmount}
                   onChange={e => setDepositAmount(e.target.value)}
                   className="input-field"
-                  placeholder="Nhập số tiền gửi"
+                  placeholder="Enter deposit amount"
                   style={{ paddingRight: 60, fontWeight: 700 }}
                   required
                 />
@@ -300,7 +300,7 @@ export default function Investment() {
             </div>
 
             <label style={{ fontSize: 13, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 8 }}>
-              Chọn kỳ hạn tích lũy
+              Select savings term
             </label>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10, marginBottom: 20 }}>
               {TERMS.map((t) => {
@@ -318,10 +318,10 @@ export default function Investment() {
                   >
                     <p style={{ fontSize: 12, fontWeight: 700, color: active ? "var(--primary)" : "var(--text-primary)" }}>{t.label}</p>
                     <p style={{ fontSize: 14, fontWeight: 800, color: active ? "var(--primary)" : "var(--text-primary)", margin: "4px 0" }}>
-                      {t.rate}%/năm
+                      {t.rate}%/year
                     </p>
                     <p style={{ fontSize: 9, color: active ? "rgba(37,99,235,0.6)" : "var(--text-muted)" }}>
-                      Ngân hàng: {t.bankRate}%
+                      Bank: {t.bankRate}%
                     </p>
                   </button>
                 );
@@ -333,38 +333,38 @@ export default function Investment() {
               background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 14, padding: 18, marginBottom: 20
             }}>
               <h4 style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                📊 Phép tính lợi tức dự kiến
+                📊 Estimated Return Calculator
               </h4>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Thời hạn tích lũy:</span>
+                  <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Savings term:</span>
                   <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>
-                    {selectedTerm === 0 ? "Linh hoạt (Không kỳ hạn)" : `${selectedTerm} Tháng`}
+                    {selectedTerm === 0 ? "Flexible (No Fixed Term)" : `${selectedTerm} Months`}
                   </span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Lãi suất SmartWallet:</span>
+                  <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>SmartWallet Rate:</span>
                   <span style={{ fontSize: 13, fontWeight: 800, color: "var(--primary)" }}>
-                    {getTermDetails(selectedTerm).rate}% / năm
+                    {getTermDetails(selectedTerm).rate}% / year
                   </span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Lãi suất ngân hàng thông thường:</span>
+                  <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Standard Bank Rate:</span>
                   <span style={{ fontSize: 13, color: "var(--text-muted)", textDecoration: "line-through" }}>
-                    {getTermDetails(selectedTerm).bankRate}% / năm
+                    {getTermDetails(selectedTerm).bankRate}% / year
                   </span>
                 </div>
                 <div style={{ height: "1px", background: "var(--border)", margin: "4px 0" }} />
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>Tiền lãi dự kiến:</span>
+                  <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>Estimated Interest:</span>
                   <span style={{ fontSize: 14, fontWeight: 800, color: "#22c55e" }}>
-                    {selectedTerm === 0 ? `+${formatVND(estReturns.interest)} / ngày` : `+${formatVND(estReturns.interest)}`}
+                    {selectedTerm === 0 ? `+${formatVND(estReturns.interest)} / day` : `+${formatVND(estReturns.interest)}`}
                   </span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>Tổng gốc + lãi cuối kỳ:</span>
+                  <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 600 }}>Total Principal + Interest at Maturity:</span>
                   <span style={{ fontSize: 15, fontWeight: 800, color: "var(--text-primary)" }}>
-                    {selectedTerm === 0 ? "Không áp dụng" : formatVND(estReturns.total)}
+                    {selectedTerm === 0 ? "N/A" : formatVND(estReturns.total)}
                   </span>
                 </div>
               </div>
@@ -376,7 +376,7 @@ export default function Investment() {
               className="btn-primary"
               style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
             >
-              {submitting ? "Đang xử lý giao dịch..." : `Xác nhận gửi ${formatVND(Number(depositAmount) || 0)}`}
+              {submitting ? "Processing transaction..." : `Confirm Deposit ${formatVND(Number(depositAmount) || 0)}`}
             </button>
           </form>
         </div>
@@ -387,29 +387,29 @@ export default function Investment() {
           borderRadius: 20, padding: 28, display: "flex", flexDirection: "column", justifyContent: "space-between"
         }}>
           <div>
-            <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 14 }}>Vì sao nên chọn SmartWallet Savings?</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 14 }}>Why Choose SmartWallet Savings?</h3>
             
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               {[
                 { 
                   icon: TrendingUp, 
-                  title: "Lãi suất gấp đôi ngân hàng", 
-                  desc: "Lãi suất tích lũy của SmartWallet luôn được duy trì ở mức gấp đôi lãi suất tiết kiệm ngân hàng thông thường cùng kỳ hạn." 
+                  title: "Double the bank interest rate", 
+                  desc: "SmartWallet's savings rate is always maintained at twice the standard bank savings rate for the same term." 
                 },
                 { 
                   icon: ShieldAlert, 
-                  title: "An toàn tuyệt đối", 
-                  desc: "Các khoản đầu tư tích lũy của bạn được bảo lãnh bởi các quỹ tài chính và ngân hàng liên kết uy tín." 
+                  title: "Fully secure", 
+                  desc: "Your savings are guaranteed by trusted financial funds and partner banks." 
                 },
                 { 
                   icon: ArrowRightLeft, 
-                  title: "Tất toán tức thì", 
-                  desc: "Khi tất toán, cả gốc và lãi suất tương ứng sẽ được cộng thẳng vào số dư khả dụng tức thì 24/7." 
+                  title: "Instant withdrawal", 
+                  desc: "Upon withdrawal, both principal and earned interest are credited instantly to your available balance 24/7." 
                 },
                 { 
                   icon: HelpCircle, 
-                  title: "Lưu ý quan trọng", 
-                  desc: "Nếu rút trước ngày đáo hạn (kỳ hạn cố định), lãi suất của toàn bộ khoản tiền sẽ quay về mức không kỳ hạn (0.2%/năm) tính từ ngày gửi." 
+                  title: "Important notice", 
+                  desc: "If you withdraw before maturity (fixed term), the interest rate for the entire deposit reverts to the flexible rate (0.2%/year) calculated from the deposit date." 
                 }
               ].map((item, i) => (
                 <div key={i} style={{ display: "flex", gap: 12 }}>
@@ -432,7 +432,7 @@ export default function Investment() {
         background: "var(--bg-card)", border: "1px solid var(--border)",
         borderRadius: 20, padding: 28
       }}>
-        <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 20 }}>Danh sách sổ tiết kiệm của tôi</h3>
+        <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 20 }}>My Savings Accounts</h3>
 
         {loading ? (
           <div style={{ textAlign: "center", padding: "40px 0" }}>
@@ -440,13 +440,13 @@ export default function Investment() {
               width: 30, height: 30, border: "3px solid var(--border)", borderTopColor: "var(--primary)",
               borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 12px"
             }} />
-            <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>Đang tải danh sách sổ tích lũy...</p>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>Loading your savings accounts...</p>
           </div>
         ) : investments.length === 0 ? (
           <div style={{ textAlign: "center", padding: "60px 0", color: "var(--text-muted)" }}>
             <span style={{ fontSize: 40 }}>💰</span>
-            <p style={{ fontSize: 14, fontWeight: 600, marginTop: 12 }}>Bạn chưa có sổ tiết kiệm nào đang hoạt động</p>
-            <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>Hãy thử mở sổ đầu tiên bằng form tính toán ở trên để lấy lãi suất gấp đôi!</p>
+            <p style={{ fontSize: 14, fontWeight: 600, marginTop: 12 }}>You have no active savings accounts yet</p>
+            <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>Open your first account using the form above and earn double the bank rate!</p>
           </div>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -482,48 +482,48 @@ export default function Investment() {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
                     <div>
                       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                        <span style={{ fontSize: 14, fontWeight: 800 }}>Mã sổ: #SWINV-{inv.id}</span>
+                        <span style={{ fontSize: 14, fontWeight: 800 }}>Account #SWINV-{inv.id}</span>
                         <span style={{
                           fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 12,
                           background: isClosed ? "rgba(113, 113, 122, 0.1)" : "rgba(34, 197, 94, 0.1)",
                           color: isClosed ? "#71717a" : "#22c55e"
                         }}>
-                          {isClosed ? "ĐÃ TẤT TOÁN" : "ĐANG HOẠT ĐỘNG"}
+                          {isClosed ? "CLOSED" : "ACTIVE"}
                         </span>
                         {inv.term_months === 0 ? (
                           <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 12, background: "rgba(59, 130, 246, 0.1)", color: "#3b82f6" }}>
-                            KHÔNG KỲ HẠN
+                            FLEXIBLE
                           </span>
                         ) : (
                           <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 8px", borderRadius: 12, background: "rgba(139, 92, 246, 0.1)", color: "#8b5cf6" }}>
-                            KỲ HẠN {inv.term_months} THÁNG
+                            {inv.term_months}-MONTH TERM
                           </span>
                         )}
                       </div>
                       <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>
-                        Gửi ngày: {start.toLocaleDateString("vi-VN")} {inv.term_months > 0 && `| Đáo hạn ngày: ${new Date(inv.end_date || inv.endDate).toLocaleDateString("vi-VN")}`}
+                        Opened: {start.toLocaleDateString("en-US")} {inv.term_months > 0 && `| Matures: ${new Date(inv.end_date || inv.endDate).toLocaleDateString("en-US")}`}
                       </p>
                     </div>
 
                     <div style={{ textAlign: "right" }}>
-                      <p style={{ fontSize: 11, color: "var(--text-secondary)" }}>Lãi suất áp dụng</p>
-                      <p style={{ fontSize: 15, fontWeight: 800, color: "var(--primary)" }}>{inv.interest_rate}% / năm</p>
+                      <p style={{ fontSize: 11, color: "var(--text-secondary)" }}>Applied Interest Rate</p>
+                      <p style={{ fontSize: 15, fontWeight: 800, color: "var(--primary)" }}>{inv.interest_rate}% / year</p>
                     </div>
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14, marginBottom: 16 }}>
                     <div>
-                      <p style={{ fontSize: 11, color: "var(--text-secondary)" }}>Tiền gốc ban đầu</p>
+                      <p style={{ fontSize: 11, color: "var(--text-secondary)" }}>Principal Amount</p>
                       <p style={{ fontSize: 15, fontWeight: 700 }}>{formatVND(Number(inv.amount))}</p>
                     </div>
 
                     <div>
-                      <p style={{ fontSize: 11, color: "var(--text-secondary)" }}>Số ngày đã tích lũy</p>
-                      <p style={{ fontSize: 15, fontWeight: 700 }}>{daysPassed} ngày {totalDays > 0 && `/ ${totalDays} ngày`}</p>
+                      <p style={{ fontSize: 11, color: "var(--text-secondary)" }}>Days Accumulated</p>
+                      <p style={{ fontSize: 15, fontWeight: 700 }}>{daysPassed} days {totalDays > 0 && `/ ${totalDays} days`}</p>
                     </div>
 
                     <div>
-                      <p style={{ fontSize: 11, color: "var(--text-secondary)" }}>Lãi tích lũy hiện tại</p>
+                      <p style={{ fontSize: 11, color: "var(--text-secondary)" }}>Accrued Interest</p>
                       <p style={{ fontSize: 15, fontWeight: 800, color: "#22c55e" }}>
                         +{formatVND(isClosed ? Number(inv.accumulated_interest || 0) : Number(inv.accruedInterest || 0))}
                       </p>
@@ -543,7 +543,7 @@ export default function Investment() {
                             boxShadow: isEarly ? "none" : "0 4px 10px rgba(16, 185, 129, 0.2)"
                           }}
                         >
-                          Tất toán sổ
+                          Close Account
                         </button>
                       )}
                     </div>
@@ -553,7 +553,7 @@ export default function Investment() {
                   {inv.term_months > 0 && !isClosed && (
                     <div style={{ marginTop: 10 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10, color: "var(--text-secondary)", marginBottom: 4 }}>
-                        <span>Tiến độ kỳ hạn</span>
+                        <span>Term Progress</span>
                         <span>{Math.round(progress)}%</span>
                       </div>
                       <div style={{ width: "100%", height: 6, background: "var(--bg-card2)", borderRadius: 3, overflow: "hidden" }}>
@@ -602,12 +602,12 @@ export default function Investment() {
               </div>
 
               <h3 style={{ fontSize: 18, fontWeight: 800, color: "#1e293b", marginBottom: 12 }}>
-                Cảnh báo: Tất Toán Trước Hạn!
+                Warning: Early Withdrawal!
               </h3>
               
               <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.5, marginBottom: 20 }}>
-                Bạn đang thực hiện tất toán trước hạn cho sổ tiết kiệm kỳ hạn <strong>{selectedInv.term_months} tháng</strong>. 
-                Theo quy định, rút trước hạn sẽ chỉ được áp dụng mức lãi suất <strong>không kỳ hạn (0.2%/năm)</strong> tính từ ngày gửi.
+                You are closing your <strong>{selectedInv.term_months}-month</strong> savings account early. 
+                Per policy, early withdrawal will only receive the <strong>flexible rate (0.2%/year)</strong> calculated from the deposit date.
               </p>
 
               <div style={{
@@ -615,19 +615,19 @@ export default function Investment() {
                 textAlign: "left", display: "flex", flexDirection: "column", gap: 8
               }}>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Tiền gốc ban đầu:</span>
+                  <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Principal Amount:</span>
                   <span style={{ fontSize: 12, fontWeight: 700 }}>{formatVND(Number(selectedInv.amount))}</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Lãi suất kỳ hạn ban đầu:</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--primary)" }}>{selectedInv.interest_rate}%/năm</span>
+                  <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Original Term Rate:</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "var(--primary)" }}>{selectedInv.interest_rate}%/year</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Lãi suất áp dụng thực tế:</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#ef4444" }}>0.2%/năm (Phạt rút sớm)</span>
+                  <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Effective Rate Applied:</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#ef4444" }}>0.2%/year (Early withdrawal penalty)</span>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Lãi suất bị mất dự kiến:</span>
+                  <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Estimated Interest Forfeited:</span>
                   <span style={{ fontSize: 12, fontWeight: 700, color: "#ef4444" }}>
                     -{formatVND(Math.max(0, (Number(selectedInv.amount) * (Number(selectedInv.interest_rate) / 100) * (selectedInv.term_months / 12)) - Number(selectedInv.accruedInterest || 0)))}
                   </span>
@@ -643,7 +643,7 @@ export default function Investment() {
                     background: "#ffffff", color: "var(--text-secondary)", fontWeight: 700, fontSize: 14, cursor: "pointer"
                   }}
                 >
-                  Hủy bỏ, giữ lại sổ
+                  Cancel, keep account
                 </button>
                 <button
                   type="button"
@@ -655,7 +655,7 @@ export default function Investment() {
                     fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 4px 12px rgba(239, 68, 68, 0.2)"
                   }}
                 >
-                  {submitting ? "Đang xử lý..." : "Chấp nhận mất lãi & Rút"}
+                  {submitting ? "Processing..." : "Accept penalty & Withdraw"}
                 </button>
               </div>
             </motion.div>

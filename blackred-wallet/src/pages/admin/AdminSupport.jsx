@@ -90,7 +90,7 @@ export default function AdminSupport() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert("Kích thước ảnh không vượt quá 5MB.");
+      alert("Image size must not exceed 5MB.");
       return;
     }
 
@@ -130,7 +130,7 @@ export default function AdminSupport() {
       }
     } catch (error) {
       console.error("Failed to send admin reply:", error);
-      alert("Không thể gửi phản hồi. Vui lòng thử lại.");
+      alert("Unable to send reply. Please try again.");
     } finally {
       setSending(false);
     }
@@ -155,7 +155,7 @@ export default function AdminSupport() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm kiếm Email hoặc SĐT..."
+              placeholder="Search by email or phone number..."
               style={{
                 width: "100%", height: 38, padding: "0 12px 0 36px",
                 borderRadius: 10, border: "1px solid var(--border)",
@@ -174,7 +174,7 @@ export default function AdminSupport() {
           ) : filteredConversations.length === 0 ? (
             <div style={{ padding: 40, textAlign: "center", color: "var(--text-secondary)" }}>
               <MessageSquare size={36} style={{ color: "var(--text-muted)", opacity: 0.3, marginBottom: 12 }} />
-              <p style={{ fontSize: 13 }}>Không tìm thấy hội thoại hỗ trợ nào.</p>
+              <p style={{ fontSize: 13 }}>No support conversations found.</p>
             </div>
           ) : (
             filteredConversations.map((c) => {
@@ -218,7 +218,7 @@ export default function AdminSupport() {
                       fontWeight: c.unreadCount > 0 ? 600 : 400,
                       margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, marginRight: 8
                     }}>
-                      {c.lastMessage ? c.lastMessage.message || c.lastMessage.image_url : "Chưa có tin nhắn"}
+                      {c.lastMessage ? c.lastMessage.message || c.lastMessage.image_url : "No messages yet"}
                     </p>
                     {c.lastMessage && (
                       <span style={{ fontSize: 10, color: "var(--text-muted)" }}>
@@ -245,7 +245,7 @@ export default function AdminSupport() {
                 </div>
                 <div>
                   <h4 style={{ fontSize: 14.5, fontWeight: 700, margin: 0 }}>{selectedConversation.user.email}</h4>
-                  <p style={{ fontSize: 11, color: "var(--text-muted)", margin: "2px 0 0 0" }}>Số điện thoại: {selectedConversation.user.phone || "Không có"}</p>
+                  <p style={{ fontSize: 11, color: "var(--text-muted)", margin: "2px 0 0 0" }}>Phone: {selectedConversation.user.phone || "N/A"}</p>
                 </div>
               </div>
             </div>
@@ -282,7 +282,7 @@ export default function AdminSupport() {
                             {/* Image inside chat bubbles */}
                             {msg.image_url && (
                               <div style={{ marginBottom: msg.message ? 8 : 0, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
-                                <img src={msg.image_url} alt="Đính kèm" style={{ maxWidth: "100%", maxHeight: 200, objectFit: "cover", display: "block" }} />
+                                <img src={msg.image_url} alt="Attachment" style={{ maxWidth: "100%", maxHeight: 200, objectFit: "cover", display: "block" }} />
                               </div>
                             )}
                             {msg.message && <div style={{ wordBreak: "break-word", whiteSpace: "pre-wrap" }}>{msg.message}</div>}
@@ -317,7 +317,7 @@ export default function AdminSupport() {
                       <X size={8} />
                     </button>
                   </div>
-                  <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>Hình ảnh đã được chọn</span>
+                  <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>Image selected</span>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -345,7 +345,7 @@ export default function AdminSupport() {
                 type="text"
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder={`Phản hồi cho ${selectedConversation.user.name}...`}
+                placeholder={`Reply to ${selectedConversation.user.name}...`}
                 style={{ flex: 1, height: 38, padding: "0 16px", borderRadius: 19, border: "1px solid var(--border)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 13 }}
               />
 
@@ -367,8 +367,8 @@ export default function AdminSupport() {
         ) : (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "var(--text-secondary)" }}>
             <Headphones size={54} style={{ color: "var(--text-muted)", opacity: 0.3 }} />
-            <h4 style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Không gian Chăm sóc Khách hàng</h4>
-            <p style={{ fontSize: 13, maxWidth: 300, textAlign: "center", margin: 0 }}>Chọn một khách hàng ở danh sách bên trái để xem nội dung chi tiết và gửi phản hồi giải đáp.</p>
+            <h4 style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Customer Support Center</h4>
+            <p style={{ fontSize: 13, maxWidth: 300, textAlign: "center", margin: 0 }}>Select a customer from the list on the left to view the conversation and send a reply.</p>
           </div>
         )}
       </div>

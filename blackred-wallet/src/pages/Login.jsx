@@ -83,11 +83,11 @@ export default function LoginPage() {
     e.preventDefault();
     setForgotError("");
     if (!forgotEmail) {
-      setForgotError("Vui lòng nhập email.");
+      setForgotError("Please enter your email.");
       return;
     }
     if (!/\S+@\S+\.\S+/.test(forgotEmail)) {
-      setForgotError("Email không hợp lệ.");
+      setForgotError("Invalid email address.");
       return;
     }
 
@@ -102,10 +102,10 @@ export default function LoginPage() {
         setForgotNewPassword("");
         setForgotConfirmPassword("");
       } else {
-        setForgotError(res.message || "Không thể gửi OTP.");
+        setForgotError(res.message || "Unable to send OTP.");
       }
     } catch (err) {
-      setForgotError(err.response?.data?.message || "Lỗi hệ thống. Vui lòng thử lại.");
+      setForgotError(err.response?.data?.message || "System error. Please try again.");
     } finally {
       setForgotLoading(false);
     }
@@ -117,19 +117,19 @@ export default function LoginPage() {
 
     const enteredOtp = forgotOtp.join("");
     if (enteredOtp.length < 6) {
-      setForgotError("Vui lòng nhập đủ 6 chữ số mã OTP.");
+      setForgotError("Please enter the complete 6-digit OTP code.");
       return;
     }
     if (!forgotNewPassword) {
-      setForgotError("Vui lòng nhập mật khẩu mới.");
+      setForgotError("Please enter a new password.");
       return;
     }
     if (forgotNewPassword.length < 8) {
-      setForgotError("Mật khẩu phải tối thiểu 8 ký tự.");
+      setForgotError("Password must be at least 8 characters.");
       return;
     }
     if (forgotNewPassword !== forgotConfirmPassword) {
-      setForgotError("Mật khẩu xác nhận không khớp.");
+      setForgotError("Passwords do not match.");
       return;
     }
 
@@ -139,10 +139,10 @@ export default function LoginPage() {
       if (res.success) {
         setForgotStep(3);
       } else {
-        setForgotError(res.message || "Đặt lại mật khẩu thất bại.");
+        setForgotError(res.message || "Password reset failed.");
       }
     } catch (err) {
-      setForgotError(err.response?.data?.message || "Lỗi hệ thống. Vui lòng thử lại.");
+      setForgotError(err.response?.data?.message || "System error. Please try again.");
     } finally {
       setForgotLoading(false);
     }
@@ -152,7 +152,7 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
     if (!email || !password) {
-      setError("Vui lòng nhập đầy đủ thông tin.");
+      setError("Please fill in all required fields.");
       return;
     }
     setLoading(true);
@@ -172,7 +172,7 @@ export default function LoginPage() {
 
           localStorage.setItem("bw_admin", JSON.stringify({
             email: data.user.email,
-            name: "Quản trị viên",
+            name: "Administrator",
             role: data.user.role.toLowerCase(),
           }));
           navigate("/admin");
@@ -199,7 +199,7 @@ export default function LoginPage() {
           navigate("/dashboard");
         }
       } else {
-        setError(data.message || "Đăng nhập thất bại.");
+        setError(data.message || "Login failed.");
       }
       console.log("ADMIN TOKEN:", localStorage.getItem("bw_admin_token"));
     } catch (err) {
@@ -207,7 +207,7 @@ export default function LoginPage() {
       console.error("Login request error:", err);
       setError(
         err.response?.data?.message ||
-        "Kết nối máy chủ thất bại. Vui lòng kiểm tra lại kết nối XAMPP/Node.js."
+        "Server connection failed. Please check your XAMPP/Node.js connection."
       );
     }
   };
@@ -259,9 +259,9 @@ export default function LoginPage() {
             transition={{ delay: 0.3, duration: 0.6 }}
             style={{ fontSize: 48, fontWeight: 800, lineHeight: 1.1, marginBottom: 20, color: "#ffffff" }}
           >
-            Quản lý tài chính
+            Smarter financial
             <br />
-            <span style={{ color: "#2563eb" }}>thông minh hơn.</span>
+            <span style={{ color: "#2563eb" }}>management.</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
@@ -269,16 +269,16 @@ export default function LoginPage() {
             transition={{ delay: 0.5 }}
             style={{ color: "rgba(255, 255, 255, 0.7)", fontSize: 16, lineHeight: 1.7, maxWidth: 400 }}
           >
-            Ví điện tử SmartWallet giúp bạn theo dõi chi tiêu, chuyển tiền tức thì,
-            và nhận gợi ý tài chính thông minh từ AI.
+            SmartWallet helps you track spending, send money instantly,
+            and receive smart financial insights powered by AI.
           </motion.p>
 
           {/* Features */}
           <div style={{ marginTop: 40, display: "flex", flexDirection: "column", gap: 16 }}>
             {[
-              { icon: "🔒", text: "Bảo mật đa lớp với xác thực OTP" },
-              { icon: "⚡", text: "Chuyển tiền tức thì, không giới hạn" },
-              { icon: "🤖", text: "AI phân tích và tư vấn chi tiêu" },
+              { icon: "🔒", text: "Multi-layer security with OTP authentication" },
+              { icon: "⚡", text: "Instant transfers, no limits" },
+              { icon: "🤖", text: "AI-powered spending analysis and advice" },
             ].map((f, i) => (
               <motion.div
                 key={i}
@@ -322,11 +322,11 @@ export default function LoginPage() {
             </span>
           </div>
 
-          <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>Đăng nhập</h2>
+          <h2 style={{ fontSize: 28, fontWeight: 800, marginBottom: 8 }}>Sign In</h2>
           <p style={{ color: "var(--text-secondary)", marginBottom: 32, fontSize: 14 }}>
-            Chưa có tài khoản?{" "}
+            Don't have an account?{" "}
             <Link to="/register" style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>
-              Đăng ký ngay
+              Sign up now
             </Link>
           </p>
 
@@ -371,13 +371,13 @@ export default function LoginPage() {
             {/* Password */}
             <div>
               <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 8, color: "var(--text-secondary)" }}>
-                Mật khẩu
+                Password
               </label>
               <div style={{ position: "relative" }}>
                 <Lock size={16} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                 <input
                   type={showPass ? "text" : "password"}
-                  placeholder="Nhập mật khẩu"
+                  placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   style={{
@@ -413,7 +413,7 @@ export default function LoginPage() {
                 }}
                 style={{ color: "#2563eb", fontSize: 13, textDecoration: "none", cursor: "pointer" }}
               >
-                Quên mật khẩu?
+                Forgot password?
               </a>
             </div>
 
@@ -435,7 +435,7 @@ export default function LoginPage() {
               {loading ? (
                 <div style={{ width: 20, height: 20, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
               ) : (
-                <>Đăng nhập <ArrowRight size={16} /></>
+                <>Sign In <ArrowRight size={16} /></>
               )}
             </button>
           </form>
@@ -443,7 +443,7 @@ export default function LoginPage() {
           <div style={{ marginTop: 32, padding: "16px", background: "rgba(37,99,235,0.05)", border: "1px solid rgba(37,99,235,0.15)", borderRadius: 10, display: "flex", alignItems: "center", gap: 10 }}>
             <Shield size={16} style={{ color: "#2563eb", flexShrink: 0 }} />
             <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5 }}>
-              Dữ liệu của bạn được mã hóa và bảo mật bởi tiêu chuẩn ngân hàng SSL/TLS 256-bit.
+              Your data is encrypted and secured by 256-bit SSL/TLS banking-grade standards.
             </p>
           </div>
         </div>
@@ -489,9 +489,9 @@ export default function LoginPage() {
                   <div style={{ width: 56, height: 56, background: "rgba(37,99,235,0.08)", borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 20 }}>
                     <Mail size={24} style={{ color: "var(--primary)" }} />
                   </div>
-                  <h3 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8 }}>Quên mật khẩu?</h3>
+                  <h3 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8 }}>Forgot Password?</h3>
                   <p style={{ color: "var(--text-secondary)", fontSize: 13, lineHeight: 1.5, marginBottom: 24 }}>
-                    Nhập email tài khoản của bạn để nhận mã xác thực OTP thay đổi mật khẩu mới.
+                    Enter your account email to receive an OTP verification code to reset your password.
                   </p>
 
                   {forgotError && (
@@ -502,7 +502,7 @@ export default function LoginPage() {
 
                   <form onSubmit={handleSendForgotOtp} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                     <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 500, marginBottom: 8, color: "var(--text-secondary)" }}>Email đăng ký</label>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 500, marginBottom: 8, color: "var(--text-secondary)" }}>Registered Email</label>
                       <div style={{ position: "relative" }}>
                         <Mail size={16} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                         <input
@@ -530,7 +530,7 @@ export default function LoginPage() {
                     >
                       {forgotLoading ? (
                         <div style={{ width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                      ) : "Gửi mã OTP"}
+                      ) : "Send OTP"}
                     </button>
                   </form>
                 </div>
@@ -538,10 +538,10 @@ export default function LoginPage() {
 
               {forgotStep === 2 && (
                 <div>
-                  <h3 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8 }}>Đặt lại mật khẩu</h3>
+                  <h3 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8 }}>Reset Password</h3>
                   <p style={{ color: "var(--text-secondary)", fontSize: 13, lineHeight: 1.5, marginBottom: 16 }}>
-                    Mã OTP đã được gửi tới email: <strong style={{ color: "var(--primary)" }}>{forgotEmail}</strong><br />
-                    <span style={{ fontSize: 12 }}>Vui lòng kiểm tra hòm thư (kể cả mục Spam)</span>
+                    An OTP code has been sent to: <strong style={{ color: "var(--primary)" }}>{forgotEmail}</strong><br />
+                    <span style={{ fontSize: 12 }}>Please check your inbox (including Spam folder)</span>
                   </p>
 
                   {forgotError && (
@@ -553,7 +553,7 @@ export default function LoginPage() {
                   <form onSubmit={handleResetPassword} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                     {/* OTP Boxes */}
                     <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 500, marginBottom: 8, color: "var(--text-secondary)" }}>Mã xác thực OTP</label>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 500, marginBottom: 8, color: "var(--text-secondary)" }}>OTP Verification Code</label>
                       <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 6 }}>
                         {forgotOtp.map((digit, i) => (
                           <input
@@ -578,12 +578,12 @@ export default function LoginPage() {
 
                     {/* New Password */}
                     <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 500, marginBottom: 6, color: "var(--text-secondary)" }}>Mật khẩu mới</label>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 500, marginBottom: 6, color: "var(--text-secondary)" }}>New Password</label>
                       <div style={{ position: "relative" }}>
                         <Lock size={15} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                         <input
                           type={forgotShowPass ? "text" : "password"}
-                          placeholder="Tối thiểu 8 ký tự"
+                          placeholder="Minimum 8 characters"
                           value={forgotNewPassword}
                           onChange={(e) => setForgotNewPassword(e.target.value)}
                           style={{
@@ -603,12 +603,12 @@ export default function LoginPage() {
 
                     {/* Confirm New Password */}
                     <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 500, marginBottom: 6, color: "var(--text-secondary)" }}>Xác nhận mật khẩu mới</label>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 500, marginBottom: 6, color: "var(--text-secondary)" }}>Confirm New Password</label>
                       <div style={{ position: "relative" }}>
                         <Lock size={15} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                         <input
                           type={forgotShowConfirmPass ? "text" : "password"}
-                          placeholder="Nhập lại mật khẩu"
+                          placeholder="Re-enter password"
                           value={forgotConfirmPassword}
                           onChange={(e) => setForgotConfirmPassword(e.target.value)}
                           style={{
@@ -634,10 +634,10 @@ export default function LoginPage() {
                           onClick={handleSendForgotOtp}
                           style={{ background: "none", border: "none", color: "var(--primary)", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
                         >
-                          <RefreshCw size={12} /> Gửi lại mã
+                          <RefreshCw size={12} /> Resend code
                         </button>
                       ) : (
-                        <span>Gửi lại mã sau {forgotCountdown}s</span>
+                        <span>Resend code in {forgotCountdown}s</span>
                       )}
                     </div>
 
@@ -652,7 +652,7 @@ export default function LoginPage() {
                     >
                       {forgotLoading ? (
                         <div style={{ width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                      ) : "Đổi mật khẩu"}
+                      ) : "Change Password"}
                     </button>
                   </form>
                 </div>
@@ -663,9 +663,9 @@ export default function LoginPage() {
                   <div style={{ width: 72, height: 72, background: "rgba(34,197,94,0.1)", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
                     <CheckCircle size={36} style={{ color: "#22c55e" }} />
                   </div>
-                  <h3 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8 }}>Thành công!</h3>
+                  <h3 style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8 }}>Success!</h3>
                   <p style={{ color: "var(--text-secondary)", fontSize: 13, lineHeight: 1.5, marginBottom: 24 }}>
-                    Mật khẩu của bạn đã được thay đổi thành công. Bạn có thể sử dụng mật khẩu mới này để đăng nhập ngay bây giờ.
+                    Your password has been changed successfully. You can now use your new password to sign in.
                   </p>
 
                   <button
@@ -676,7 +676,7 @@ export default function LoginPage() {
                       cursor: "pointer"
                     }}
                   >
-                    Đăng nhập ngay
+                    Sign In Now
                   </button>
                 </div>
               )}

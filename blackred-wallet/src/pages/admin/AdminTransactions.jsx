@@ -9,28 +9,6 @@ import { adminAPI, formatVND } from "../../services/api";
 
 const fmtCurrency = (n) => formatVND(n);
 
-const getUserBaseBalance = (email) => {
-  if (!email) return 0;
-  const lower = email.toLowerCase();
-  if (lower === "nva@email.com") return 12500000;
-  if (lower === "ttb@email.com") return 3200000;
-  if (lower === "lvc@email.com") return 0;
-  if (lower === "ptd@email.com") return 8750000;
-  if (lower === "hme@email.com") return 1000000;
-  return 0;
-};
-
-const getMockUserEmailByName = (name) => {
-  if (!name) return null;
-  const lower = name.toLowerCase();
-  if (lower.includes("nguyễn văn a")) return "nva@email.com";
-  if (lower.includes("trần thị b")) return "ttb@email.com";
-  if (lower.includes("lê văn c")) return "lvc@email.com";
-  if (lower.includes("phạm thị d")) return "ptd@email.com";
-  if (lower.includes("hoàng minh e")) return "hme@email.com";
-  return null;
-};
-
 const parseTxTime = (timeStr) => {
   if (!timeStr) return new Date();
   try {
@@ -71,8 +49,8 @@ export default function AdminTransactions() {
         const mapped = res.transactions.map(tx => {
           const isDeposit = tx.transaction_type === "DEPOSIT";
           const initiatorName = isDeposit
-            ? tx.receiver_wallet?.user?.kyc?.full_name || tx.receiver_wallet?.user?.email || "Người dùng"
-            : tx.sender_wallet?.user?.kyc?.full_name || tx.sender_wallet?.user?.email || "Người dùng";
+            ? tx.receiver_wallet?.user?.kyc?.full_name || tx.receiver_wallet?.user?.email || "User"
+            : tx.sender_wallet?.user?.kyc?.full_name || tx.sender_wallet?.user?.email || "User";
           
           return {
             id: tx.reference_code || `TX${tx.id}`,
@@ -93,7 +71,7 @@ export default function AdminTransactions() {
       }
     } catch (error) {
       console.error("Failed to load transactions:", error);
-      showToast("Lỗi tải danh sách giao dịch từ hệ thống", "error");
+      showToast("Failed to load transaction list", "error");
     } finally {
       setLoading(false);
     }
@@ -108,41 +86,6 @@ export default function AdminTransactions() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  // Handle Approve Transaction
-  const handleApprove = async (txId, e) => {
-    if (e) e.stopPropagation();
-    const tx = txList.find(t => t.id === txId);
-    if (!tx) return;
-    try {
-      await adminAPI.reviewTransaction(tx.realId, 'SUCCESS');
-      showToast(`Đã duyệt thành công giao dịch ${txId}!`);
-      await loadTransactions();
-      if (selectedTx && selectedTx.id === txId) {
-        setSelectedTx(prev => ({ ...prev, status: "success" }));
-      }
-    } catch (error) {
-      console.error("Failed to approve transaction:", error);
-      showToast("Lỗi hệ thống khi phê duyệt giao dịch", "error");
-    }
-  };
-
-  // Handle Reject Transaction
-  const handleReject = async (txId, e) => {
-    if (e) e.stopPropagation();
-    const tx = txList.find(t => t.id === txId);
-    if (!tx) return;
-    try {
-      await adminAPI.reviewTransaction(tx.realId, 'FAILED');
-      showToast(`Đã từ chối giao dịch ${txId}!`, "error");
-      await loadTransactions();
-      if (selectedTx && selectedTx.id === txId) {
-        setSelectedTx(prev => ({ ...prev, status: "failed" }));
-      }
-    } catch (error) {
-      console.error("Failed to reject transaction:", error);
-      showToast("Lỗi hệ thống khi từ chối giao dịch", "error");
-    }
-  };
 
   const filtered = txList.filter(tx => {
     const matchStatus = filterStatus === "all" || tx.status === filterStatus;
@@ -187,17 +130,17 @@ export default function AdminTransactions() {
 
       {/* Header and overview */}
       <div>
-        <h1 style={{ fontSize:24, fontWeight:800, color:"var(--text-primary)", marginBottom:6 }}>📋 Quản lý giao dịch</h1>
-        <p style={{ color: "var(--text-secondary)", fontSize:14 }}>Phê duyệt và theo dõi các yêu cầu nạp tiền, rút tiền, chuyển tiền từ phía người dùng</p>
+        <h1 style={{ fontSize:24, fontWeight:800, color:"var(--text-primary)", marginBottom:6 }}>📋 Transaction Management</h1>
+        <p style={{ color: "var(--text-secondary)", fontSize:14 }}>Approve and monitor deposit, withdrawal, and transfer requests from users</p>
       </div>
 
       {/* Quick stats cards */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))", gap:16 }}>
         {[
-          { label:"Tổng giao dịch", count:stats.total, color:"#3b82f6", icon:ArrowRightLeft, desc:"Lịch sử hệ thống" },
-          { label:"Yêu cầu chờ xử lý", count:stats.pending, color:"#f59e0b", icon:Clock, desc:"Cần duyệt ngay", pulse: stats.pending > 0 },
-          { label:"Đã hoàn thành", count:stats.success, color:"#22c55e", icon:CheckCircle2, desc:"Giao dịch thành công" },
-          { label:"Đã từ chối", count:stats.failed, color:"#ef4444", icon:XCircle, desc:"Giao dịch thất bại" }
+          { label:"Total Transactions", count:stats.total, color:"#3b82f6", icon:ArrowRightLeft, desc:"System history" },
+          { label:"Pending Requests", count:stats.pending, color:"#f59e0b", icon:Clock, desc:"Requires immediate action", pulse: stats.pending > 0 },
+          { label:"Completed", count:stats.success, color:"#22c55e", icon:CheckCircle2, desc:"Successful transactions" },
+          { label:"Failed", count:stats.failed, color:"#ef4444", icon:XCircle, desc:"Failed transactions" }
         ].map((item, idx) => {
           const Icon = item.icon;
           return (
@@ -247,7 +190,7 @@ export default function AdminTransactions() {
             <input 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
-              placeholder="Tìm theo Mã GD, tên user, nội dung..." 
+              placeholder="Search by Transaction ID, user name, or content..." 
               style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"10px 14px 10px 36px", color:"var(--text-primary)", fontSize:13, outline:"none" }} 
             />
           </div>
@@ -255,10 +198,10 @@ export default function AdminTransactions() {
           {/* Status filter */}
           <div style={{ display:"flex", gap:4, background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:3 }}>
             {[
-              { v: "all", l: "Tất cả" },
-              { v: "pending", l: "Chờ xử lý" },
-              { v: "success", l: "Thành công" },
-              { v: "failed", l: "Thất bại" }
+              { v: "all", l: "All" },
+              { v: "pending", l: "Pending" },
+              { v: "success", l: "Successful" },
+              { v: "failed", l: "Failed" }
             ].map(s => (
               <button 
                 key={s.v} 
@@ -278,9 +221,9 @@ export default function AdminTransactions() {
           {/* Type filter */}
           <div style={{ display:"flex", gap:4, background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:3 }}>
             {[
-              { v: "all", l: "Mọi loại GD" },
-              { v: "receive", l: "Nạp tiền" },
-              { v: "send", l: "Rút/Chuyển" }
+              { v: "all", l: "All Types" },
+              { v: "receive", l: "Deposit" },
+              { v: "send", l: "Withdraw/Transfer" }
             ].map(t => (
               <button 
                 key={t.v} 
@@ -337,7 +280,7 @@ export default function AdminTransactions() {
                     <span style={{ fontSize:11, color: "var(--text-muted)" }}>{tx.time}</span>
                   </div>
                   <p style={{ fontSize:12, color: "var(--text-secondary)", marginTop:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                    Ghi chú: {tx.note || "—"}
+                    Note: {tx.note || "—"}
                   </p>
                 </div>
 
@@ -352,7 +295,7 @@ export default function AdminTransactions() {
                       background: tx.status === "success" ? "rgba(34,197,94,0.1)" : tx.status === "pending" ? "rgba(245,158,11,0.1)" : "rgba(239,68,68,0.1)",
                       color: tx.status === "success" ? "#22c55e" : tx.status === "pending" ? "#f59e0b" : "#ef4444"
                     }}>
-                      {tx.status === "success" ? "Thành công" : tx.status === "pending" ? "Chờ xử lý" : "Thất bại"}
+                      {tx.status === "success" ? "Successful" : tx.status === "pending" ? "Pending" : "Failed"}
                     </span>
                   </div>
 
@@ -362,7 +305,7 @@ export default function AdminTransactions() {
                       <>
                         <button
                           onClick={(e) => handleApprove(tx.id, e)}
-                          title="Phê duyệt"
+                          title="Approve"
                           style={{
                             width:32, height:32, borderRadius:8, background:"rgba(34,197,94,0.12)", border:"1px solid rgba(34,197,94,0.3)",
                             color:"#22c55e", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", transition:"all 0.2s"
@@ -374,7 +317,7 @@ export default function AdminTransactions() {
                         </button>
                         <button
                           onClick={(e) => handleReject(tx.id, e)}
-                          title="Từ chối"
+                          title="Reject"
                           style={{
                             width:32, height:32, borderRadius:8, background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.3)",
                             color:"#ef4444", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", transition:"all 0.2s"
@@ -399,7 +342,7 @@ export default function AdminTransactions() {
           {!loading && filtered.length === 0 && (
             <div style={{ textAlign:"center", padding:"40px 0", color: "var(--text-muted)" }}>
               <AlertCircle size={32} style={{ margin:"0 auto 12px", color: "var(--text-muted)" }} />
-              <p style={{ fontSize:14 }}>Không tìm thấy giao dịch phù hợp</p>
+              <p style={{ fontSize:14 }}>No matching transactions found</p>
             </div>
           )}
         </div>
@@ -425,7 +368,7 @@ export default function AdminTransactions() {
                 <X size={16} />
               </button>
 
-              <h3 style={{ fontSize:18, fontWeight:700, marginBottom:20, color:"var(--text-primary)" }}>Chi tiết yêu cầu giao dịch</h3>
+              <h3 style={{ fontSize:18, fontWeight:700, marginBottom:20, color:"var(--text-primary)" }}>Transaction Request Details</h3>
 
               <div style={{ background: "var(--bg-card2)", borderRadius:12, padding:20, marginBottom:20, textAlign:"center", border: "1px solid var(--border)" }}>
                 <p style={{ fontSize:32, fontWeight:900, color: selectedTx.type === "receive" ? "#22c55e" : "#ef4444" }}>
@@ -436,18 +379,18 @@ export default function AdminTransactions() {
                   background: selectedTx.status === "success" ? "rgba(34,197,94,0.12)" : selectedTx.status === "pending" ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)",
                   color: selectedTx.status === "success" ? "#22c55e" : selectedTx.status === "pending" ? "#f59e0b" : "#ef4444"
                 }}>
-                  {selectedTx.status === "success" ? "Thành công" : selectedTx.status === "pending" ? "Chờ phê duyệt" : "Thất bại"}
+                  {selectedTx.status === "success" ? "Successful" : selectedTx.status === "pending" ? "Pending Approval" : "Failed"}
                 </span>
               </div>
 
               <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
                 {[
-                  { label:"Mã giao dịch", value:selectedTx.id, font:"monospace" },
-                  { label:"Loại giao dịch", value: selectedTx.type === "receive" ? "Nạp tiền" : "Rút/Chuyển tiền" },
-                  ...(selectedTx.category ? [{ label:"Danh mục", value: selectedTx.category }] : []),
-                  { label:"Người thực hiện", value:selectedTx.name },
-                  { label:"Thời gian tạo", value:selectedTx.time },
-                  { label:"Ghi chú / Nội dung", value:selectedTx.note || "—" }
+                  { label:"Transaction ID", value:selectedTx.id, font:"monospace" },
+                  { label:"Transaction Type", value: selectedTx.type === "receive" ? "Deposit" : "Withdraw/Transfer" },
+                  ...(selectedTx.category ? [{ label:"Category", value: selectedTx.category }] : []),
+                  { label:"Initiated By", value:selectedTx.name },
+                  { label:"Created At", value:selectedTx.time },
+                  { label:"Note / Description", value:selectedTx.note || "—" }
                 ].map(r => (
                   <div key={r.label} style={{ display:"flex", justifyContent:"space-between", padding:"12px 0", borderBottom: "1px solid var(--border)" }}>
                     <span style={{ fontSize:13, color: "var(--text-secondary)" }}>{r.label}</span>
@@ -470,7 +413,7 @@ export default function AdminTransactions() {
                     onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.15)"}
                     onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,0.08)"}
                   >
-                    Từ chối
+                    Reject
                   </button>
                   <button
                     onClick={() => {
@@ -482,7 +425,7 @@ export default function AdminTransactions() {
                       display:"flex", alignItems:"center", justifyContent:"center", gap:6
                     }}
                   >
-                    <Check size={16} /> Phê duyệt
+                    <Check size={16} /> Approve
                   </button>
                 </div>
               )}

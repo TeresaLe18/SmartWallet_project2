@@ -73,8 +73,8 @@ export default function AdminInvestment() {
   return (
     <div style={{ maxWidth: 1400, margin: "0 auto", paddingBottom: 60 }} className="animate-fade-in">
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>📈 Quản lý Tiết kiệm & Đầu tư</h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Giám sát toàn bộ các sổ tiết kiệm tích lũy và số dư đầu tư của người dùng</p>
+        <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>📈 Savings & Investment Management</h1>
+        <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Monitor all accumulated savings accounts and investment balances across users</p>
       </div>
 
       {/* Aggregate Stats Cards */}
@@ -82,48 +82,48 @@ export default function AdminInvestment() {
         {/* Total active savings capital */}
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Vốn tiết kiệm đang hoạt động</span>
+            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Active Savings Principal</span>
             <Lock size={18} style={{ color: "var(--primary)" }} />
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)" }}>{formatVND(stats.totalActivePrincipal)}</h2>
           <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 12 }}>
-            Tổng số gốc của {stats.activeCount} tài khoản active
+            Total principal across {stats.activeCount} active accounts
           </p>
         </div>
 
         {/* Total active yield liabilities */}
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Lãi phát sinh (Active)</span>
+            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Accrued Interest (Active)</span>
             <TrendingUp size={18} style={{ color: "#22c55e" }} />
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "#22c55e" }}>{formatVND(stats.totalActiveInterest)}</h2>
           <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 12 }}>
-            Tiền lãi dự tính cộng dồn lũy kế hiện tại
+            Estimated cumulative interest accrued to date
           </p>
         </div>
 
         {/* Total closed payout volume */}
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Tổng gốc đã tất toán</span>
+            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Total Settled Principal</span>
             <CheckCircle size={18} style={{ color: "#71717a" }} />
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)" }}>{formatVND(stats.totalWithdrawnPrincipal)}</h2>
           <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 12 }}>
-            Vốn từ {stats.withdrawnCount} tài khoản đã rút thành công
+            Principal from {stats.withdrawnCount} successfully withdrawn accounts
           </p>
         </div>
 
         {/* Total actual interest paid out */}
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Tổng lãi thực tế đã chi trả</span>
+            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Total Interest Paid Out</span>
             <ArrowRightLeft size={18} style={{ color: "#ec4899" }} />
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "#ec4899" }}>{formatVND(stats.totalWithdrawnInterest)}</h2>
           <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 12 }}>
-            Tổng lãi suất đã thanh toán thực tế về ví chính
+            Total interest actually disbursed to main wallets
           </p>
         </div>
       </div>
@@ -137,9 +137,9 @@ export default function AdminInvestment() {
           {/* Status filter tabs */}
           <div style={{ display: "flex", gap: 8 }}>
             {[
-              { id: "ALL", label: "Tất cả" },
-              { id: "ACTIVE", label: "Đang hoạt động" },
-              { id: "WITHDRAWN", label: "Đã tất toán" }
+              { id: "ALL", label: "All" },
+              { id: "ACTIVE", label: "Active" },
+              { id: "WITHDRAWN", label: "Settled" }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -161,7 +161,7 @@ export default function AdminInvestment() {
             <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
             <input
               type="text"
-              placeholder="Tìm theo email, phone hoặc mã số..."
+              placeholder="Search by email, phone, or ID..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="input-field"
@@ -177,19 +177,19 @@ export default function AdminInvestment() {
               width: 30, height: 30, border: "3px solid var(--border)", borderTopColor: "var(--primary)",
               borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 12px"
             }} />
-            <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>Đang tải danh sách đầu tư hệ thống...</p>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>Loading investment records...</p>
           </div>
         ) : filteredInvestments.length === 0 ? (
           <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
             <span style={{ fontSize: 32 }}>📁</span>
-            <p style={{ fontSize: 13, fontWeight: 600, marginTop: 12 }}>Không tìm thấy bản ghi tiết kiệm nào trùng khớp</p>
+            <p style={{ fontSize: 13, fontWeight: 600, marginTop: 12 }}>No matching savings records found</p>
           </div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                  {["MÃ SỐ", "KHÁCH HÀNG", "TIỀN GỐC", "KỲ HẠN", "LÃI SUẤT", "NGÀY MỞ SỔ", "LÃI TÍCH LŨY", "TRẠNG THÁI"].map((header, idx) => (
+                  {["ID", "CUSTOMER", "PRINCIPAL", "TERM", "INTEREST RATE", "OPEN DATE", "ACCRUED INTEREST", "STATUS"].map((header, idx) => (
                     <th key={idx} style={{ padding: "12px 16px", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                       {header}
                     </th>
@@ -224,15 +224,15 @@ export default function AdminInvestment() {
                         {formatVND(Number(inv.amount))}
                       </td>
                       <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 600 }}>
-                        {inv.term_months === 0 ? "Không kỳ hạn" : `${inv.term_months} Tháng`}
+                        {inv.term_months === 0 ? "Flexible" : `${inv.term_months} Months`}
                       </td>
                       <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 700, color: "var(--primary)" }}>
-                        {inv.interest_rate}%/năm
+                        {inv.interest_rate}%/yr
                       </td>
                       <td style={{ padding: "14px 16px" }}>
                         <p style={{ fontSize: 12, fontWeight: 500 }}>{start.toLocaleDateString("vi-VN")}</p>
                         <p style={{ fontSize: 10, color: "var(--text-muted)" }}>
-                          Đáo hạn: {end ? end.toLocaleDateString("vi-VN") : "N/A"}
+                          Maturity: {end ? end.toLocaleDateString("vi-VN") : "N/A"}
                         </p>
                       </td>
                       <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 700, color: "#22c55e" }}>
@@ -244,7 +244,7 @@ export default function AdminInvestment() {
                           background: isClosed ? "rgba(113, 113, 122, 0.1)" : "rgba(34, 197, 94, 0.1)",
                           color: isClosed ? "#71717a" : "#22c55e"
                         }}>
-                          {isClosed ? "ĐÃ TẤT TOÁN" : "ĐANG HOẠT ĐỘNG"}
+                          {isClosed ? "SETTLED" : "ACTIVE"}
                         </span>
                       </td>
                     </tr>

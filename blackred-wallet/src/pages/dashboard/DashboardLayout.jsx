@@ -11,9 +11,9 @@ import { authAPI } from "../../services/api";
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/dashboard/wallets", icon: CreditCard, label: "My Wallets" },
-  { href: "/dashboard/investment", icon: TrendingUp, label: "Đầu tư & Tích lũy" },
-  { href: "/dashboard/offers", icon: Gift, label: "Ưu đãi" },
-  { href: "/dashboard/support", icon: MessageSquare, label: "Hỗ trợ trực tuyến" },
+  { href: "/dashboard/investment", icon: TrendingUp, label: "Investments & Savings" },
+  { href: "/dashboard/offers", icon: Gift, label: "Offers" },
+  { href: "/dashboard/support", icon: MessageSquare, label: "Live Support" },
 ];
 
 export default function DashboardLayout() {
@@ -49,24 +49,24 @@ export default function DashboardLayout() {
         setNewsPosts([
           { 
             id: 1, 
-            title: "Ngân hàng Nhà nước điều chỉnh lãi suất tiết kiệm", 
-            time: "2 giờ trước", 
-            tag: "Kinh tế", 
-            content: "Ngân hàng Nhà nước vừa công bố điều chỉnh khung lãi suất tiền gửi tiết kiệm áp dụng cho các tổ chức tín dụng. Động thái này nhằm định hướng dòng vốn hiệu quả vào sản xuất kinh doanh, đồng thời kiểm soát lạm phát ổn định trong nước."
+            title: "Central Bank Adjusts Savings Deposit Interest Rates", 
+            time: "2 hours ago", 
+            tag: "Economy", 
+            content: "The State Bank has announced an adjustment to the savings deposit interest rate framework applicable to credit institutions. This move aims to channel capital more effectively into production and business, while keeping domestic inflation under control."
           },
           { 
             id: 2, 
-            title: "Thanh toán không tiền mặt tăng 40% trong năm 2025", 
-            time: "5 giờ trước", 
+            title: "Cashless Payments Up 40% in 2025", 
+            time: "5 hours ago", 
             tag: "Fintech", 
-            content: "Báo cáo mới nhất của cơ quan quản lý tài chính cho thấy làn sóng chuyển đổi số đang bùng nổ mạnh mẽ tại Việt Nam. Khối lượng giao dịch không dùng tiền mặt qua ví điện tử và chuyển khoản ngân hàng ghi nhận mức tăng trưởng kỷ lục."
+            content: "The latest report from the financial regulator shows that the wave of digital transformation is booming across the country. Transaction volumes through e-wallets and bank transfers have reached record growth levels."
           },
           { 
             id: 3, 
-            title: "AI tài chính: xu hướng quản lý chi tiêu thông minh", 
-            time: "1 ngày trước", 
-            tag: "Công nghệ", 
-            content: "Các chuyên gia Fintech đánh giá trợ lý trí tuệ nhân tạo (AI) đang định hình lại thói quen tích lũy tài sản và theo dõi ngân sách cá nhân của thế hệ trẻ. Công nghệ phân tích dự báo giúp tối ưu hóa chi phí hàng tháng tối đa."
+            title: "Financial AI: The Smart Spending Management Trend", 
+            time: "1 day ago", 
+            tag: "Technology", 
+            content: "Fintech experts note that artificial intelligence (AI) assistants are reshaping how younger generations build savings habits and track personal budgets. Predictive analytics technology helps maximize monthly cost optimization."
           }
         ]);
       }
@@ -115,35 +115,35 @@ export default function DashboardLayout() {
     if (isKycVerified) {
       list.push({
         id: "kyc_verified",
-        title: "Xác thực KYC thành công ✅",
-        desc: "Tài khoản của bạn đã được kích hoạt đầy đủ các tính năng nạp/rút/chuyển tiền.",
-        time: "Hệ thống",
+        title: "KYC Verification Successful ✅",
+        desc: "Your account has been fully activated with top-up, withdrawal, and transfer features.",
+        time: "System",
         type: "kyc"
       });
     } else if (isKycPending) {
       list.push({
         id: "kyc_pending",
-        title: "Đang chờ duyệt KYC ⏳",
-        desc: "Hồ sơ xác minh danh tính của bạn đang được ban quản trị xét duyệt.",
-        time: "Hệ thống",
+        title: "KYC Pending Review ⏳",
+        desc: "Your identity verification documents are currently being reviewed by the admin team.",
+        time: "System",
         type: "kyc"
       });
     } else if (isKycRejected) {
       const rejectNotif = dbNotifications.find(n => n.title && n.title.includes("từ chối"));
-      const customDesc = rejectNotif ? rejectNotif.content : "Thông tin xác thực không trùng khớp hoặc mờ. Vui lòng gửi lại hồ sơ chính xác.";
+      const customDesc = rejectNotif ? rejectNotif.content : "Verification information did not match or was unclear. Please resubmit accurate documents.";
       list.push({
         id: "kyc_rejected",
-        title: "Hồ sơ KYC bị từ chối ❌",
+        title: "KYC Application Rejected ❌",
         desc: customDesc,
-        time: "Hệ thống",
+        time: "System",
         type: "kyc"
       });
     } else {
       list.push({
         id: "kyc_needed",
-        title: "Yêu cầu xác thực danh tính (KYC) ⚠️",
-        desc: "Nhấp để gửi hồ sơ căn cước công dân nhằm tăng hạn mức và bảo mật ví.",
-        time: "Hệ thống",
+        title: "Identity Verification Required (KYC) ⚠️",
+        desc: "Click to submit your ID document to increase transaction limits and secure your wallet.",
+        time: "System",
         type: "kyc"
       });
     }
@@ -169,9 +169,9 @@ export default function DashboardLayout() {
       const contentText = post.content || "";
       list.push({
         id: `news_${post.id}`,
-        title: `📰 [${post.tag || "Tin tức"}] ${post.title || ""}`,
+        title: `📰 [${post.tag || "News"}] ${post.title || ""}`,
         desc: contentText.length > 70 ? contentText.slice(0, 70) + "..." : contentText,
-        time: post.time || "Vừa xong",
+        time: post.time || "Just now",
         type: "news"
       });
     });
@@ -384,9 +384,9 @@ export default function DashboardLayout() {
             <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--text-primary)" }}>
               {pathname === "/dashboard" ? "Dashboard" :
                pathname.includes("wallets") ? "My Wallets" :
-               pathname.includes("investment") ? "Đầu tư & Tích lũy" :
-               pathname.includes("offers") ? "Ưu đãi" :
-               pathname.includes("support") ? "Hỗ trợ trực tuyến" : "SmartWallet Wallet"}
+               pathname.includes("investment") ? "Investments & Savings" :
+               pathname.includes("offers") ? "Offers" :
+               pathname.includes("support") ? "Live Support" : "SmartWallet"}
             </h2>
           </div>
 
@@ -401,7 +401,7 @@ export default function DashboardLayout() {
                 fontSize: 12, fontWeight: 600
               }}>
                 <CheckCircle size={14} />
-                <span className="hidden sm:inline">Đã xác thực KYC</span>
+                <span className="hidden sm:inline">KYC Verified</span>
               </div>
             ) : isKycPending ? (
               // ⏳ Đang chờ duyệt
@@ -415,7 +415,7 @@ export default function DashboardLayout() {
                 }}
               >
                 <Clock size={14} style={{ animation: "pulse 2s infinite" }} />
-                <span className="hidden sm:inline">Đang chờ duyệt KYC</span>
+                <span className="hidden sm:inline">KYC Pending</span>
                 <span className="sm:hidden">Pending</span>
               </button>
             ) : (
@@ -430,7 +430,7 @@ export default function DashboardLayout() {
                 }}
               >
                 <AlertTriangle size={14} />
-                <span className="hidden sm:inline">Xác thực danh tính</span>
+                <span className="hidden sm:inline">Verify Identity</span>
                 <span className="sm:hidden">KYC</span>
               </button>
             )
@@ -470,13 +470,13 @@ export default function DashboardLayout() {
                   }}
                 >
                   <div style={{ padding: "16px 20px 10px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <h3 style={{ fontSize: 14, fontWeight: 700 }}>Thông báo</h3>
+                    <h3 style={{ fontSize: 14, fontWeight: 700 }}>Notifications</h3>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      {unreadCount > 0 && <span style={{ fontSize: 11, background: "rgba(37,99,235,0.15)", color: "#2563eb", padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>{unreadCount} mới</span>}
+                      {unreadCount > 0 && <span style={{ fontSize: 11, background: "rgba(37,99,235,0.15)", color: "#2563eb", padding: "2px 8px", borderRadius: 10, fontWeight: 600 }}>{unreadCount} new</span>}
                       {unreadCount > 0 && (
                         <button onClick={(e) => { e.stopPropagation(); handleMarkAllRead(); }}
                           style={{ fontSize: 11, background: "none", border: "none", color: "#2563eb", fontWeight: 600, cursor: "pointer", padding: 0 }}>
-                          Đọc tất cả
+                          Mark all read
                         </button>
                       )}
                     </div>
@@ -485,9 +485,9 @@ export default function DashboardLayout() {
                   {/* Filter Pills */}
                   <div style={{ display: "flex", gap: 6, padding: "4px 20px 12px", borderBottom: "1px solid var(--border)" }}>
                     {[
-                      { id: "all", label: "Tất cả" },
-                      { id: "unread", label: "Chưa xem" },
-                      { id: "read", label: "Đã xem" },
+                      { id: "all", label: "All" },
+                      { id: "unread", label: "Unread" },
+                      { id: "read", label: "Read" },
                     ].map(f => (
                       <button 
                         key={f.id} 
@@ -509,7 +509,7 @@ export default function DashboardLayout() {
                   <div style={{ maxHeight: 280, overflowY: "auto" }}>
                     {filteredNotifs.length === 0 ? (
                       <div style={{ padding: "30px 20px", textAlign: "center", color: "var(--text-secondary)" }}>
-                        <p style={{ fontSize: 12 }}>Không có thông báo nào</p>
+                        <p style={{ fontSize: 12 }}>No notifications</p>
                       </div>
                     ) : (
                       filteredNotifs.map((n) => (
@@ -586,11 +586,11 @@ export default function DashboardLayout() {
                   </div>
                   {[
                     isKycVerified
-                      ? { icon: CheckCircle, label: "Đã KYC ✓", href: "/dashboard/kyc", status: "verified" }
+                      ? { icon: CheckCircle, label: "KYC Verified ✓", href: "/dashboard/kyc", status: "verified" }
                       : isKycPending
-                        ? { icon: Clock, label: "Đang chờ duyệt KYC", href: "/dashboard/kyc", status: "pending" }
-                        : { icon: Shield, label: "Xác thực KYC", href: "/dashboard/kyc", status: "none" },
-                    { icon: User, label: "Thông tin cá nhân", href: "/dashboard/profile", status: "none" },
+                        ? { icon: Clock, label: "KYC Pending", href: "/dashboard/kyc", status: "pending" }
+                        : { icon: Shield, label: "Verify KYC", href: "/dashboard/kyc", status: "none" },
+                    { icon: User, label: "Personal Information", href: "/dashboard/profile", status: "none" },
                   ].map(({ icon: Icon, label, href, status }) => (
                     <Link key={href} to={href} style={{ textDecoration: "none" }} onClick={() => setShowUserMenu(false)}>
                       <div style={{
@@ -626,7 +626,7 @@ export default function DashboardLayout() {
                       onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
                     >
-                      <LogOut size={15} /> Đăng xuất
+                      <LogOut size={15} /> Log Out
                     </button>
                   </div>
                 </motion.div>

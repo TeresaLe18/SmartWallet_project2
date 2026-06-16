@@ -75,7 +75,7 @@ const getSpendingData = (txs, filter) => {
 
   if (filter === "1w") {
     const data = [];
-    const weekdays = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+    const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(now.getDate() - i);
@@ -106,10 +106,10 @@ const getSpendingData = (txs, filter) => {
 
   if (filter === "1m") {
     const data = [
-      { month: "Tuần 1", income: 0, expense: 0 },
-      { month: "Tuần 2", income: 0, expense: 0 },
-      { month: "Tuần 3", income: 0, expense: 0 },
-      { month: "Tuần 4", income: 0, expense: 0 },
+      { month: "Week 1", income: 0, expense: 0 },
+      { month: "Week 2", income: 0, expense: 0 },
+      { month: "Week 3", income: 0, expense: 0 },
+      { month: "Week 4", income: 0, expense: 0 },
     ];
 
     txs.forEach(tx => {
@@ -140,7 +140,7 @@ const getSpendingData = (txs, filter) => {
     data.push({
       year: d.getFullYear(),
       monthIndex: d.getMonth(),
-      month: `T${monthNum}`,
+      month: `M${monthNum}`,
       income: 0,
       expense: 0
     });
@@ -171,12 +171,12 @@ const getCategoryData = (txs, filter) => {
   else if (filter === "1y") durationMs = 365 * 24 * 60 * 60 * 1000;
 
   const categorySums = {
-    "Ăn uống": 0,
-    "Di chuyển": 0,
-    "Mua sắm": 0,
-    "Giải trí": 0,
-    "Hóa đơn": 0,
-    "Khác": 0
+    "Food & Dining": 0,
+    "Transportation": 0,
+    "Shopping": 0,
+    "Entertainment": 0,
+    "Bills": 0,
+    "Other": 0
   };
 
   let totalExpense = 0;
@@ -187,9 +187,9 @@ const getCategoryData = (txs, filter) => {
     const diffTime = now.getTime() - txDate.getTime();
 
     if (diffTime >= 0 && diffTime <= durationMs) {
-      let cat = tx.category || "Khác";
+      let cat = tx.category || "Other";
       if (!categorySums.hasOwnProperty(cat)) {
-        cat = "Khác";
+        cat = "Other";
       }
       categorySums[cat] += tx.amount;
       totalExpense += tx.amount;
@@ -197,12 +197,12 @@ const getCategoryData = (txs, filter) => {
   });
 
   const colors = {
-    "Ăn uống": "#2563eb",
-    "Di chuyển": "#f59e0b",
-    "Mua sắm": "#3b82f6",
-    "Giải trí": "#8b5cf6",
-    "Hóa đơn": "#ec4899",
-    "Khác": "#22c55e"
+    "Food & Dining": "#2563eb",
+    "Transportation": "#f59e0b",
+    "Shopping": "#3b82f6",
+    "Entertainment": "#8b5cf6",
+    "Bills": "#ec4899",
+    "Other": "#22c55e"
   };
 
   const data = Object.keys(categorySums).map(name => {
@@ -217,7 +217,7 @@ const getCategoryData = (txs, filter) => {
   });
 
   return {
-    chartData: totalExpense > 0 ? data.filter(d => d.value > 0) : [{ name: "Chưa có chi tiêu", value: 100, color: "#27272a", amount: 0 }],
+    chartData: totalExpense > 0 ? data.filter(d => d.value > 0) : [{ name: "No spending data", value: 100, color: "#27272a", amount: 0 }],
     listData: data,
     totalExpense
   };
@@ -241,9 +241,9 @@ const formatTxDateAndTime = (timeStr) => {
 
     let dateDisplay = datePart;
     if (datePart === nowStr) {
-      dateDisplay = "Hôm nay";
+      dateDisplay = "Today";
     } else if (datePart === yesterdayStr) {
-      dateDisplay = "Hôm qua";
+      dateDisplay = "Yesterday";
     }
 
     return { time: timePart, date: dateDisplay };
@@ -268,13 +268,13 @@ const mapBackendTx = (tx, currentEmail) => {
   const type = isSender ? "send" : "receive";
 
   let name = "";
-  if (tx.transaction_type === 'DEPOSIT') name = "Nạp tiền vào ví";
-  else if (tx.transaction_type === 'WITHDRAW') name = `Rút tiền về ${tx.bank_code || 'ngân hàng'}`;
+  if (tx.transaction_type === 'DEPOSIT') name = "Wallet Top-up";
+  else if (tx.transaction_type === 'WITHDRAW') name = `Withdrawal to ${tx.bank_code || 'bank'}`;
   else if (tx.transaction_type === 'TRANSFER') {
     name = isSender
-      ? `Chuyển tiền đến ${tx.receiver_wallet?.user?.email || 'người nhận'}`
-      : `Nhận tiền từ ${tx.sender_wallet?.user?.email || 'người gửi'}`;
-  } else name = tx.message || "Giao dịch khác";
+      ? `Transfer to ${tx.receiver_wallet?.user?.email || 'recipient'}`
+      : `Received from ${tx.sender_wallet?.user?.email || 'sender'}`;
+  } else name = tx.message || "Other Transaction";
 
   const date = new Date(tx.created_at || tx.createdAt);
   const timeStr = date.toLocaleTimeString("vi-VN", { hour: '2-digit', minute: '2-digit' }) + " " + date.toLocaleDateString("vi-VN");
@@ -343,7 +343,7 @@ export default function DashboardPage() {
   const [selectedNews, setSelectedNews] = useState(null);
   const [chatInput, setChatInput] = useState("");
   const [chatMessages, setChatMessages] = useState([
-    { role: "ai", text: "Chào bạn! Tôi là trợ lý tài chính SmartWallet AI. Bạn cần tôi tư vấn gì về quản lý chi tiêu hay tối ưu hóa dòng tiền hôm nay?" }
+    { role: "ai", text: "Hello! I'm SmartWallet AI, your personal financial assistant. How can I help you with expense management or cash flow optimization today?" }
   ]);
   const [aiTyping, setAiTyping] = useState(false);
   const [balance, setBalance] = useState(0);
@@ -365,7 +365,7 @@ export default function DashboardPage() {
         .map(c => `${c.name} (${c.value}%)`)
         .join(", ");
 
-      const prompt = `Bạn là trợ lý tư vấn tài chính cá nhân của ví điện tử SmartWallet Wallet. Bạn tên là SmartWallet AI. Hãy tư vấn cho người dùng thật chuyên nghiệp, lịch sự, ngắn gọn và hữu ích về các mẹo tiết kiệm tiền, tối ưu hóa ngân sách, quản lý chi tiêu. Số dư hiện tại của người dùng là ${balance.toLocaleString("vi-VN")} ₫. Chi tiêu tháng này là ${currentMonthCategoryData.totalExpense.toLocaleString("vi-VN")} ₫ cho các khoản: ${categoryBreakdownStr}. Trả lời thân thiện, ngắn gọn bằng tiếng Việt.\n\nLịch sử trò chuyện:\n${newMsgList.map(m => `${m.role === 'user' ? 'Người dùng' : 'SmartWallet AI'}: ${m.text}`).join('\n')}\nSmartWallet AI:`;
+      const prompt = `You are the personal financial advisor for SmartWallet, a digital wallet app. Your name is SmartWallet AI. Provide professional, polite, concise, and helpful advice on saving money, budget optimization, and expense management. The user's current balance is ${balance.toLocaleString("en-US")} ₫. This month's spending is ${currentMonthCategoryData.totalExpense.toLocaleString("en-US")} ₫ across: ${categoryBreakdownStr}. Reply in a friendly, concise manner in English.\n\nConversation history:\n${newMsgList.map(m => `${m.role === 'user' ? 'User' : 'SmartWallet AI'}: ${m.text}`).join('\n')}\nSmartWallet AI:`;
 
       let savedKey = localStorage.getItem("bw_gemini_api_key") || "";
 
@@ -375,7 +375,7 @@ export default function DashboardPage() {
         setApiKeyInput("");
         setChatMessages(prev => [...prev, {
           role: "ai",
-          text: "🔑 Vui lòng cấu hình Gemini API Key cá nhân để sử dụng tính năng AI. Nhấn vào ⚙️ ở góc trên bên phải khung chat, sau đó lấy key miễn phí tại aistudio.google.com."
+          text: "🔑 Please configure your personal Gemini API Key to use the AI feature. Click ⚙️ in the top-right corner of the chat, then get a free key at aistudio.google.com."
         }]);
         return;
       }
@@ -431,14 +431,14 @@ export default function DashboardPage() {
         setApiKeyInput("");
         setChatMessages(prev => [...prev, {
           role: "ai",
-          text: "🔑 API Key của bạn đã hết hạn hoặc không hợp lệ. Vui lòng nhập API Key mới trong khung bên dưới (lấy miễn phí tại aistudio.google.com)."
+          text: "🔑 Your API Key has expired or is invalid. Please enter a new API Key below (get one free at aistudio.google.com)."
         }]);
       } else {
-        const reply = replyText || `Xin lỗi, tôi đang gặp sự cố kết nối. Vui lòng thử lại sau. (${lastErrorMessage})`;
+        const reply = replyText || `Sorry, I'm experiencing a connection issue. Please try again later. (${lastErrorMessage})`;
         setChatMessages(prev => [...prev, { role: "ai", text: reply }]);
       }
     } catch (err) {
-      setChatMessages(prev => [...prev, { role: "ai", text: "Xin lỗi, hiện tại tôi đang gặp khó khăn kết nối với máy chủ AI. Bạn vui lòng thử lại sau nhé!" }]);
+      setChatMessages(prev => [...prev, { role: "ai", text: "Sorry, I'm currently having trouble connecting to the AI server. Please try again later!" }]);
     } finally {
       setAiTyping(false);
     }
@@ -517,7 +517,7 @@ export default function DashboardPage() {
         color: COLORS[i % COLORS.length],
       }));
       setCategoryStats({
-        chartData: total > 0 ? listData.filter(d => d.value > 0) : [{ name: "Chưa có chi tiêu", value: 100, color: "#27272a", amount: 0 }],
+        chartData: total > 0 ? listData.filter(d => d.value > 0) : [{ name: "No spending data", value: 100, color: "#27272a", amount: 0 }],
         listData,
         totalExpense: total,
       });
@@ -530,7 +530,7 @@ export default function DashboardPage() {
 
   const stats = [
     {
-      label: "Số dư ví",
+      label: "Wallet Balance",
       value: fmtCleanCurrency(balance),
       change: "--",
       up: true,
@@ -538,7 +538,7 @@ export default function DashboardPage() {
       color: "#2563eb",
     },
     {
-      label: "Thu nhập tháng",
+      label: "Monthly Income",
       value: fmtCleanCurrency(monthlyIncome),
       change: "--",
       up: true,
@@ -546,7 +546,7 @@ export default function DashboardPage() {
       color: "#22c55e",
     },
     {
-      label: "Chi tiêu tháng",
+      label: "Monthly Expenses",
       value: fmtCleanCurrency(monthlyExpense),
       change: "--",
       up: false,
@@ -554,8 +554,8 @@ export default function DashboardPage() {
       color: "#f59e0b",
     },
     {
-      label: "Giao dịch",
-      value: `${transactions.length} GD`,
+      label: "Transactions",
+      value: `${transactions.length} TX`,
       change: "--",
       up: true,
       icon: BarChart3,
@@ -568,10 +568,10 @@ export default function DashboardPage() {
       {/* Welcome */}
       <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
         <h1 style={{ fontSize: 22, fontWeight: 800, marginBottom: 4 }}>
-          Xin chào, {user?.name || "bạn"} 👋
+          Hello, {user?.name || "there"} 👋
         </h1>
         <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
-          Đây là tổng quan tài chính của bạn hôm nay, {new Date().toLocaleDateString("vi-VN", { weekday: "long", day: "numeric", month: "long" })}
+          Here is your financial overview for today, {new Date().toLocaleDateString("en-US", { weekday: "long", day: "numeric", month: "long" })}
         </p>
       </motion.div>
 
@@ -606,7 +606,7 @@ export default function DashboardPage() {
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
                   {s.up ? <TrendingUp size={12} style={{ color: "#22c55e" }} /> : <TrendingDown size={12} style={{ color: "#ef4444" }} />}
                   <span style={{ fontSize: 12, color: s.up ? "#22c55e" : "#ef4444", fontWeight: 600 }}>{s.change}</span>
-                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>so với tháng trước</span>
+                  <span style={{ fontSize: 12, color: "var(--text-muted)" }}>vs last month</span>
                 </div>
                 {/* background accent */}
                 <div style={{ position: "absolute", bottom: -20, right: -20, width: 80, height: 80, borderRadius: "50%", background: `${s.color}08` }} />
@@ -627,15 +627,15 @@ export default function DashboardPage() {
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24 }}>
             <div>
-              <h3 style={{ fontSize: 15, fontWeight: 700 }}>Thu chi theo tháng</h3>
-              <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>Tổng quan dòng tiền</p>
+              <h3 style={{ fontSize: 15, fontWeight: 700 }}>Income & Expenses</h3>
+              <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>Cash flow overview</p>
             </div>
             <div style={{ display: "flex", gap: 6 }}>
               {[
-                { key: "1d", label: "1 ngày" },
-                { key: "1w", label: "1 tuần" },
-                { key: "1m", label: "1 tháng" },
-                { key: "1y", label: "1 năm" }
+                { key: "1d", label: "1 Day" },
+                { key: "1w", label: "1 Week" },
+                { key: "1m", label: "1 Month" },
+                { key: "1y", label: "1 Year" }
               ].map(f => (
                 <button key={f.key} onClick={() => setTimeFilterMonth(f.key)} style={{
                   padding: "4px 10px", borderRadius: 6, fontSize: 12, fontWeight: 500,
@@ -671,8 +671,8 @@ export default function DashboardPage() {
                   return v;
                 }} />
                 <Tooltip content={<CustomTooltip />} />
-                <Area type="monotone" dataKey="income" name="Thu nhập" stroke="#22c55e" strokeWidth={2} fill="url(#income)" />
-                <Area type="monotone" dataKey="expense" name="Chi tiêu" stroke="#2563eb" strokeWidth={2} fill="url(#expense)" />
+                <Area type="monotone" dataKey="income" name="Income" stroke="#22c55e" strokeWidth={2} fill="url(#income)" />
+                <Area type="monotone" dataKey="expense" name="Expenses" stroke="#2563eb" strokeWidth={2} fill="url(#expense)" />
               </AreaChart>
             </ResponsiveContainer>
           )}
@@ -686,12 +686,12 @@ export default function DashboardPage() {
           style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 24 }}
         >
           <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 20 }}>
-            <h3 style={{ fontSize: 15, fontWeight: 700 }}>Chi tiêu theo danh mục</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 700 }}>Spending by Category</h3>
             <div style={{ display: "flex", gap: 6 }}>
               {[
-                { key: "week", label: "Tuần" },
-                { key: "month", label: "Tháng" },
-                { key: "year", label: "Năm" }
+                { key: "week", label: "Week" },
+                { key: "month", label: "Month" },
+                { key: "year", label: "Year" }
               ].map(f => (
                 <button key={f.key} onClick={() => setTimeFilterCategory(f.key)} style={{
                   padding: "4px 10px", borderRadius: 6, fontSize: 12, fontWeight: 500,
@@ -753,7 +753,7 @@ export default function DashboardPage() {
                 <Sparkles size={16} style={{ color: "var(--primary)" }} />
               </div>
               <div>
-                <h3 style={{ fontSize: 14, fontWeight: 700 }}>AI Tư vấn chi tiêu</h3>
+                <h3 style={{ fontSize: 14, fontWeight: 700 }}>AI Financial Advisor</h3>
                 <p style={{ fontSize: 11, color: "var(--primary-dark)" }}>Powered by AI (Gemini Pro)</p>
               </div>
             </div>
@@ -801,15 +801,15 @@ export default function DashboardPage() {
                   flex: 1,
                   justifyContent: "center"
                 }}>
-                  <h4 style={{ fontSize: 13, fontWeight: 700, color: "white" }}>Cấu hình Gemini API Key</h4>
+                  <h4 style={{ fontSize: 13, fontWeight: 700, color: "white" }}>Configure Gemini API Key</h4>
                   <p style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4 }}>
-                    Nhập Gemini API Key cá nhân của bạn để sử dụng tính năng AI tư vấn. API Key được lưu hoàn toàn trên thiết bị của bạn, không gửi đi đâu cả.
+                    Enter your personal Gemini API Key to use the AI advisor feature. Your key is stored entirely on your device and never sent anywhere else.
                   </p>
                   <input
                     type="password"
                     value={apiKeyInput}
                     onChange={e => setApiKeyInput(e.target.value)}
-                    placeholder="Dán Gemini API Key của bạn tại đây..."
+                    placeholder="Paste your Gemini API Key here..."
                     style={{
                       width: "100%",
                       background: "var(--bg-card2)",
@@ -828,12 +828,12 @@ export default function DashboardPage() {
                         if (trimmedKey) {
                           localStorage.setItem("bw_gemini_api_key", trimmedKey);
                           setShowApiKeyInput(false);
-                          setChatMessages(prev => [
-                            ...prev,
-                            { role: "ai", text: "✅ Đã lưu API Key thành công! Bây giờ bạn có thể hỏi tôi bất kỳ điều gì về tài chính." }
-                          ]);
+          setChatMessages(prev => [
+                    ...prev,
+                    { role: "ai", text: "✅ API Key saved successfully! You can now ask me anything about your finances." }
+                  ]);
                         } else {
-                          alert("Vui lòng nhập API Key hợp lệ!");
+                          alert("Please enter a valid API Key!");
                         }
                       }}
                       style={{
@@ -848,7 +848,7 @@ export default function DashboardPage() {
                         cursor: "pointer"
                       }}
                     >
-                      Lưu cấu hình
+                      Save Configuration
                     </button>
                     <button
                       onClick={() => window.open("https://aistudio.google.com/app/apikey", "_blank")}
@@ -864,7 +864,7 @@ export default function DashboardPage() {
                         cursor: "pointer"
                       }}
                     >
-                      Lấy API Key miễn phí ↗
+                      Get Free API Key ↗
                     </button>
                   </div>
                 </div>
@@ -901,7 +901,7 @@ export default function DashboardPage() {
                         gap: 6
                       }}>
                         <div className="pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%", background: "#3b82f6" }} />
-                        AI đang phân tích chi tiêu của bạn...
+                        AI is analyzing your spending...
                       </div>
                     )}
                   </div>
@@ -912,7 +912,7 @@ export default function DashboardPage() {
                       value={chatInput}
                       onChange={e => setChatInput(e.target.value)}
                       onKeyDown={e => { if (e.key === "Enter") handleSendChatMessage(); }}
-                      placeholder="Hỏi trợ lý AI về quản lý chi tiêu..."
+                      placeholder="Ask the AI assistant about financial management..."
                       style={{
                         flex: 1,
                         background: "#ffffff",
@@ -969,7 +969,7 @@ export default function DashboardPage() {
         >
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
             <Newspaper size={18} style={{ color: "#2563eb" }} />
-            <h3 style={{ fontSize: 15, fontWeight: 700 }}>Tin tức tài chính</h3>
+            <h3 style={{ fontSize: 15, fontWeight: 700 }}>Financial News</h3>
           </div>
 
           <div style={{ flex: 1, overflowY: "auto", paddingRight: 6 }}>
@@ -1012,7 +1012,7 @@ export default function DashboardPage() {
                   </div>
                 ))}
                 {posts.length === 0 && (
-                  <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-muted)", fontSize: 13 }}>Chưa có tin tức tài chính mới</div>
+                  <div style={{ textAlign: "center", padding: "20px 0", color: "var(--text-muted)", fontSize: 13 }}>No financial news available</div>
                 )}
               </div>
             )}
@@ -1028,9 +1028,9 @@ export default function DashboardPage() {
         style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 24 }}
       >
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20 }}>
-          <h3 style={{ fontSize: 15, fontWeight: 700 }}>Giao dịch gần đây</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 700 }}>Recent Transactions</h3>
           <Link to="/dashboard/wallets" style={{ fontSize: 13, color: "#2563eb", textDecoration: "none", fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}>
-            Xem tất cả <ChevronRight size={14} />
+            View All <ChevronRight size={14} />
           </Link>
         </div>
         {loading ? (
@@ -1076,7 +1076,7 @@ export default function DashboardPage() {
                       background: tx.status === "success" ? "rgba(34,197,94,0.12)" : tx.status === "failed" ? "rgba(239,68,68,0.12)" : "rgba(245,158,11,0.12)",
                       color: tx.status === "success" ? "#22c55e" : tx.status === "failed" ? "#ef4444" : "#f59e0b"
                     }}>
-                      {tx.status === "success" ? "Thành công" : tx.status === "failed" ? "Thất bại" : "Chờ xử lý"}
+                      {tx.status === "success" ? "Completed" : tx.status === "failed" ? "Failed" : "Pending"}
                     </span>
                   </div>
                 </div>
@@ -1085,7 +1085,7 @@ export default function DashboardPage() {
             {transactions.length === 0 && (
               <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)", fontSize: 14 }}>
                 <Wallet size={36} style={{ color: "#222", marginBottom: 10 }} />
-                <p>Chưa có giao dịch gần đây</p>
+                <p>No recent transactions</p>
               </div>
             )}
           </div>
@@ -1127,9 +1127,9 @@ export default function DashboardPage() {
               <div style={{ padding: "24px 28px" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-secondary)", fontSize: 12, marginBottom: 12 }}>
                   <Calendar size={13} />
-                  <span>Đăng {selectedNews.time}</span>
+                  <span>Posted {selectedNews.time}</span>
                   <span>•</span>
-                  <span>Tin tức SmartWallet</span>
+                  <span>SmartWallet News</span>
                 </div>
 
                 <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", lineHeight: 1.4, marginBottom: 16 }}>
@@ -1142,7 +1142,7 @@ export default function DashboardPage() {
                       <p key={idx} style={{ marginBottom: 14 }}>{p}</p>
                     ))
                   ) : (
-                    <p>Không có nội dung chi tiết bài viết.</p>
+                    <p>No article content available.</p>
                   )}
                 </div>
 
@@ -1150,7 +1150,7 @@ export default function DashboardPage() {
                   <button onClick={() => setSelectedNews(null)}
                     style={{ background: "linear-gradient(135deg,#2563eb,#1d4ed8)", color: "white", border: "none", borderRadius: 10, padding: "10px 24px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
                   >
-                    Đóng bài viết
+                    Close Article
                   </button>
                 </div>
               </div>

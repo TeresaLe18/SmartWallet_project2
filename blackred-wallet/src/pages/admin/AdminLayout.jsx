@@ -5,14 +5,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { adminAPI, supportAPI } from "../../services/api";
 
 const adminNav = [
-  { href:"/admin", icon:LayoutGrid, label:"Tổng quan" },
-  { href:"/admin/users", icon:Users, label:"Quản lý User", badgeKey: "users" },
-  { href:"/admin/transactions", icon:ArrowRightLeft, label:"Giao dịch", badgeKey: "transactions" },
-  { href:"/admin/investment", icon:TrendingUp, label:"Quản lý Đầu tư" },
-  { href:"/admin/suspicious", icon:AlertTriangle, label:"Bất thường", badgeKey: "suspicious" },
-  { href:"/admin/services", icon:Settings, label:"Dịch vụ" },
-  { href:"/admin/media", icon:Newspaper, label:"Bài viết" },
-  { href:"/admin/support", icon:MessageSquare, label:"Hỗ trợ khách hàng", badgeKey: "support" },
+  { href:"/admin", icon:LayoutGrid, label:"Overview" },
+  { href:"/admin/users", icon:Users, label:"Manage Users", badgeKey: "users" },
+  { href:"/admin/transactions", icon:ArrowRightLeft, label:"Transactions", badgeKey: "transactions" },
+  { href:"/admin/investment", icon:TrendingUp, label:"Manage Investments" },
+  { href:"/admin/suspicious", icon:AlertTriangle, label:"Suspicious Activity", badgeKey: "suspicious" },
+  { href:"/admin/services", icon:Settings, label:"Services" },
+  { href:"/admin/media", icon:Newspaper, label:"Articles" },
+  { href:"/admin/support", icon:MessageSquare, label:"Customer Support", badgeKey: "support" },
 ];
 
 export default function AdminLayout() {
@@ -167,7 +167,7 @@ export default function AdminLayout() {
           onMouseLeave={(e) => { e.currentTarget.style.background="rgba(239,68,68,0.08)"; e.currentTarget.style.borderColor="rgba(239,68,68,0.15)"; }}
         >
           <LogOut size={16} />
-          <span>Đăng xuất</span>
+          <span>Log Out</span>
         </button>
       </div>
     </aside>
@@ -224,7 +224,7 @@ export default function AdminLayout() {
               onMouseLeave={(e) => { e.currentTarget.style.background="rgba(239,68,68,0.08)"; }}
             >
               <LogOut size={14} />
-              <span className="hidden sm:inline">Đăng xuất</span>
+              <span className="hidden sm:inline">Log Out</span>
             </button>
           </header>
           <main style={{ flex:1, overflow:"auto", padding:"20px" }}>
@@ -249,23 +249,23 @@ export default function AdminLayout() {
               <div style={{ width:56, height:56, borderRadius:"50%", background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.2)", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
                 <LogOut size={24} style={{ color:"#ef4444" }} />
               </div>
-              <h3 style={{ fontSize:17, fontWeight:700, marginBottom:8 }}>Đăng xuất Admin?</h3>
+              <h3 style={{ fontSize:17, fontWeight:700, marginBottom:8 }}>Log Out Admin?</h3>
               <p style={{ color: "var(--text-secondary)", fontSize:13, lineHeight:1.6, marginBottom:24 }}>
-                Bạn sẽ được chuyển về trang đăng nhập.<br />
-                Phiên làm việc hiện tại sẽ kết thúc.
+                You will be redirected to the login page.<br />
+                Your current session will end.
               </p>
               <div style={{ display:"flex", gap:10 }}>
                 <button
                   onClick={() => setShowLogoutConfirm(false)}
                   style={{ flex:1, background: "var(--bg-card2)", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius:10, padding:"11px", fontWeight:600, fontSize:14, cursor:"pointer" }}
                 >
-                  Huỷ bỏ
+                  Cancel
                 </button>
                 <button
                   onClick={handleLogout}
                   style={{ flex:1, background:"linear-gradient(135deg,#dc2626,#991b1b)", border:"none", color: "#000000", borderRadius:10, padding:"11px", fontWeight:700, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}
                 >
-                  <LogOut size={15} /> Đăng xuất
+                  <LogOut size={15} /> Log Out
                 </button>
               </div>
             </motion.div>

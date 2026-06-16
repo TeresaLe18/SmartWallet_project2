@@ -14,11 +14,11 @@ export default function RegisterPage() {
 
   const validate = () => {
     const errs = {};
-    if (!form.email) errs.email = "Email không được để trống";
-    else if (!/\S+@\S+\.\S+/.test(form.email)) errs.email = "Email không hợp lệ";
-    if (!form.password) errs.password = "Mật khẩu không được để trống";
-    else if (form.password.length < 8) errs.password = "Mật khẩu tối thiểu 8 ký tự";
-    if (form.password !== form.confirmPassword) errs.confirmPassword = "Mật khẩu xác nhận không khớp";
+    if (!form.email) errs.email = "Email is required";
+    else if (!/\S+@\S+\.\S+/.test(form.email)) errs.email = "Invalid email address";
+    if (!form.password) errs.password = "Password is required";
+    else if (form.password.length < 8) errs.password = "Password must be at least 8 characters";
+    if (form.password !== form.confirmPassword) errs.confirmPassword = "Passwords do not match";
     return errs;
   };
 
@@ -34,16 +34,16 @@ export default function RegisterPage() {
       setLoading(false);
             if (data.success) {
         localStorage.setItem("bw_pending_email", form.email);
-        alert(`Đăng ký tài khoản thành công! Mã OTP xác thực đã được gửi tới email ${form.email} của bạn. Vui lòng kiểm tra hòm thư Gmail (bao gồm cả thư rác/spam).`);
+        alert(`Account registered successfully! A verification OTP code has been sent to ${form.email}. Please check your Gmail inbox (including spam/junk folder).`);
         navigate("/verify-otp");
       } else {
-        setErrors({ server: data.message || "Đăng ký tài khoản thất bại." });
+        setErrors({ server: data.message || "Account registration failed." });
       }
     } catch (err) {
       setLoading(false);
       console.error("Register request error:", err);
       setErrors({
-        server: err.response?.data?.message || "Lỗi kết nối máy chủ. Vui lòng kiểm tra lại XAMPP/Node.js."
+        server: err.response?.data?.message || "Server connection error. Please check your XAMPP/Node.js."
       });
     }
   };
@@ -59,7 +59,7 @@ export default function RegisterPage() {
     return score;
   };
   const strength = pwStrength();
-  const strengthLabel = ["", "Yếu", "Trung bình", "Tốt", "Rất mạnh"][strength];
+  const strengthLabel = ["", "Weak", "Fair", "Good", "Very Strong"][strength];
   const strengthColors = ["", "#ef4444", "#f59e0b", "#3b82f6", "#22c55e"];
 
   const inputStyle = (err) => ({
@@ -96,7 +96,7 @@ export default function RegisterPage() {
           <h1 style={{ fontSize: 26, fontWeight: 800 }}>
             SmartWallet Wallet
           </h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: 14, marginTop: 4 }}>Tạo tài khoản mới</p>
+          <p style={{ color: "var(--text-secondary)", fontSize: 14, marginTop: 4 }}>Create a new account</p>
         </div>
 
         {/* Form Card */}
@@ -127,12 +127,12 @@ export default function RegisterPage() {
 
             {/* Password */}
             <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 8, color: "var(--text-secondary)" }}>Mật khẩu</label>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 8, color: "var(--text-secondary)" }}>Password</label>
               <div style={{ position: "relative" }}>
                 <Lock size={16} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                 <input
                   type={showPass ? "text" : "password"}
-                  placeholder="Tối thiểu 8 ký tự"
+                  placeholder="Minimum 8 characters"
                   value={form.password}
                   onChange={(e) => setForm({ ...form, password: e.target.value })}
                   style={{ ...inputStyle(errors.password), paddingRight: 42 }}
@@ -159,12 +159,12 @@ export default function RegisterPage() {
 
             {/* Confirm Password */}
             <div>
-              <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 8, color: "var(--text-secondary)" }}>Xác nhận mật khẩu</label>
+              <label style={{ display: "block", fontSize: 13, fontWeight: 500, marginBottom: 8, color: "var(--text-secondary)" }}>Confirm Password</label>
               <div style={{ position: "relative" }}>
                 <Lock size={16} style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                 <input
                   type={showConfirm ? "text" : "password"}
-                  placeholder="Nhập lại mật khẩu"
+                  placeholder="Re-enter password"
                   value={form.confirmPassword}
                   onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
                   style={{ ...inputStyle(errors.confirmPassword), paddingRight: 42 }}
@@ -197,15 +197,15 @@ export default function RegisterPage() {
               {loading ? (
                 <div style={{ width: 20, height: 20, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
               ) : (
-                <>Đăng ký & Xác thực Email <ArrowRight size={16} /></>
+                <>Register & Verify Email <ArrowRight size={16} /></>
               )}
             </button>
           </form>
         </div>
 
         <p style={{ textAlign: "center", marginTop: 20, color: "var(--text-muted)", fontSize: 14 }}>
-          Đã có tài khoản?{" "}
-          <Link to="/login" style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>Đăng nhập</Link>
+          Already have an account?{" "}
+          <Link to="/login" style={{ color: "#2563eb", fontWeight: 600, textDecoration: "none" }}>Sign In</Link>
         </p>
       </motion.div>
     </div>

@@ -8,13 +8,21 @@ const discountLabel = (v) => v.discount_type === "PERCENT" ? `${Number(v.discoun
 const fmtDate = (d) => { try { return new Date(d).toLocaleDateString("vi-VN"); } catch { return ""; } };
 
 const tagColors = {
-  "Chuyển tiền":"#2563eb","Mua sắm":"#3b82f6","Rút tiền":"#22c55e",
-  "Referral":"#8b5cf6","Nạp tiền":"#f59e0b","Hóa đơn":"#ec4899"
+  "Transfer":"#2563eb","Shopping":"#3b82f6","Withdraw":"#22c55e",
+  "Referral":"#8b5cf6","Deposit":"#f59e0b","Bills":"#ec4899"
 };
+
+// Map legacy Vietnamese DB tag values to the English display keys
+const TAG_MAP = {
+  "Chuyển tiền":"Transfer","Mua sắm":"Shopping","Rút tiền":"Withdraw",
+  "Referral":"Referral","Nạp tiền":"Deposit","Hóa đơn":"Bills"
+};
+
+const normalizeTag = (tag) => TAG_MAP[tag] || tag;
 
 export default function OffersPage() {
   const navigate = useNavigate();
-  const [activeTag, setActiveTag] = useState("Tất cả");
+  const [activeTag, setActiveTag] = useState("All");
   const [vouchers, setVouchers] = useState([]);
 
   const loadVouchers = async () => {
@@ -24,22 +32,22 @@ export default function OffersPage() {
 
   useEffect(() => { loadVouchers(); }, []);
 
-  const tags = ["Tất cả", ...Object.keys(tagColors)];
-  const filtered = activeTag === "Tất cả" ? vouchers : vouchers.filter(v => v.tag === activeTag);
+  const tags = ["All", ...Object.keys(tagColors)];
+  const filtered = activeTag === "All" ? vouchers : vouchers.filter(v => normalizeTag(v.tag) === activeTag);
 
   const handleUseVoucher = (v) => {
-    const type = v.tag || "";
+    const type = normalizeTag(v.tag || "");
     let modalType = "transfer";
-    if (type === "Rút tiền") modalType = "withdraw";
-    else if (type === "Nạp tiền") modalType = "deposit";
+    if (type === "Withdraw") modalType = "withdraw";
+    else if (type === "Deposit") modalType = "deposit";
     navigate(`/dashboard/wallets?promo=${v.code}&modal=${modalType}`);
   };
 
   return (
     <div style={{ maxWidth:900 }}>
       <div style={{ marginBottom:24 }}>
-        <h1 style={{ fontSize:22, fontWeight:800, marginBottom:4 }}>🎁 Ưu đãi & Voucher</h1>
-        <p style={{ color: "var(--text-secondary)", fontSize:14 }}>Các ưu đãi độc quyền dành riêng cho thành viên SmartWallet</p>
+        <h1 style={{ fontSize:22, fontWeight:800, marginBottom:4 }}>🎁 Offers & Vouchers</h1>
+        <p style={{ color: "var(--text-secondary)", fontSize:14 }}>Exclusive deals available only for SmartWallet members</p>
       </div>
 
       {/* Tags filter */}
@@ -58,12 +66,12 @@ export default function OffersPage() {
       {filtered.length === 0 ? (
         <div style={{ textAlign:"center", padding:"60px 0", color: "var(--text-muted)", fontSize:14 }}>
           <p style={{ fontSize:40, marginBottom:12 }}>🎟️</p>
-          <p>Chưa có ưu đãi nào{activeTag !== "Tất cả" ? ` cho mục "${activeTag}"` : ""}.</p>
+          <p>No offers available{activeTag !== "All" ? ` for "${activeTag}"` : ""}.</p>
         </div>
       ) : (
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:16 }}>
           {filtered.map((v, i) => {
-            const type = v.tag || "Khác";
+            const type = normalizeTag(v.tag || "Other");
             const color = tagColors[type] || "#71717a";
             return (
               <motion.div key={v.id} initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{delay:i*0.07}}
@@ -93,12 +101,12 @@ export default function OffersPage() {
                       {v.expired_at && (
                         <div style={{ display:"flex", alignItems:"center", gap:4, color: "var(--text-muted)" }}>
                           <Clock size={11} />
-                          <span style={{ fontSize:11 }}>HSD: {fmtDate(v.expired_at)}</span>
+                          <span style={{ fontSize:11 }}>Exp: {fmtDate(v.expired_at)}</span>
                         </div>
                       )}
                     </div>
                     <button style={{ background:"none", border:"none", cursor:"pointer", color, display:"flex", alignItems:"center", gap:2, fontSize:12, fontWeight:600 }}>
-                      Dùng <ChevronRight size={12} />
+                      Use <ChevronRight size={12} />
                     </button>
                   </div>
                 </div>

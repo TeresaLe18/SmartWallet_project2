@@ -2,14 +2,14 @@ import React, { useEffect, useState, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5001';
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function PaymentSuccess() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [status, setStatus] = useState('checking'); // checking | success | failed
   const [newBalance, setNewBalance] = useState(null);
-  const [message, setMessage] = useState('Đang xác nhận giao dịch...');
+  const [message, setMessage] = useState('Verifying transaction...');
   const pollCount = useRef(0);
 
   const orderCode = searchParams.get('orderCode');
@@ -17,7 +17,7 @@ export default function PaymentSuccess() {
   useEffect(() => {
     if (!orderCode) {
       setStatus('failed');
-      setMessage('Không tìm thấy mã giao dịch.');
+      setMessage('Transaction code not found.');
       return;
     }
     pollPaymentStatus();
@@ -39,10 +39,10 @@ export default function PaymentSuccess() {
       if (res.data.status === 'PAID') {
         setStatus('success');
         setNewBalance(res.data.newBalance);
-        setMessage('Nạp tiền thành công!');
+        setMessage('Top-up successful!');
       } else if (res.data.status === 'CANCELLED') {
         setStatus('failed');
-        setMessage('Giao dịch đã bị huỷ.');
+        setMessage('Transaction has been cancelled.');
       } else {
         // Chưa PAID -> đối soát lại; KHÔNG báo thành công khi tiền chưa vào ví.
         // Đối soát 3 lần (gồm lần đầu), mỗi lần cách ~10s (~20-30s), cho PayOS kịp xác nhận.
@@ -51,13 +51,13 @@ export default function PaymentSuccess() {
           setTimeout(pollPaymentStatus, 10000);
         } else {
           setStatus('pending');
-          setMessage('Chưa nhận được xác nhận thanh toán. Nếu bạn đã trả, số dư sẽ cập nhật sau ít phút — vui lòng kiểm tra lịch sử giao dịch trong ví.');
+          setMessage('Payment confirmation not yet received. If you have paid, your balance will be updated within a few minutes — please check your transaction history in the wallet.');
         }
       }
     } catch (err) {
       console.error(err);
       setStatus('pending');
-      setMessage('Không kiểm tra được trạng thái thanh toán. Vui lòng mở ví và kiểm tra lịch sử giao dịch.');
+      setMessage('Unable to verify payment status. Please open your wallet and check your transaction history.');
     }
   };
 
@@ -67,7 +67,7 @@ export default function PaymentSuccess() {
         {status === 'checking' && (
           <>
             <div style={styles.spinner}></div>
-            <h2 style={styles.title}>Đang xác nhận...</h2>
+            <h2 style={styles.title}>Verifying...</h2>
             <p style={styles.subtitle}>{message}</p>
           </>
         )}
@@ -79,19 +79,19 @@ export default function PaymentSuccess() {
                 <polyline points="20 6 9 17 4 12"></polyline>
               </svg>
             </div>
-            <h2 style={{ ...styles.title, color: '#22c55e' }}>Nạp tiền thành công! 🎉</h2>
+            <h2 style={{ ...styles.title, color: '#22c55e' }}>Top-up Successful! 🎉</h2>
             <p style={styles.subtitle}>{message}</p>
             {newBalance != null && (
               <div style={styles.balanceBox}>
-                <span style={styles.balanceLabel}>Số dư mới</span>
+                <span style={styles.balanceLabel}>New Balance</span>
                 <span style={styles.balanceValue}>
                   {newBalance.toLocaleString('vi-VN')} ₫
                 </span>
               </div>
             )}
-            <p style={styles.orderInfo}>Mã giao dịch: <strong>#{orderCode}</strong></p>
+            <p style={styles.orderInfo}>Transaction ID: <strong>#{orderCode}</strong></p>
             <button style={styles.btn('#6366f1')} onClick={() => navigate('/dashboard/wallets')}>
-              Về trang Ví
+              Go to Wallet
             </button>
           </>
         )}
@@ -104,10 +104,10 @@ export default function PaymentSuccess() {
                 <line x1="6" y1="6" x2="18" y2="18"></line>
               </svg>
             </div>
-            <h2 style={{ ...styles.title, color: '#ef4444' }}>Giao dịch thất bại</h2>
+            <h2 style={{ ...styles.title, color: '#ef4444' }}>Transaction Failed</h2>
             <p style={styles.subtitle}>{message}</p>
             <button style={styles.btn('#6366f1')} onClick={() => navigate('/dashboard/wallets')}>
-              Thử lại
+              Try Again
             </button>
           </>
         )}
@@ -120,11 +120,11 @@ export default function PaymentSuccess() {
                 <polyline points="12 7 12 12 15 14"></polyline>
               </svg>
             </div>
-            <h2 style={{ ...styles.title, color: '#f59e0b' }}>Đang xử lý thanh toán</h2>
+            <h2 style={{ ...styles.title, color: '#f59e0b' }}>Payment Processing</h2>
             <p style={styles.subtitle}>{message}</p>
-            <p style={styles.orderInfo}>Mã giao dịch: <strong>#{orderCode}</strong></p>
+            <p style={styles.orderInfo}>Transaction ID: <strong>#{orderCode}</strong></p>
             <button style={styles.btn('#6366f1')} onClick={() => navigate('/dashboard/wallets')}>
-              Về trang Ví kiểm tra
+              Go to Wallet to Check
             </button>
           </>
         )}

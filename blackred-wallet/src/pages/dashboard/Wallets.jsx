@@ -52,13 +52,13 @@ const mapBackendTx = (tx, currentEmail) => {
   const type = isSender ? "send" : "receive";
   
   let name = "";
-  if (tx.transaction_type === 'DEPOSIT') name = "Nạp tiền vào ví";
-  else if (tx.transaction_type === 'WITHDRAW') name = `Rút tiền về ${tx.bank_code || 'ngân hàng'}`;
+  if (tx.transaction_type === 'DEPOSIT') name = "Wallet Deposit";
+  else if (tx.transaction_type === 'WITHDRAW') name = `Withdraw to ${tx.bank_code || 'bank'}`;
   else if (tx.transaction_type === 'TRANSFER') {
     name = isSender 
-      ? `Chuyển tiền đến ${tx.receiver_wallet?.user?.email || 'người nhận'}`
-      : `Nhận tiền từ ${tx.sender_wallet?.user?.email || 'người gửi'}`;
-  } else name = tx.message || "Giao dịch khác";
+      ? `Transfer to ${tx.receiver_wallet?.user?.email || 'recipient'}`
+      : `Received from ${tx.sender_wallet?.user?.email || 'sender'}`;
+  } else name = tx.message || "Other Transaction";
 
   const date = new Date(tx.created_at || tx.createdAt);
   const timeStr = date.toLocaleTimeString("vi-VN", {hour: '2-digit', minute:'2-digit'}) + " " + date.toLocaleDateString("vi-VN");
@@ -168,12 +168,12 @@ export default function WalletsPage() {
     const confirmPin = pinSetupConfirmInputs.join("");
 
     if (pin.length < 4 || confirmPin.length < 4) {
-      showToast("Vui lòng nhập đủ 4 chữ số cho mã PIN.", "error");
+      showToast("Please enter all 4 digits for your PIN.", "error");
       return;
     }
 
     if (pin !== confirmPin) {
-      showToast("Mã PIN xác nhận không khớp. Vui lòng nhập lại.", "error");
+      showToast("PIN confirmation does not match. Please try again.", "error");
       return;
     }
 
@@ -187,7 +187,7 @@ export default function WalletsPage() {
           u.has_pin = true;
           localStorage.setItem("bw_user", JSON.stringify(u));
         }
-        showToast("Thiết lập mã PIN giao dịch thành công!");
+        showToast("Transaction PIN set up successfully!");
         
         // Reset states
         setPinSetupInputs(["", "", "", ""]);
@@ -201,10 +201,10 @@ export default function WalletsPage() {
           closeModal();
         }
       } else {
-        showToast(res.message || "Không thể thiết lập mã PIN.", "error");
+        showToast(res.message || "Unable to set up PIN.", "error");
       }
     } catch (err) {
-      showToast(err.response?.data?.message || "Lỗi hệ thống khi thiết lập mã PIN.", "error");
+      showToast(err.response?.data?.message || "System error while setting up PIN.", "error");
     }
   };
 
@@ -271,7 +271,7 @@ export default function WalletsPage() {
   const [promoCode, setPromoCode] = useState("");
   const [appliedVoucher, setAppliedVoucher] = useState(null);
   const [showPromoSelector, setShowPromoSelector] = useState(false);
-  const [activePromoTab, setActivePromoTab] = useState("Tất cả");
+  const [activePromoTab, setActivePromoTab] = useState("All");
   const [voucherList, setVoucherList] = useState([]);
 
   const loadVouchers = async () => {
@@ -281,31 +281,31 @@ export default function WalletsPage() {
 
   // Áp mã: hỏi backend (voucherAPI.check) -> giảm giá THẬT + validate (min/HSD/số lượng).
   const handleApplyPromo = async () => {
-    if (!promoCode.trim()) { showToast("Vui lòng nhập mã ưu đãi!", "error"); return; }
+    if (!promoCode.trim()) { showToast("Please enter a promo code!", "error"); return; }
     const amt = Number(txForm.amount) || 0;
-    if (amt <= 0) { showToast("Vui lòng nhập số tiền trước khi áp mã!", "error"); return; }
+    if (amt <= 0) { showToast("Please enter an amount before applying a promo code!", "error"); return; }
     try {
       const res = await voucherAPI.check(promoCode.trim(), amt);
       const v = voucherList.find(x => x.code.toUpperCase() === promoCode.trim().toUpperCase()) || { code: res.code, title: res.code };
       setAppliedVoucher({ ...v, code: res.code, discountAmount: res.discountAmount });
       setPromoCode(res.code);
-      showToast(`Áp dụng mã ${res.code} — giảm ${fmtCurrency(res.discountAmount)}!`);
+      showToast(`Code ${res.code} applied — you save ${fmtCurrency(res.discountAmount)}!`);
     } catch (e) {
-      showToast(e.response?.data?.message || "Mã ưu đãi không hợp lệ hoặc đã hết hạn!", "error");
+      showToast(e.response?.data?.message || "Invalid or expired promo code!", "error");
     }
   };
 
   const handleSelectVoucher = async (v) => {
     const amt = Number(txForm.amount) || 0;
-    if (amt <= 0) { showToast("Vui lòng nhập số tiền trước khi chọn mã!", "error"); return; }
+    if (amt <= 0) { showToast("Please enter an amount before selecting a promo code!", "error"); return; }
     try {
       const res = await voucherAPI.check(v.code, amt);
       setAppliedVoucher({ ...v, discountAmount: res.discountAmount });
       setPromoCode(v.code);
       setShowPromoSelector(false);
-      showToast(`Áp dụng mã ${v.code} — giảm ${fmtCurrency(res.discountAmount)}!`);
+      showToast(`Code ${v.code} applied — you save ${fmtCurrency(res.discountAmount)}!`);
     } catch (e) {
-      showToast(e.response?.data?.message || "Không áp dụng được mã này!", "error");
+      showToast(e.response?.data?.message || "This promo code could not be applied!", "error");
     }
   };
 
@@ -407,7 +407,7 @@ export default function WalletsPage() {
           // Chỉ gợi ý "đã điền mã / nhập số tiền" khi modal THỰC SỰ mở (đã qua gate KYC/đóng băng).
           if (opened && promoParam) {
             setPromoCode(promoParam);
-            setTimeout(() => { showToast(`Đã điền mã ưu đãi: ${promoParam}. Nhập số tiền rồi bấm "Áp dụng".`); }, 900);
+            setTimeout(() => { showToast(`Promo code applied: ${promoParam}. Enter an amount then click "Apply".`); }, 900);
           }
           setSearchParams({}, { replace: true });
         }
@@ -450,11 +450,11 @@ export default function WalletsPage() {
         const data = await payosAPI.checkPaymentStatus(depositPaymentData.orderCode);
         if (data.success) {
           if (data.status === "PAID") {
-            showToast("✅ Nạp tiền thành công! Số dư ví của bạn đã được cập nhật.");
+            showToast("✅ Deposit successful! Your wallet balance has been updated.");
             fetchWalletData();
             closeModal();
           } else if (data.status === "CANCELLED") {
-            showToast("❌ Giao dịch đã bị huỷ.", "error");
+            showToast("❌ Transaction was cancelled.", "error");
             closeModal();
           }
         }
@@ -469,35 +469,35 @@ export default function WalletsPage() {
   // Deposit via linked bank account
   const handleInitiateDeposit = async () => {
     if (!depositForm.amount || Number(depositForm.amount) <= 0) {
-      showToast("Vui lòng nhập số tiền hợp lệ để nạp!", "error");
+      showToast("Please enter a valid amount to deposit!", "error");
       return;
     }
     if (Number(depositForm.amount) < 1000) {
-      showToast("Số tiền nạp tối thiểu là 1.000đ!", "error");
+      showToast("Minimum deposit amount is 1,000₫!", "error");
       return;
     }
     if (!selectedBankId) {
-      showToast("Vui lòng chọn hoặc liên kết tài khoản ngân hàng trước!", "error");
+      showToast("Please select or link a bank account first!", "error");
       return;
     }
 
     setDepositLoading(true);
     try {
       const amount = Number(depositForm.amount);
-      const note = depositForm.note || "Nạp tiền SmartWallet";
+      const note = depositForm.note || "SmartWallet Deposit";
       const data = await walletAPI.deposit(selectedBankId, amount, note);
 
       if (data.success) {
-        showToast("Nạp tiền thành công! Số dư đã được cập nhật.");
+        showToast("Deposit successful! Your balance has been updated.");
         setBalance(prev => prev + amount);
         await fetchWalletData();
         closeModal();
       } else {
-        showToast(data.message || "Không thể nạp tiền.", "error");
+        showToast(data.message || "Unable to process deposit.", "error");
       }
     } catch (err) {
       console.error("Deposit error:", err);
-      showToast(err.response?.data?.message || "Lỗi kết nối máy chủ.", "error");
+      showToast(err.response?.data?.message || "Connection error. Please try again.", "error");
     } finally {
       setDepositLoading(false);
     }
@@ -506,12 +506,12 @@ export default function WalletsPage() {
   // Người dùng xác nhận đã chuyển tiền -> đóng modal, lệnh PENDING chờ webhook
   const handleConfirmTransferred = () => {
     closeModal();
-    showToast("✅ Lệnh nạp tiền đang chờ xác nhận! Số dư sẽ được cập nhật sau khi hệ thống xác nhận giao dịch.");
+    showToast("✅ Deposit request pending confirmation! Your balance will be updated once the transaction is verified.");
   };
 
   const handleCopyText = (text, label) => {
     navigator.clipboard.writeText(text);
-    showToast(`Đã sao chép ${label}!`);
+    showToast(`${label} copied!`);
   };
 
   // Aliases kept for button wiring
@@ -522,11 +522,11 @@ export default function WalletsPage() {
   // sau khi trả; webhook/polling cộng tiền vào ví.
   const handleConfirmDepositQR = async () => {
     if (!depositForm.amount || Number(depositForm.amount) <= 0) {
-      showToast("Vui lòng nhập số tiền hợp lệ để nạp!", "error");
+      showToast("Please enter a valid amount to deposit!", "error");
       return;
     }
     if (Number(depositForm.amount) < 1000) {
-      showToast("Số tiền nạp tối thiểu là 1.000đ!", "error");
+      showToast("Minimum deposit amount is 1,000₫!", "error");
       return;
     }
     setDepositLoading(true);
@@ -538,11 +538,11 @@ export default function WalletsPage() {
         closeModal();
         window.location.href = data.data.checkoutUrl;
       } else {
-        showToast(data.message || "Không thể tạo lệnh nạp tiền.", "error");
+        showToast(data.message || "Unable to create deposit order.", "error");
       }
     } catch (err) {
       console.error("Deposit QR (PayOS) error:", err);
-      showToast(err.response?.data?.message || "Lỗi kết nối máy chủ.", "error");
+      showToast(err.response?.data?.message || "Connection error. Please try again.", "error");
     } finally {
       setDepositLoading(false);
     }
@@ -558,9 +558,9 @@ export default function WalletsPage() {
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      showToast("Đã tải mã QR về máy!");
+      showToast("QR code downloaded!");
     } else {
-      showToast("Không thể tải mã QR, vui lòng thử lại.", "error");
+      showToast("Unable to download QR code, please try again.", "error");
     }
   };
 
@@ -584,12 +584,12 @@ export default function WalletsPage() {
       try {
         const res = await payosAPI.checkPaymentStatus(orderCode);
         if (res.status === "PAID") {
-          showToast("Nạp tiền thành công! Số dư đã được cập nhật.", "success");
+          showToast("Deposit successful! Your balance has been updated.", "success");
           fetchWalletData();
           return;
         }
         if (res.status === "CANCELLED") {
-          showToast("Giao dịch nạp tiền đã bị huỷ.", "error");
+          showToast("Deposit transaction was cancelled.", "error");
           return;
         }
       } catch (e) { /* bỏ qua, thử lại lần sau */ }
@@ -603,11 +603,11 @@ export default function WalletsPage() {
 
   const handleLinkBank = async () => {
     if (linkedBanks.length >= MAX_BANKS) {
-      showToast(`Bạn chỉ được liên kết tối đa ${MAX_BANKS} ngân hàng!`, "error");
+      showToast(`You can link up to ${MAX_BANKS} banks only!`, "error");
       return;
     }
     if (!bankForm.bank || !bankForm.account || !bankForm.owner) {
-      showToast("Vui lòng nhập đầy đủ thông tin ngân hàng!", "error");
+      showToast("Please fill in all bank information!", "error");
       return;
     }
     try {
@@ -619,29 +619,29 @@ export default function WalletsPage() {
       if (res.success) {
         await fetchBanks();
         setBankForm({ bank: "", account: "", owner: "" });
-        showToast("Liên kết ngân hàng thành công!");
+        showToast("Bank account linked successfully!");
         closeModal();
       } else {
-        showToast(res.message || "Không thể liên kết ngân hàng.", "error");
+        showToast(res.message || "Unable to link bank account.", "error");
       }
     } catch (err) {
-      showToast(err.response?.data?.message || "Lỗi kết nối khi liên kết ngân hàng.", "error");
+      showToast(err.response?.data?.message || "Connection error while linking bank account.", "error");
     }
   };
 
   const handleConfirmWithdraw = async () => {
     if (!depositForm.amount || Number(depositForm.amount) < 10000) {
-      showToast("Số tiền rút tối thiểu là 10.000đ!", "error");
+      showToast("Minimum withdrawal amount is 10,000₫!", "error");
       return;
     }
     if (!selectedBankId) {
-      showToast("Vui lòng chọn tài khoản ngân hàng để rút tiền!", "error");
+      showToast("Please select a bank account to withdraw to!", "error");
       return;
     }
 
     const selectedBank = linkedBanks.find(b => b.id === selectedBankId);
     if (!selectedBank) {
-      showToast("Tài khoản ngân hàng không hợp lệ!", "error");
+      showToast("Invalid bank account!", "error");
       return;
     }
 
@@ -653,7 +653,7 @@ export default function WalletsPage() {
 
     const pin = pinTransactionInputs.join("");
     if (pin.length < 4) {
-      showToast("Vui lòng nhập đủ 4 chữ số mã PIN.", "error");
+      showToast("Please enter all 4 PIN digits.", "error");
       return;
     }
 
@@ -664,7 +664,7 @@ export default function WalletsPage() {
         bank_code: selectedBank.bank,
         account_number: selectedBank.account,
         account_name: selectedBank.owner,
-        note: depositForm.note || `Rút về TK ${selectedBank.account} - ${selectedBank.owner}`,
+        note: depositForm.note || `Withdraw to account ${selectedBank.account} - ${selectedBank.owner}`,
         pin_code: pin,
       };
       
@@ -676,13 +676,13 @@ export default function WalletsPage() {
           setTxList(prev => [newTx, ...prev]);
         }
         if (res.wallet?.balance !== undefined) setBalance(Number(res.wallet.balance));
-        showToast("Đã rút tiền thành công!");
+        showToast("Withdrawal successful!");
         closeModal();
         await fetchWalletData();
       }
     } catch (err) {
       console.error("Withdrawal submission error:", err);
-      showToast(err.response?.data?.message || "Lỗi hệ thống khi rút tiền.", "error");
+      showToast(err.response?.data?.message || "System error during withdrawal.", "error");
       setPinTransactionInputs(["", "", "", ""]);
     }
   };
@@ -728,17 +728,17 @@ export default function WalletsPage() {
 
   const handleConfirmTransfer = async () => {
     if (!txForm.category) {
-      showToast("Vui lòng chọn danh mục chuyển tiền!", "error");
+      showToast("Please select a transfer category!", "error");
       return;
     }
     
     if (transferMethod === "smartwallet") {
       if (!txForm.target) {
-        showToast("Vui lòng nhập email người nhận!", "error");
+        showToast("Please enter the recipient's email!", "error");
         return;
       }
       if (!txForm.amount || Number(txForm.amount) <= 0) {
-        showToast("Vui lòng nhập số tiền hợp lệ!", "error");
+        showToast("Please enter a valid amount!", "error");
         return;
       }
 
@@ -750,14 +750,14 @@ export default function WalletsPage() {
 
       const pin = pinTransactionInputs.join("");
       if (pin.length < 4) {
-        showToast("Vui lòng nhập đủ 4 chữ số mã PIN.", "error");
+        showToast("Please enter all 4 PIN digits.", "error");
         return;
       }
       
       try {
         const dest_email = txForm.target;
         const amount = Number(txForm.amount);
-        const note = txForm.note || `Chuyển ví SmartWallet tới ${txForm.target}`;
+        const note = txForm.note || `SmartWallet transfer to ${txForm.target}`;
         
         const res = await walletAPI.transfer(dest_email, amount, note, pin, txForm.category ? Number(txForm.category) : null, appliedVoucher?.code || null);
         
@@ -767,20 +767,20 @@ export default function WalletsPage() {
             setTxList(prev => [newTx, ...prev]);
           }
           if (res.wallet?.balance !== undefined) setBalance(Number(res.wallet.balance));
-          showToast("Chuyển tiền thành công!");
+          showToast("Transfer successful!");
           closeModal();
           await fetchWalletData();
         }
       } catch (err) {
         console.error("Transfer submission error:", err);
-        showToast(err.response?.data?.message || "Lỗi hệ thống khi chuyển tiền.", "error");
+        showToast(err.response?.data?.message || "System error during transfer.", "error");
         setPinTransactionInputs(["", "", "", ""]);
       }
     } else {
       // Bank Transfer (flows out capital)
-      if (!bankTransferForm.bank) { showToast("Vui lòng chọn ngân hàng người nhận!", "error"); return; }
-      if (!bankTransferForm.account) { showToast("Vui lòng nhập số tài khoản người nhận!", "error"); return; }
-      if (!txForm.amount || Number(txForm.amount) < 10000) { showToast("Số tiền chuyển tối thiểu là 10.000đ!", "error"); return; }
+      if (!bankTransferForm.bank) { showToast("Please select the recipient's bank!", "error"); return; }
+      if (!bankTransferForm.account) { showToast("Please enter the recipient's account number!", "error"); return; }
+      if (!txForm.amount || Number(txForm.amount) < 10000) { showToast("Minimum transfer amount is 10,000₫!", "error"); return; }
 
       if (!pinStep) {
         setPinStep(true);
@@ -790,7 +790,7 @@ export default function WalletsPage() {
 
       const pin = pinTransactionInputs.join("");
       if (pin.length < 4) {
-        showToast("Vui lòng nhập đủ 4 chữ số mã PIN.", "error");
+        showToast("Please enter all 4 PIN digits.", "error");
         return;
       }
       
@@ -800,8 +800,8 @@ export default function WalletsPage() {
           amount,
           bank_code: bankTransferForm.bank,
           account_number: bankTransferForm.account,
-          account_name: bankTransferForm.ownerName || "Người nhận liên ngân hàng",
-          note: txForm.note || `Chuyển khoản liên ngân hàng tới TK ${bankTransferForm.account} - ${bankTransferForm.bank}`,
+          account_name: bankTransferForm.ownerName || "Interbank Recipient",
+          note: txForm.note || `Interbank transfer to account ${bankTransferForm.account} - ${bankTransferForm.bank}`,
           pin_code: pin,
         };
         
@@ -814,12 +814,12 @@ export default function WalletsPage() {
           }
           if (res.wallet?.balance !== undefined) setBalance(Number(res.wallet.balance));
 
-          showToast("Chuyển khoản liên ngân hàng thành công!");
+          showToast("Interbank transfer successful!");
           closeModal();
         }
       } catch (err) {
         console.error("Bank transfer error:", err);
-        showToast(err.response?.data?.message || "Lỗi hệ thống khi chuyển khoản.", "error");
+        showToast(err.response?.data?.message || "System error during transfer.", "error");
         setPinTransactionInputs(["", "", "", ""]);
       }
     }
@@ -1023,9 +1023,9 @@ export default function WalletsPage() {
             <Building2 size={18} style={{ color:"#3b82f6" }} />
           </div>
           <div>
-            <p style={{ fontSize:14, fontWeight:600, textDecoration:"underline", textDecorationStyle:"dotted" }}>Liên kết ngân hàng</p>
+            <p style={{ fontSize:14, fontWeight:600, textDecoration:"underline", textDecorationStyle:"dotted" }}>Linked Banks</p>
             <p style={{ fontSize:12, color: "var(--text-muted)" }}>
-              {linkedBanks.length}/3 tài khoản đã liên kết
+              {linkedBanks.length}/3 accounts linked
             </p>
           </div>
         </div>
@@ -1043,24 +1043,24 @@ export default function WalletsPage() {
           }}
         >
           {linkedBanks.length >= MAX_BANKS
-            ? <><Check size={14} /> Đã đủ 3 ngân hàng</>
-            : <><Plus size={14} /> Thêm ngân hàng</>}
+            ? <><Check size={14} /> 3 banks linked</>
+            : <><Plus size={14} /> Add Bank</>}
         </button>
       </motion.div>
 
       {/* Transactions */}
       <motion.div initial={{opacity:0}} animate={{opacity:1}} transition={{delay:0.2}}
         style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius:16, padding:24 }}>
-        <h3 style={{ fontSize:15, fontWeight:700, marginBottom:16 }}>Lịch sử giao dịch</h3>
+        <h3 style={{ fontSize:15, fontWeight:700, marginBottom:16 }}>Transaction History</h3>
 
         {/* Filters */}
         <div style={{ display:"flex", gap:8, marginBottom:16, flexWrap:"wrap" }}>
           <div style={{ position:"relative", flex:1, minWidth:160 }}>
             <Search size={14} style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color: "var(--text-muted)" }} />
-            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Tìm giao dịch..." style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:8, padding:"8px 12px 8px 34px", color: "#000000", fontSize:13, outline:"none" }} />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search transactions..." style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:8, padding:"8px 12px 8px 34px", color: "#000000", fontSize:13, outline:"none" }} />
           </div>
           <div style={{ display:"flex", gap:4 }}>
-            {[{v:"all",l:"Tất cả"},{v:"receive",l:"Nhận"},{v:"send",l:"Chuyển"}].map(t => (
+            {[{v:"all",l:"All"},{v:"receive",l:"Receive"},{v:"send",l:"Send"}].map(t => (
               <button key={t.v} onClick={() => setTab(t.v)} style={{
                 padding:"8px 14px", borderRadius:8, fontSize:13, fontWeight:500,
                 background: tab===t.v ? "rgba(37,99,235,0.15)" : "#ffffff",
@@ -1103,7 +1103,7 @@ export default function WalletsPage() {
                     background: tx.status==="success" ? "rgba(34,197,94,0.12)" : tx.status==="pending" ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)",
                     color: tx.status==="success" ? "#22c55e" : tx.status==="pending" ? "#f59e0b" : "#ef4444"
                   }}>
-                    {tx.status==="success" ? "Thành công" : tx.status==="pending" ? "Chờ xử lý" : "Thất bại"}
+                    {tx.status==="success" ? "Success" : tx.status==="pending" ? "Pending" : "Failed"}
                   </span>
                 </div>
               </div>
@@ -1111,7 +1111,7 @@ export default function WalletsPage() {
           }
           {!loading && filtered.length === 0 && (
             <div style={{ textAlign:"center", padding:40, color: "var(--text-muted)" }}>
-              <p style={{ fontSize:14 }}>Không có giao dịch nào</p>
+              <p style={{ fontSize:14 }}>No transactions found</p>
             </div>
           )}
         </div>
@@ -1133,13 +1133,13 @@ export default function WalletsPage() {
               {/* PIN SETUP MODAL */}
               {modal==="pin_setup" && (
                 <div style={{ textAlign:"center" }}>
-                  <h3 style={{ fontSize:18, fontWeight:800, marginBottom:8, color: "var(--text-primary)" }}>🔒 Thiết lập mã PIN giao dịch</h3>
+                  <h3 style={{ fontSize:18, fontWeight:800, marginBottom:8, color: "var(--text-primary)" }}>🔒 Set Up Transaction PIN</h3>
                   <p style={{ color: "var(--text-secondary)", fontSize:13, lineHeight:1.5, marginBottom:20 }}>
-                    Vui lòng tự chọn mã PIN gồm 4 số để sử dụng khi chuyển tiền và rút tiền.
+                    Please choose a 4-digit PIN to use when transferring or withdrawing funds.
                   </p>
                   
                   <div style={{ marginBottom:20 }}>
-                    <label style={{ fontSize:12, color: "var(--text-secondary)", display:"block", marginBottom:8, fontWeight:600 }}>Nhập mã PIN mới (4 chữ số)</label>
+                    <label style={{ fontSize:12, color: "var(--text-secondary)", display:"block", marginBottom:8, fontWeight:600 }}>Enter new PIN (4 digits)</label>
                     <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 16 }}>
                       {pinSetupInputs.map((digit, i) => (
                         <input
@@ -1163,7 +1163,7 @@ export default function WalletsPage() {
                   </div>
 
                   <div style={{ marginBottom:24 }}>
-                    <label style={{ fontSize:12, color: "var(--text-secondary)", display:"block", marginBottom:8, fontWeight:600 }}>Xác nhận mã PIN mới</label>
+                    <label style={{ fontSize:12, color: "var(--text-secondary)", display:"block", marginBottom:8, fontWeight:600 }}>Confirm new PIN</label>
                     <div style={{ display: "flex", gap: 10, justifyContent: "center", marginBottom: 16 }}>
                       {pinSetupConfirmInputs.map((digit, i) => (
                         <input
@@ -1187,7 +1187,7 @@ export default function WalletsPage() {
                   </div>
 
                   <button onClick={submitPinSetup} style={{ width:"100%", background:"linear-gradient(135deg,#2563eb,#1d4ed8)", color: "#000000", border:"none", borderRadius:10, padding:"13px", fontWeight:700, fontSize:14, cursor:"pointer" }}>
-                    Xác nhận và Thiết lập
+                    Confirm &amp; Set Up
                   </button>
                 </div>
               )}
@@ -1198,13 +1198,13 @@ export default function WalletsPage() {
                   {/* Step 1: Input Amount & Select Method */}
                   {depositMethod === null && (
                     <div>
-                      <h3 style={{ fontSize:18, fontWeight:700, marginBottom:6, color: "var(--text-primary)" }}>💳 Nạp tiền</h3>
+                      <h3 style={{ fontSize:18, fontWeight:700, marginBottom:6, color: "var(--text-primary)" }}>💳 Deposit</h3>
                       <p style={{ color: "var(--text-muted)", fontSize:13, marginBottom:20 }}>
-                        Nạp tiền vào ví SmartWallet
+                        Add funds to your SmartWallet
                       </p>
                       
                       <div style={{ marginBottom:16 }}>
-                        <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:8 }}>Số tiền (₫)</label>
+                        <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:8 }}>Amount (₫)</label>
                         <div style={{ position:"relative" }}>
                           <input
                             type="text" inputMode="numeric"
@@ -1225,11 +1225,11 @@ export default function WalletsPage() {
                       </div>
 
                       <div style={{ marginBottom:24 }}>
-                        <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:8 }}>Ghi chú nạp tiền (tuỳ chọn)</label>
-                        <input value={depositForm.note} onChange={e => setDepositForm({...depositForm, note:e.target.value})} placeholder="Nội dung nạp tiền" style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"12px 16px", color: "#000000", fontSize:14, outline:"none" }} />
+                        <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:8 }}>Deposit note (optional)</label>
+                        <input value={depositForm.note} onChange={e => setDepositForm({...depositForm, note:e.target.value})} placeholder="Deposit description" style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"12px 16px", color: "#000000", fontSize:14, outline:"none" }} />
                       </div>
 
-                      <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:10, fontWeight:600 }}>Chọn hình thức nạp tiền</label>
+                      <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:10, fontWeight:600 }}>Select deposit method</label>
                       <div style={{ display:"flex", flexDirection:"column", gap:12 }}>
                         <button
                           disabled={!depositForm.amount || Number(depositForm.amount) <= 0}
@@ -1248,8 +1248,8 @@ export default function WalletsPage() {
                             <Building2 size={20} style={{ color:"#2563eb" }} />
                           </div>
                           <div style={{ flex:1 }}>
-                            <p style={{ fontSize:13, fontWeight:700, color: "#000000" }}>Nạp từ ngân hàng liên kết</p>
-                            <p style={{ fontSize:11, color: "var(--text-muted)" }}>Nạp tiền tức thì từ tài khoản ngân hàng liên kết</p>
+                            <p style={{ fontSize:13, fontWeight:700, color: "#000000" }}>Deposit from linked bank</p>
+                            <p style={{ fontSize:11, color: "var(--text-muted)" }}>Instant deposit from your linked bank account</p>
                           </div>
                         </button>
 
@@ -1270,8 +1270,8 @@ export default function WalletsPage() {
                             <QrCode size={20} style={{ color:"#22c55e" }} />
                           </div>
                           <div style={{ flex:1 }}>
-                            <p style={{ fontSize:13, fontWeight:700, color: "#000000" }}>Chuyển khoản qua mã QR</p>
-                            <p style={{ fontSize:11, color: "var(--text-muted)" }}>Tạo mã QR chuyển khoản tương ứng với số tiền nạp</p>
+                            <p style={{ fontSize:13, fontWeight:700, color: "#000000" }}>Pay via QR Code</p>
+                            <p style={{ fontSize:11, color: "var(--text-muted)" }}>Generate a QR code for the deposit amount</p>
                           </div>
                         </button>
                       </div>
@@ -1281,9 +1281,9 @@ export default function WalletsPage() {
                   {/* Step 2A: Bank Deposit */}
                   {depositMethod === "bank" && (
                     <div>
-                      <h3 style={{ fontSize:18, fontWeight:700, marginBottom:6, color: "var(--text-primary)" }}>🏦 Nạp từ ngân hàng liên kết</h3>
+                      <h3 style={{ fontSize:18, fontWeight:700, marginBottom:6, color: "var(--text-primary)" }}>🏦 Deposit from Linked Bank</h3>
                       <p style={{ color: "var(--text-muted)", fontSize:13, marginBottom:20 }}>
-                        Số tiền nạp: <strong style={{ color:"#2563eb" }}>{depositForm.amount ? fmtCurrency(Number(depositForm.amount)) : ""}</strong>
+                        Deposit amount: <strong style={{ color:"#2563eb" }}>{depositForm.amount ? fmtCurrency(Number(depositForm.amount)) : ""}</strong>
                       </p>
 
                       {linkedBanks.length === 0 ? (
@@ -1292,9 +1292,9 @@ export default function WalletsPage() {
                           borderRadius: 12, padding: "18px 20px", marginBottom: 20, textAlign: "center"
                         }}>
                           <Building2 size={24} style={{ color: "#ef4444", marginBottom: 8, marginLeft: "auto", marginRight: "auto" }} />
-                          <h4 style={{ fontSize: 14, fontWeight: 700, color: "#000000", marginBottom: 4 }}>Chưa có ngân hàng liên kết</h4>
+                          <h4 style={{ fontSize: 14, fontWeight: 700, color: "#000000", marginBottom: 4 }}>No linked bank accounts</h4>
                           <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 14, lineHeight: 1.5 }}>
-                            Vui lòng liên kết tài khoản ngân hàng chính chủ của bạn để thực hiện nạp tiền
+                            Please link your bank account to make a deposit
                           </p>
                           <button
                             onClick={() => setModal("bank")}
@@ -1305,13 +1305,13 @@ export default function WalletsPage() {
                               fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all 0.2s"
                             }}
                           >
-                            <Plus size={14} /> Liên kết ngân hàng ngay
+                            <Plus size={14} /> Link a Bank Now
                           </button>
                         </div>
                       ) : (
                         <>
                           <div style={{ marginBottom: 20 }}>
-                            <label style={{ fontSize: 13, color: "var(--text-secondary)", display: "block", marginBottom: 8 }}>Chọn tài khoản ngân hàng nạp</label>
+                            <label style={{ fontSize: 13, color: "var(--text-secondary)", display: "block", marginBottom: 8 }}>Select bank account to deposit from</label>
                             <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 180, overflowY: "auto", paddingRight: 4 }}>
                               {linkedBanks.map(b => {
                                 const isSelected = selectedBankId === b.id;
@@ -1356,7 +1356,7 @@ export default function WalletsPage() {
                                 fontSize: 14, cursor: "pointer"
                               }}
                             >
-                              Quay lại
+                              Back
                             </button>
                             <button
                               onClick={handleConfirmDepositBank}
@@ -1366,7 +1366,7 @@ export default function WalletsPage() {
                                 fontWeight: 700, fontSize: 14, cursor: "pointer"
                               }}
                             >
-                              Xác nhận nạp tiền
+                              Confirm Deposit
                             </button>
                           </div>
                         </>
@@ -1377,26 +1377,26 @@ export default function WalletsPage() {
                   {/* Step 2B: Pending Deposit via PayOS (Admin QR Code) */}
                   {depositMethod === "pending" && depositPaymentData && (
                     <div style={{ textAlign:"center" }}>
-                      <h3 style={{ fontSize:18, fontWeight:700, marginBottom:6, color: "var(--text-primary)" }}>📱 Chuyển khoản nạp tiền</h3>
+                      <h3 style={{ fontSize:18, fontWeight:700, marginBottom:6, color: "var(--text-primary)" }}>📱 Bank Transfer Deposit</h3>
                       <p style={{ color: "var(--text-secondary)", fontSize:13, marginBottom:20 }}>
-                        Vui lòng quét mã QR hoặc chuyển khoản thủ công tới tài khoản admin bên dưới
+                        Please scan the QR code or manually transfer to the admin account below
                       </p>
 
                       <div style={{ display:"inline-block", background:"white", borderRadius:16, padding:16, marginBottom:20, boxShadow: "0 10px 15px -3px rgba(0,0,0,0.05)" }}>
                         <img 
                           src={depositPaymentData.vietQrUrl} 
                           style={{ width:200, height:200, objectFit:"contain", borderRadius:8 }} 
-                          alt="Mã QR MBBank Admin" 
+                          alt="MBBank Admin QR Code" 
                         />
                       </div>
 
                       <div style={{ background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:12, padding:"14px 18px", marginBottom:20, textAlign:"left" }}>
                         {[
-                          { label: "Ngân hàng", value: "MB Bank (Ngân hàng Quân đội)", canCopy: false },
-                          { label: "Số tài khoản", value: "0967373148", canCopy: true, copyLabel: "Số tài khoản" },
-                          { label: "Tên chủ tài khoản", value: "CHAU QUOC LAM PHONG", canCopy: false },
-                          { label: "Số tiền", value: fmtCurrency(depositPaymentData.amount), copyValue: String(depositPaymentData.amount), canCopy: true, copyLabel: "Số tiền" },
-                          { label: "Nội dung chuyển khoản", value: depositPaymentData.transferNote, canCopy: true, copyLabel: "Nội dung" }
+                          { label: "Bank", value: "MB Bank (Military Bank)", canCopy: false },
+                          { label: "Account Number", value: "0967373148", canCopy: true, copyLabel: "Account Number" },
+                          { label: "Account Holder", value: "CHAU QUOC LAM PHONG", canCopy: false },
+                          { label: "Amount", value: fmtCurrency(depositPaymentData.amount), copyValue: String(depositPaymentData.amount), canCopy: true, copyLabel: "Amount" },
+                          { label: "Transfer Note", value: depositPaymentData.transferNote, canCopy: true, copyLabel: "Note" }
                         ].map(r => (
                           <div key={r.label} style={{ display:"flex", justifyContent:"space-between", alignItems:"center", padding:"10px 0", borderBottom:"1px solid var(--border)" }}>
                             <div>
@@ -1408,7 +1408,7 @@ export default function WalletsPage() {
                                 onClick={() => handleCopyText(r.copyValue || r.value, r.copyLabel)}
                                 style={{ background: "rgba(59,130,246,0.08)", border: "none", color: "#3b82f6", borderRadius: 6, padding: "5px 8px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4, fontSize: 11 }}
                               >
-                                <Copy size={12} /> Sao chép
+                                <Copy size={12} /> Copy
                               </button>
                             )}
                           </div>
@@ -1418,7 +1418,7 @@ export default function WalletsPage() {
                       {/* Loading status check */}
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 20, color: "var(--text-secondary)", fontSize: 13 }}>
                         <div style={{ width: 16, height: 16, border: "2px solid rgba(59,130,246,0.3)", borderTopColor: "#3b82f6", borderRadius: "50%", animation: "spin 1s linear infinite" }} />
-                        <span>Hệ thống đang tự động kiểm tra giao dịch...</span>
+                        <span>System is automatically checking transaction status...</span>
                       </div>
 
                       {depositPaymentData.checkoutUrl && (
@@ -1447,7 +1447,7 @@ export default function WalletsPage() {
                           onMouseEnter={(e) => e.currentTarget.style.background = "rgba(37,99,235,0.15)"}
                           onMouseLeave={(e) => e.currentTarget.style.background = "rgba(37,99,235,0.08)"}
                         >
-                          🔗 Mở trang thanh toán PayOS (để Test Giả lập)
+                          🔗 Open PayOS Payment Page (Test Mode)
                         </a>
                       )}
 
@@ -1460,7 +1460,7 @@ export default function WalletsPage() {
                             fontSize: 14, cursor: "pointer"
                           }}
                         >
-                          Quay lại
+                          Back
                         </button>
                         <button 
                           onClick={handleConfirmTransferred}
@@ -1476,7 +1476,7 @@ export default function WalletsPage() {
                             cursor: "pointer" 
                           }}
                         >
-                          Tôi đã chuyển tiền
+                          I Have Transferred
                         </button>
                       </div>
                     </div>
@@ -1489,9 +1489,9 @@ export default function WalletsPage() {
                 <div>
                   {pinStep ? (
                     <div style={{ textAlign:"center" }}>
-                      <h3 style={{ fontSize:18, fontWeight:700, marginBottom:6, color: "var(--text-primary)" }}>🔒 Nhập mã PIN giao dịch</h3>
+                      <h3 style={{ fontSize:18, fontWeight:700, marginBottom:6, color: "var(--text-primary)" }}>🔒 Enter Transaction PIN</h3>
                       <p style={{ color: "var(--text-secondary)", fontSize:13, marginBottom:20 }}>
-                        Vui lòng nhập mã PIN giao dịch gồm 4 chữ số để xác thực yêu cầu rút tiền.
+                        Please enter your 4-digit transaction PIN to confirm the withdrawal.
                       </p>
 
                       <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 24 }}>
@@ -1524,7 +1524,7 @@ export default function WalletsPage() {
                             fontSize: 13, cursor: "pointer"
                           }}
                         >
-                          Quay lại
+                          Back
                         </button>
                         <button
                           onClick={handleConfirmWithdraw}
@@ -1534,15 +1534,15 @@ export default function WalletsPage() {
                             fontWeight: 700, fontSize: 13, cursor: "pointer"
                           }}
                         >
-                          Xác nhận rút tiền
+                          Confirm Withdrawal
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div>
-                      <h3 style={{ fontSize:18, fontWeight:700, marginBottom:6, color: "var(--text-primary)" }}>🏦 Rút tiền</h3>
+                      <h3 style={{ fontSize:18, fontWeight:700, marginBottom:6, color: "var(--text-primary)" }}>🏦 Withdraw</h3>
                       <p style={{ color: "var(--text-muted)", fontSize:13, marginBottom:20 }}>
-                        Rút tiền về tài khoản ngân hàng
+                        Withdraw to your bank account
                       </p>
 
                       {linkedBanks.length === 0 ? (
@@ -1551,9 +1551,9 @@ export default function WalletsPage() {
                           borderRadius: 12, padding: "18px 20px", marginBottom: 20, textAlign: "center"
                         }}>
                           <Building2 size={24} style={{ color: "#ef4444", marginBottom: 8, marginLeft: "auto", marginRight: "auto" }} />
-                          <h4 style={{ fontSize: 14, fontWeight: 700, color: "#000000", marginBottom: 4 }}>Chưa có ngân hàng liên kết</h4>
+                          <h4 style={{ fontSize: 14, fontWeight: 700, color: "#000000", marginBottom: 4 }}>No linked bank accounts</h4>
                           <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 14, lineHeight: 1.5 }}>
-                            Vui lòng liên kết tài khoản ngân hàng chính chủ của bạn để thực hiện rút tiền
+                            Please link your bank account to make a withdrawal
                           </p>
                           <button
                             onClick={() => setModal("bank")}
@@ -1564,13 +1564,13 @@ export default function WalletsPage() {
                               fontSize: 12, fontWeight: 700, cursor: "pointer", transition: "all 0.2s"
                             }}
                           >
-                            <Plus size={14} /> Liên kết ngân hàng ngay
+                            <Plus size={14} /> Link a Bank Now
                           </button>
                         </div>
                       ) : (
                         <>
                           <div style={{ marginBottom: 16 }}>
-                            <label style={{ fontSize: 13, color: "var(--text-secondary)", display: "block", marginBottom: 8 }}>Chọn tài khoản nhận tiền</label>
+                            <label style={{ fontSize: 13, color: "var(--text-secondary)", display: "block", marginBottom: 8 }}>Select receiving bank account</label>
                             <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 180, overflowY: "auto", paddingRight: 4 }}>
                               {linkedBanks.map(b => {
                                 const isSelected = selectedBankId === b.id;
@@ -1607,7 +1607,7 @@ export default function WalletsPage() {
                           </div>
 
                           <div style={{ marginBottom: 20 }}>
-                            <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:8 }}>Số tiền muốn rút (₫)</label>
+                            <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:8 }}>Withdrawal amount (₫)</label>
                             <div style={{ position:"relative" }}>
                               <input
                                 type="text" inputMode="numeric"
@@ -1628,7 +1628,7 @@ export default function WalletsPage() {
                           </div>
 
                           <button onClick={handleConfirmWithdraw} style={{ width:"100%", background:"linear-gradient(135deg,#2563eb,#1d4ed8)", color: "#000000", border:"none", borderRadius:10, padding:"13px", fontWeight:700, fontSize:14, cursor:"pointer" }}>
-                            Xác nhận rút {depositForm.amount ? fmtCurrency(Number(depositForm.amount)) : ""}
+                            Confirm Withdraw {depositForm.amount ? fmtCurrency(Number(depositForm.amount)) : ""}
                           </button>
                         </>
                       )}
@@ -1642,9 +1642,9 @@ export default function WalletsPage() {
                 <div style={{ maxHeight: "80vh", overflowY: "auto", paddingRight: 2 }}>
                   {pinStep ? (
                     <div style={{ textAlign:"center", padding: "10px 0" }}>
-                      <h3 style={{ fontSize:18, fontWeight:700, marginBottom:6, color: "var(--text-primary)" }}>🔒 Nhập mã PIN giao dịch</h3>
+                      <h3 style={{ fontSize:18, fontWeight:700, marginBottom:6, color: "var(--text-primary)" }}>🔒 Enter Transaction PIN</h3>
                       <p style={{ color: "var(--text-secondary)", fontSize:13, marginBottom:20 }}>
-                        Vui lòng nhập mã PIN giao dịch gồm 4 chữ số để xác thực yêu cầu chuyển tiền.
+                        Please enter your 4-digit transaction PIN to confirm the transfer.
                       </p>
 
                       <div style={{ display: "flex", gap: 12, justifyContent: "center", marginBottom: 24 }}>
@@ -1677,7 +1677,7 @@ export default function WalletsPage() {
                             fontSize: 13, cursor: "pointer"
                           }}
                         >
-                          Quay lại
+                          Back
                         </button>
                         <button
                           onClick={handleConfirmTransfer}
@@ -1687,22 +1687,22 @@ export default function WalletsPage() {
                             fontWeight: 700, fontSize: 13, cursor: "pointer"
                           }}
                         >
-                          Xác nhận chuyển tiền
+                          Confirm Transfer
                         </button>
                       </div>
                     </div>
                   ) : (
                     <div>
-                      <h3 style={{ fontSize:18, fontWeight:700, marginBottom:6, color: "var(--text-primary)" }}>💸 Chuyển tiền</h3>
-                      <p style={{ color: "var(--text-muted)", fontSize:13, marginBottom:20 }}>Chuyển tiền nhanh chóng và an toàn</p>
+                      <h3 style={{ fontSize:18, fontWeight:700, marginBottom:6, color: "var(--text-primary)" }}>💸 Transfer</h3>
+                      <p style={{ color: "var(--text-muted)", fontSize:13, marginBottom:20 }}>Fast and secure money transfer</p>
 
                   {/* Method Selector */}
                   <div style={{ marginBottom: 20 }}>
-                    <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:10 }}>Phương thức chuyển tiền</label>
+                    <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:10 }}>Transfer method</label>
                     <div style={{ display:"flex", gap:10 }}>
                       {[
-                        { id: "smartwallet", icon: Wallet, label: "Ví SmartWallet", desc: "Chuyển qua SĐT / Email", color: "#2563eb" },
-                        { id: "bank",     icon: Building2, label: "Ngân hàng", desc: "Chuyển tới ngân hàng khác", color: "#3b82f6" },
+                        { id: "smartwallet", icon: Wallet, label: "SmartWallet", desc: "Transfer via phone / email", color: "#2563eb" },
+                        { id: "bank",     icon: Building2, label: "Bank", desc: "Transfer to another bank", color: "#3b82f6" },
                       ].map(m => {
                         const active = transferMethod === m.id;
                         return (
@@ -1736,12 +1736,12 @@ export default function WalletsPage() {
                     <div>
                       <div style={{ background:"rgba(37,99,235,0.06)", border:"1px solid rgba(37,99,235,0.15)", borderRadius:10, padding:"10px 14px", marginBottom:16, display:"flex", alignItems:"center", gap:8 }}>
                         <Smartphone size={14} style={{ color:"#2563eb", flexShrink:0 }} />
-                        <p style={{ fontSize:12, color: "var(--text-secondary)", lineHeight:1.5 }}>Chuyển tiền trực tiếp tới tài khoản ví SmartWallet bằng số điện thoại hoặc email đăng ký.</p>
+                        <p style={{ fontSize:12, color: "var(--text-secondary)", lineHeight:1.5 }}>Transfer directly to a SmartWallet account using a registered phone number or email.</p>
                       </div>
                       <div style={{ marginBottom:14 }}>
-                        <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>SĐT / Email người nhận *</label>
+                        <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Recipient's phone / email *</label>
                         <input value={txForm.target} onChange={e => setTxForm({...txForm, target:e.target.value})}
-                          placeholder="Nhập số điện thoại hoặc email"
+                          placeholder="Enter phone number or email"
                           style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"11px 14px", color: "#000000", fontSize:14, outline:"none" }} />
                       </div>
                     </div>
@@ -1752,12 +1752,12 @@ export default function WalletsPage() {
                     <div>
                       <div style={{ background:"rgba(59,130,246,0.06)", border:"1px solid rgba(59,130,246,0.15)", borderRadius:10, padding:"10px 14px", marginBottom:16, display:"flex", alignItems:"center", gap:8 }}>
                         <AlertCircle size={14} style={{ color:"#3b82f6", flexShrink:0 }} />
-                        <p style={{ fontSize:12, color: "var(--text-secondary)", lineHeight:1.5 }}>Tải ảnh QR ngân hàng lên hoặc nhập thủ công số tài khoản và ngân hàng người nhận.</p>
+                        <p style={{ fontSize:12, color: "var(--text-secondary)", lineHeight:1.5 }}>Upload a bank QR image or manually enter the recipient's bank and account number.</p>
                       </div>
 
                       {/* QR Upload */}
                       <div style={{ marginBottom:16 }}>
-                        <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:8 }}>Tải ảnh mã QR ngân hàng (tuỳ chọn)</label>
+                        <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:8 }}>Upload bank QR code image (optional)</label>
                         <input ref={qrInputRef} type="file" accept="image/*" onChange={handleQrFileChange} style={{ display:"none" }} />
                         {qrUploadPreview ? (
                           <div style={{ position:"relative", display:"inline-block", width:"100%" }}>
@@ -1769,7 +1769,7 @@ export default function WalletsPage() {
                             </button>
                             <button onClick={() => qrInputRef.current?.click()}
                               style={{ marginTop:8, width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:8, padding:"7px", color: "var(--text-secondary)", fontSize:12, cursor:"pointer" }}>
-                              Đổi ảnh khác
+                              Change Image
                             </button>
                           </div>
                         ) : (
@@ -1785,8 +1785,8 @@ export default function WalletsPage() {
                             <div style={{ width:44, height:44, borderRadius:12, background:"rgba(59,130,246,0.1)", display:"flex", alignItems:"center", justifyContent:"center" }}>
                               <Upload size={20} style={{ color:"#3b82f6" }} />
                             </div>
-                            <span style={{ fontSize:13, fontWeight:600, color: "var(--text-secondary)" }}>Nhấn để tải ảnh QR lên</span>
-                            <span style={{ fontSize:11, color: "var(--text-muted)" }}>PNG, JPG, JPEG (tối đa 5MB)</span>
+                            <span style={{ fontSize:13, fontWeight:600, color: "var(--text-secondary)" }}>Click to upload QR image</span>
+                            <span style={{ fontSize:11, color: "var(--text-muted)" }}>PNG, JPG, JPEG (max 5MB)</span>
                           </button>
                         )}
                       </div>
@@ -1794,33 +1794,33 @@ export default function WalletsPage() {
                       {/* Divider */}
                       <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:16 }}>
                         <div style={{ flex:1, height:1, background:"var(--border)" }} />
-                        <span style={{ fontSize:11, color: "var(--text-muted)", whiteSpace:"nowrap" }}>hoặc nhập thủ công</span>
+                        <span style={{ fontSize:11, color: "var(--text-muted)", whiteSpace:"nowrap" }}>or enter manually</span>
                         <div style={{ flex:1, height:1, background:"var(--border)" }} />
                       </div>
 
                       {/* Bank selector */}
                       <div style={{ marginBottom:12 }}>
-                        <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Ngân hàng người nhận *</label>
+                        <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Recipient's bank *</label>
                         <select value={bankTransferForm.bank} onChange={e => setBankTransferForm({...bankTransferForm, bank:e.target.value})}
                           style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"11px 14px", color: bankTransferForm.bank ? "#000000" : "#52525b", fontSize:14, outline:"none" }}>
-                          <option value="">-- Chọn ngân hàng --</option>
+                          <option value="">-- Select bank --</option>
                           {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
                         </select>
                       </div>
 
                       {/* Account number */}
                       <div style={{ marginBottom:12 }}>
-                        <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Số tài khoản người nhận *</label>
+                        <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Recipient's account number *</label>
                         <input value={bankTransferForm.account} onChange={e => setBankTransferForm({...bankTransferForm, account:e.target.value})}
-                          placeholder="Nhập số tài khoản"
+                          placeholder="Enter account number"
                           style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"11px 14px", color: "#000000", fontSize:14, outline:"none" }} />
                       </div>
 
                       {/* Owner name */}
                       <div style={{ marginBottom:4 }}>
-                        <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Tên chủ tài khoản (tuỳ chọn)</label>
+                        <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Account holder name (optional)</label>
                         <input value={bankTransferForm.ownerName} onChange={e => setBankTransferForm({...bankTransferForm, ownerName:e.target.value})}
-                          placeholder="Họ và tên người nhận"
+                          placeholder="Full name of recipient"
                           style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"11px 14px", color: "#000000", fontSize:14, outline:"none" }} />
                       </div>
                     </div>
@@ -1828,10 +1828,10 @@ export default function WalletsPage() {
 
                   {/* Category Selection */}
                   <div style={{ marginBottom: 16, textAlign: "left" }}>
-                    <label style={{ fontSize: 13, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Danh mục chuyển tiền *</label>
+                    <label style={{ fontSize: 13, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Transfer category *</label>
                     <select value={txForm.category} onChange={e => setTxForm({...txForm, category: e.target.value})}
                       style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "11px 14px", color: txForm.category ? "#000000" : "#52525b", fontSize: 14, outline: "none" }}>
-                      <option value="">-- Chọn danh mục --</option>
+                      <option value="">-- Select category --</option>
                       {categories.map(c => (
                         <option key={c.id} value={c.id}>{c.name}</option>
                       ))}
@@ -1843,21 +1843,21 @@ export default function WalletsPage() {
                     <div style={{ marginTop:16, marginBottom:16, border: "1px solid var(--border)", borderRadius:12, padding:14, background: "var(--bg-card2)", textAlign:"left" }}>
                       <div style={{ display:"flex", alignItems:"center", gap:6, marginBottom:8 }}>
                         <Gift size={16} style={{ color:"#3b82f6" }} />
-                        <span style={{ fontSize:13, fontWeight:700, color: "#000000" }}>Mã ưu đãi & Quà tặng</span>
+                        <span style={{ fontSize:13, fontWeight:700, color: "#000000" }}>Promo Codes &amp; Rewards</span>
                       </div>
                       
                       <div style={{ display:"flex", gap:8, marginBottom:10 }}>
                         <input 
                           value={promoCode} 
                           onChange={e => setPromoCode(e.target.value)} 
-                          placeholder="Nhập mã ưu đãi (Ví dụ: CHUYENTIEN50)" 
+                          placeholder="Enter promo code (e.g. TRANSFER50)" 
                           style={{ flex:1, background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:8, padding:"8px 12px", color: "#000000", fontSize:12, outline:"none" }} 
                         />
                         <button 
                           onClick={handleApplyPromo}
                           style={{ background:"#3b82f6", color: "#000000", border:"none", borderRadius:8, padding:"0 14px", fontSize:12, fontWeight:600, cursor:"pointer" }}
                         >
-                          Áp dụng
+                          Apply
                         </button>
                       </div>
 
@@ -1866,7 +1866,7 @@ export default function WalletsPage() {
                           onClick={() => setShowPromoSelector(true)}
                           style={{ background:"none", border:"none", color:"#3b82f6", fontSize:12, fontWeight:600, cursor:"pointer", display:"flex", alignItems: "center", gap: 4, padding: 0 }}
                         >
-                          <Tag size={12} /> Chọn mã ưu đãi có sẵn
+                          <Tag size={12} /> Browse available codes
                         </button>
                         
                         {appliedVoucher && (
@@ -1874,7 +1874,7 @@ export default function WalletsPage() {
                             onClick={() => { setAppliedVoucher(null); setPromoCode(""); }}
                             style={{ background:"none", border:"none", color:"#ef4444", fontSize:11, cursor:"pointer" }}
                           >
-                            Xoá mã
+                            Remove
                           </button>
                         )}
                       </div>
@@ -1884,23 +1884,23 @@ export default function WalletsPage() {
                         return (
                           <div style={{ marginTop:10, padding:"8px 12px", background:"rgba(34,197,94,0.06)", border:"1px solid rgba(34,197,94,0.15)", borderRadius:8 }}>
                             <p style={{ fontSize:12, color:"#22c55e", fontWeight:700 }}>
-                              ✓ Đã áp dụng: {appliedVoucher.code}
+                              ✓ Applied: {appliedVoucher.code}
                             </p>
                             <p style={{ fontSize:11, color: "var(--text-secondary)", marginTop:2 }}>
                               {appliedVoucher.title}
                             </p>
                             {appliedVoucher.min_transaction_amount > 0 && (
                               <p style={{ fontSize:10, color:"#f59e0b", marginTop:2 }}>
-                                * Giao dịch tối thiểu từ {fmtCurrency(appliedVoucher.min_transaction_amount)}
+                                * Minimum transaction: {fmtCurrency(appliedVoucher.min_transaction_amount)}
                               </p>
                             )}
                             {discount > 0 ? (
                               <p style={{ fontSize:12, color:"#22c55e", fontWeight:700, marginTop:4 }}>
-                                Được giảm: -{fmtCurrency(discount)}
+                                Discount: -{fmtCurrency(discount)}
                               </p>
                             ) : (
                               <p style={{ fontSize:11, color:"#f59e0b", marginTop:4 }}>
-                                Nhập số tiền chuyển hợp lệ để nhận ưu đãi!
+                                Enter a valid transfer amount to apply the discount!
                               </p>
                             )}
                           </div>
@@ -1910,8 +1910,8 @@ export default function WalletsPage() {
                   )}
 
                   {/* Common fields: Amount + Note */}
-                  <div style={{ marginTop:16, marginBottom:14, textAlign:"left" }}>
-                    <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Số tiền (₫) *</label>
+                    <div style={{ marginTop:16, marginBottom:14, textAlign:"left" }}>
+                    <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Amount (₫) *</label>
                     <div style={{ position:"relative" }}>
                       <input
                         type="text" inputMode="numeric"
@@ -1931,16 +1931,16 @@ export default function WalletsPage() {
                       ))}
                     </div>
                   </div>
-                  <div style={{ marginBottom:20, textAlign:"left" }}>
-                    <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Ghi chú (tuỳ chọn)</label>
+                    <div style={{ marginBottom:20, textAlign:"left" }}>
+                    <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Note (optional)</label>
                     <input value={txForm.note} onChange={e => setTxForm({...txForm, note:e.target.value})}
-                      placeholder="Nội dung chuyển tiền"
+                      placeholder="Transfer note"
                       style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"11px 14px", color: "#000000", fontSize:14, outline:"none" }} />
                   </div>
 
                   {/* Available balance display */}
-                  <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 12px", background: "var(--bg-card2)", borderRadius:8, marginBottom:16 }}>
-                    <span style={{ fontSize:12, color: "var(--text-secondary)" }}>Số dư khả dụng</span>
+                    <div style={{ display:"flex", justifyContent:"space-between", padding:"8px 12px", background: "var(--bg-card2)", borderRadius:8, marginBottom:16 }}>
+                    <span style={{ fontSize:12, color: "var(--text-secondary)" }}>Available balance</span>
                     <span style={{ fontSize:12, fontWeight:700, color:"#22c55e" }}>{fmtCurrency(balance)}</span>
                   </div>
 
@@ -1950,13 +1950,13 @@ export default function WalletsPage() {
                     return (
                       <button onClick={handleConfirmTransfer}
                         style={{ width:"100%", background:"linear-gradient(135deg,#2563eb,#1d4ed8)", color: "#000000", border:"none", borderRadius:10, padding:"13px", fontWeight:700, fontSize:14, cursor:"pointer" }}>
-                        💸 Xác nhận chuyển {fmtCurrency(finalAmt)} (Đã giảm)
+                        💸 Confirm Transfer {fmtCurrency(finalAmt)} (Discounted)
                       </button>
                     );
                   })() : (
                     <button onClick={handleConfirmTransfer}
                       style={{ width:"100%", background:"linear-gradient(135deg,#2563eb,#1d4ed8)", color: "#000000", border:"none", borderRadius:10, padding:"13px", fontWeight:700, fontSize:14, cursor:"pointer" }}>
-                      💸 Xác nhận chuyển {txForm.amount ? fmtCurrency(Number(txForm.amount)) : "tiền"}
+                      💸 Confirm Transfer {txForm.amount ? fmtCurrency(Number(txForm.amount)) : "funds"}
                     </button>
                   )}
                     </div>
@@ -1967,7 +1967,7 @@ export default function WalletsPage() {
                     <div style={{ position:"absolute", inset:0, background: "var(--bg-card)", borderRadius:20, padding:24, zIndex:210, display:"flex", flexDirection:"column" }}>
                       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:16 }}>
                         <h4 style={{ fontSize:15, fontWeight:700, display:"flex", alignItems:"center", gap:6, color: "#000000" }}>
-                          <Gift size={16} style={{ color:"#3b82f6" }} /> Chọn mã ưu đãi
+                          <Gift size={16} style={{ color:"#3b82f6" }} /> Select Promo Code
                         </h4>
                         <button onClick={() => setShowPromoSelector(false)} style={{ background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:8, width:28, height:28, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", color: "var(--text-secondary)" }}>
                           <X size={14} />
@@ -1975,7 +1975,7 @@ export default function WalletsPage() {
                       </div>
                       
                       <div style={{ display:"flex", gap:6, marginBottom:16, overflowX:"auto", paddingBottom:6 }}>
-                        {["Tất cả", "Chuyển tiền", "Mua sắm", "Rút tiền", "Referral", "Nạp tiền", "Hóa đơn"].map(cat => (
+                        {["All", "Chuyển tiền", "Mua sắm", "Rút tiền", "Referral", "Nạp tiền", "Hóa đơn"].map(cat => (
                           <button 
                             key={cat} 
                             onClick={() => setActivePromoTab(cat)} 
@@ -1992,7 +1992,7 @@ export default function WalletsPage() {
                       </div>
 
                       <div style={{ flex:1, overflowY:"auto", display:"flex", flexDirection:"column", gap:10 }}>
-                        {voucherList.filter(v => activePromoTab === "Tất cả" || v.tag === activePromoTab).map(v => {
+                        {voucherList.filter(v => activePromoTab === "All" || v.tag === activePromoTab).map(v => {
                           const isApplicable = !v.min_transaction_amount || (Number(txForm.amount) || 0) >= Number(v.min_transaction_amount);
                           return (
                             <div 
@@ -2011,14 +2011,14 @@ export default function WalletsPage() {
                                   <p style={{ fontSize:11, color: "var(--text-secondary)", marginTop:2 }}>{v.description}</p>
                                   {v.min_transaction_amount > 0 && (
                                     <p style={{ fontSize:10, color:"#f59e0b", marginTop:2 }}>
-                                      Min GD: {fmtCurrency(v.min_transaction_amount)}
+                                      Min Txn: {fmtCurrency(v.min_transaction_amount)}
                                     </p>
                                   )}
-                                  <p style={{ fontSize:10, color: "var(--text-muted)", marginTop:4 }}>HSD: {fmtVoucherDate(v.expired_at)}</p>
+                                  <p style={{ fontSize:10, color: "var(--text-muted)", marginTop:4 }}>Exp: {fmtVoucherDate(v.expired_at)}</p>
                                 </div>
                                 <div style={{ textAlign:"right" }}>
                                   <span style={{ fontSize:14, fontWeight:900, color:"#3b82f6" }}>{discountLabel(v)}</span>
-                                  <div style={{ fontSize:10, fontWeight:700, color: "var(--text-muted)", marginTop:4 }}>Mã: {v.code}</div>
+                                  <div style={{ fontSize:10, fontWeight:700, color: "var(--text-muted)", marginTop:4 }}>Code: {v.code}</div>
                                 </div>
                               </div>
                             </div>
@@ -2033,14 +2033,14 @@ export default function WalletsPage() {
               {/* QR */}
               {modal==="qr" && (
                 <div style={{ textAlign:"center" }}>
-                  <h3 style={{ fontSize:18, fontWeight:700, marginBottom:6 }}>📱 Mã QR của tôi</h3>
-                  <p style={{ color: "var(--text-muted)", fontSize:13, marginBottom:24 }}>Cho người khác quét để chuyển tiền cho bạn</p>
+                  <h3 style={{ fontSize:18, fontWeight:700, marginBottom:6 }}>📱 My QR Code</h3>
+                  <p style={{ color: "var(--text-muted)", fontSize:13, marginBottom:24 }}>Let others scan to send money to you</p>
                   <div style={{ display:"inline-block", background:"white", borderRadius:16, padding:16, marginBottom:20 }}>
                     <QRCode value="smartwallet://user/demo_user_123" size={180} level="H" />
                   </div>
                   <p style={{ fontSize:13, color: "var(--text-secondary)", marginBottom:4 }}>ID: <strong style={{ color:"#2563eb" }}>SW-DEMO-123</strong></p>
                   <button style={{ marginTop:12, background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"10px 24px", color: "var(--text-secondary)", cursor:"pointer", fontSize:13 }}>
-                    Tải ảnh QR
+                    Download QR
                   </button>
                 </div>
               )}
@@ -2049,14 +2049,14 @@ export default function WalletsPage() {
               {modal==="bank" && (
                 <div>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
-                    <h3 style={{ fontSize:18, fontWeight:700 }}>🏦 Liên kết ngân hàng</h3>
+                    <h3 style={{ fontSize:18, fontWeight:700 }}>🏦 Link Bank Account</h3>
                     <span style={{
                       fontSize:12, fontWeight:700, padding:"4px 10px", borderRadius:20,
                       background: linkedBanks.length >= MAX_BANKS ? "rgba(239,68,68,0.12)" : "rgba(59,130,246,0.12)",
                       color: linkedBanks.length >= MAX_BANKS ? "#ef4444" : "#3b82f6",
                       border: `1px solid ${linkedBanks.length >= MAX_BANKS ? "rgba(239,68,68,0.25)" : "rgba(59,130,246,0.25)"}`
                     }}>
-                      {linkedBanks.length}/{MAX_BANKS} ngân hàng
+                      {linkedBanks.length}/{MAX_BANKS} banks
                     </span>
                   </div>
 
@@ -2067,11 +2067,11 @@ export default function WalletsPage() {
                     }}>
                       <div style={{ fontSize:32, marginBottom:10 }}>🔒</div>
                       <p style={{ fontSize:14, fontWeight:700, color: "#000000", marginBottom:6 }}>
-                        Đã đạt giới hạn liên kết
+                        Link Limit Reached
                       </p>
                       <p style={{ fontSize:13, color: "var(--text-secondary)", lineHeight:1.6, marginBottom:16 }}>
-                        Bạn đã liên kết tối đa <strong style={{ color:"#ef4444" }}>3 ngân hàng</strong>.<br/>
-                        Vui lòng xoá bớt ngân hàng cũ trước khi thêm mới.
+                        You have reached the maximum of <strong style={{ color:"#ef4444" }}>3 linked banks</strong>.<br/>
+                        Please remove an existing bank before adding a new one.
                       </p>
                       <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
                         {linkedBanks.map(b => (
@@ -2105,7 +2105,7 @@ export default function WalletsPage() {
                     <>
                       <div style={{ marginBottom:16 }}>
                         <div style={{ display:"flex", justifyContent:"space-between", marginBottom:6 }}>
-                          <span style={{ fontSize:11, color: "var(--text-secondary)" }}>Số ngân hàng đã liên kết</span>
+                          <span style={{ fontSize:11, color: "var(--text-secondary)" }}>Linked banks</span>
                           <span style={{ fontSize:11, color:"#3b82f6", fontWeight:700 }}>{linkedBanks.length}/{MAX_BANKS}</span>
                         </div>
                         <div style={{ height:4, background: "var(--bg-card2)", borderRadius:4 }}>
@@ -2116,21 +2116,21 @@ export default function WalletsPage() {
                           }} />
                         </div>
                         {linkedBanks.length === 2 && (
-                          <p style={{ fontSize:11, color:"#f59e0b", marginTop:6 }}>⚠️ Còn 1 slot cuối cùng!</p>
+                          <p style={{ fontSize:11, color:"#f59e0b", marginTop:6 }}>⚠️ Only 1 slot remaining!</p>
                         )}
                       </div>
 
                       <div style={{ marginBottom:14 }}>
-                        <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Tên ngân hàng</label>
+                        <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Bank name</label>
                         <select value={bankForm.bank} onChange={e => setBankForm({...bankForm,bank:e.target.value})}
                           style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"11px 14px", color: bankForm.bank ? "#000000" : "#52525b", fontSize:14, outline:"none" }}>
-                          <option value="">-- Chọn ngân hàng --</option>
+                          <option value="">-- Select bank --</option>
                           {BANKS.map(b => <option key={b} value={b}>{b}</option>)}
                         </select>
                       </div>
                       {[
-                        { label:"Số tài khoản", key:"account", placeholder:"Nhập số tài khoản" },
-                        { label:"Tên chủ tài khoản", key:"owner", placeholder:"Nhập họ và tên" },
+                        { label:"Account number", key:"account", placeholder:"Enter account number" },
+                        { label:"Account holder name", key:"owner", placeholder:"Enter full name" },
                       ].map(f => (
                         <div key={f.key} style={{ marginBottom:14 }}>
                           <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>{f.label}</label>
@@ -2140,7 +2140,7 @@ export default function WalletsPage() {
                         </div>
                       ))}
                       <button onClick={handleLinkBank} style={{ width:"100%", background:"linear-gradient(135deg,#3b82f6,#1d4ed8)", color: "#000000", border:"none", borderRadius:10, padding:"13px", fontWeight:700, fontSize:14, cursor:"pointer", marginTop:8 }}>
-                        Liên kết ngân hàng
+                        Link Bank
                       </button>
                     </>
                   )}
@@ -2151,21 +2151,21 @@ export default function WalletsPage() {
               {modal==="linked_banks_list" && (
                 <div>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20 }}>
-                    <h3 style={{ fontSize:18, fontWeight:700 }}>🏦 Danh sách ngân hàng</h3>
+                    <h3 style={{ fontSize:18, fontWeight:700 }}>🏦 Linked Banks</h3>
                     <span style={{
                       fontSize:12, fontWeight:700, padding:"4px 10px", borderRadius:20,
                       background: "rgba(59,130,246,0.12)", color: "#3b82f6",
                       border: "1px solid rgba(59,130,246,0.25)"
                     }}>
-                      {linkedBanks.length}/3 đã liên kết
+                      {linkedBanks.length}/3 linked
                     </span>
                   </div>
 
                   {linkedBanks.length === 0 ? (
                     <div style={{ padding: "30px 16px", textAlign: "center", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 16 }}>
                       <Building2 size={36} style={{ color: "var(--text-muted)", marginBottom: 12, margin: "0 auto" }} />
-                      <p style={{ fontSize:14, fontWeight:600, color: "var(--text-secondary)", marginBottom: 4 }}>Chưa liên kết ngân hàng nào</p>
-                      <p style={{ fontSize:12, color: "var(--text-muted)", marginBottom: 16 }}>Vui lòng thêm liên kết ngân hàng để nạp rút tiền dễ dàng.</p>
+                      <p style={{ fontSize:14, fontWeight:600, color: "var(--text-secondary)", marginBottom: 4 }}>No linked banks</p>
+                      <p style={{ fontSize:12, color: "var(--text-muted)", marginBottom: 16 }}>Please add a bank account to easily deposit and withdraw funds.</p>
                       <button
                         onClick={() => setModal("bank")}
                         style={{
@@ -2173,13 +2173,13 @@ export default function WalletsPage() {
                           borderRadius: 8, padding: "8px 16px", fontWeight: 700, fontSize: 13, cursor: "pointer"
                         }}
                       >
-                        + Liên kết ngay
+                        + Link Now
                       </button>
                     </div>
                   ) : (
                     <div style={{ display:"flex", flexDirection:"column", gap:10 }}>
                       <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>
-                        Danh sách các ngân hàng đã được liên kết với tài khoản ví của bạn:
+                        Bank accounts linked to your wallet:
                       </p>
                       {linkedBanks.map(b => (
                         <div key={b.id} style={{
@@ -2223,7 +2223,7 @@ export default function WalletsPage() {
                           onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(59,130,246,0.04)"; e.currentTarget.style.borderColor = "#3b82f6"; }}
                           onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.borderColor = "var(--border)"; }}
                         >
-                          + Thêm liên kết ngân hàng mới
+                          + Add New Bank Link
                         </button>
                       )}
                     </div>
@@ -2234,7 +2234,7 @@ export default function WalletsPage() {
               {/* TX DETAIL */}
               {modal==="tx" && selectedTx && (
                 <div>
-                  <h3 style={{ fontSize:18, fontWeight:700, marginBottom:20 }}>Chi tiết giao dịch</h3>
+                  <h3 style={{ fontSize:18, fontWeight:700, marginBottom:20 }}>Transaction Details</h3>
                   <div style={{ background: "var(--bg-card2)", borderRadius:12, padding:20, marginBottom:20, textAlign:"center" }}>
                     <p style={{ fontSize:32, fontWeight:900, color: selectedTx.type==="receive" ? "#22c55e" : "#2563eb" }}>
                       {selectedTx.type==="receive" ? "+" : "-"}{fmtCurrency(selectedTx.amount)}
@@ -2243,16 +2243,16 @@ export default function WalletsPage() {
                       background: selectedTx.status==="success" ? "rgba(34,197,94,0.12)" : selectedTx.status==="pending" ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)",
                       color: selectedTx.status==="success" ? "#22c55e" : selectedTx.status==="pending" ? "#f59e0b" : "#ef4444"
                     }}>
-                      {selectedTx.status==="success" ? "Thành công" : selectedTx.status==="pending" ? "Chờ xử lý" : "Thất bại"}
+                      {selectedTx.status==="success" ? "Success" : selectedTx.status==="pending" ? "Pending" : "Failed"}
                     </span>
                   </div>
                   {[
-                    { label:"Mã giao dịch", value:selectedTx.id },
-                    { label:"Loại", value: selectedTx.type==="receive" ? "Nhận tiền" : "Chuyển tiền" },
-                    ...(selectedTx.category ? [{ label:"Danh mục", value: selectedTx.category }] : []),
-                    { label:selectedTx.type==="receive" ? "Người gửi" : "Người nhận", value:selectedTx.name },
-                    { label:"Thời gian", value:selectedTx.time },
-                    { label:"Ghi chú", value:selectedTx.note || "—" },
+                    { label:"Transaction ID", value:selectedTx.id },
+                    { label:"Type", value: selectedTx.type==="receive" ? "Received" : "Transfer" },
+                    ...(selectedTx.category ? [{ label:"Category", value: selectedTx.category }] : []),
+                    { label:selectedTx.type==="receive" ? "Sender" : "Recipient", value:selectedTx.name },
+                    { label:"Date & Time", value:selectedTx.time },
+                    { label:"Note", value:selectedTx.note || "—" },
                   ].map(r => (
                     <div key={r.label} style={{ display:"flex", justifyContent:"space-between", padding:"10px 0", borderBottom:"1px solid #1f1f1f" }}>
                       <span style={{ fontSize:13, color: "var(--text-secondary)" }}>{r.label}</span>

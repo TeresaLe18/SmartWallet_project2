@@ -431,8 +431,8 @@ model PostLike {
 model NewsPost {
   id      Int     @id @default(autoincrement())
   title   String
-  tag     String  @default("Kinh tế")
-  time    String  @default("Vừa xong")
+  tag     String  @default("Economic")
+  time    String  @default("Just published")
   image   String? @db.LongText
   link    String?
   content String  @db.LongText

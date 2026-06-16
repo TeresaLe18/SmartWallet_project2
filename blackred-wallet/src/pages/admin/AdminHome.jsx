@@ -56,15 +56,15 @@ export default function AdminPage() {
   const activeWalletsCount = users.filter(u => u.wallet && u.wallet.status === 'ACTIVE').length;
 
   const stats = [
-    { label: "Tổng Users", value: loading ? "..." : users.length.toLocaleString("vi-VN"), change: "Tài khoản hệ thống", icon: Users, color: "#2563eb" },
-    { label: "Giao dịch hôm nay", value: loading ? "..." : txTodayCount.toLocaleString("vi-VN"), change: "Mọi trạng thái", icon: Activity, color: "#22c55e" },
-    { label: "Doanh thu tháng (phí)", value: loading ? "..." : Number(monthlyRevenue).toLocaleString("vi-VN") + " ₫", change: "Giao dịch thành công", icon: TrendingUp, color: "#3b82f6" },
-    { label: "Ví đang hoạt động", value: loading ? "..." : activeWalletsCount.toLocaleString("vi-VN"), change: "Trạng thái ACTIVE", icon: CreditCard, color: "#f59e0b" },
+    { label: "Total Users", value: loading ? "..." : users.length.toLocaleString("vi-VN"), change: "System accounts", icon: Users, color: "#2563eb" },
+    { label: "Transactions Today", value: loading ? "..." : txTodayCount.toLocaleString("vi-VN"), change: "All statuses", icon: Activity, color: "#22c55e" },
+    { label: "Monthly Revenue (Fees)", value: loading ? "..." : Number(monthlyRevenue).toLocaleString("vi-VN") + " ₫", change: "Successful transactions", icon: TrendingUp, color: "#3b82f6" },
+    { label: "Active Wallets", value: loading ? "..." : activeWalletsCount.toLocaleString("vi-VN"), change: "ACTIVE status", icon: CreditCard, color: "#f59e0b" },
   ];
 
   // Group transactions for the last 7 days chart
   const get7DaysTxChart = (txs) => {
-    const weekdays = ["CN", "T2", "T3", "T4", "T5", "T6", "T7"];
+    const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
     const data = [];
     const baseDate = new Date();
     for (let i = 6; i >= 0; i--) {
@@ -95,7 +95,7 @@ export default function AdminPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 1100 }}>
       <div>
-        <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>Tổng quan hệ thống</h1>
+        <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>System Overview</h1>
         <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>SmartWallet Wallet Admin Dashboard</p>
       </div>
 
@@ -117,7 +117,7 @@ export default function AdminPage() {
 
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }}
         style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 14, padding: 22 }}>
-        <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 20 }}>Giao dịch 7 ngày qua</h3>
+        <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 20 }}>Transactions – Last 7 Days</h3>
         {loading ? (
           <div style={{ height: 220, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <div style={{ width: 24, height: 24, borderRadius: "50%", border: "2px solid #2563eb", borderTopColor: "transparent", animation: "spin 1s linear infinite" }} />
@@ -129,7 +129,7 @@ export default function AdminPage() {
               <XAxis dataKey="day" tick={{ fill: "#71717a", fontSize: 12 }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: "#71717a", fontSize: 11 }} axisLine={false} tickLine={false} />
               <Tooltip contentStyle={{ background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, color: "white" }} />
-              <Bar dataKey="count" name="Giao dịch" fill="#2563eb" radius={[6, 6, 0, 0]} opacity={0.85} />
+              <Bar dataKey="count" name="Transactions" fill="#2563eb" radius={[6, 6, 0, 0]} opacity={0.85} />
             </BarChart>
           </ResponsiveContainer>
         )}

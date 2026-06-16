@@ -7,15 +7,15 @@ import { motion, AnimatePresence } from "framer-motion";
 import { adminAPI, getUploadUrl, formatVND } from "../../services/api";
 
 const mockUsers = [
-  { id:"U001", name:"Nguyễn Văn A", email:"nva@email.com", phone:"0901234567", kyc:"verified", status:"active", balance:formatVND(12500000), joined:"01/01/2025", cccd:"034095009876", dob:"12/04/1995", gender:"Nam", address:"Hà Nội" },
-  { id:"U002", name:"Trần Thị B",    email:"ttb@email.com", phone:"0912345678", kyc:"pending",  status:"active", balance:formatVND(3200000),  joined:"15/02/2025", cccd:"079102008888", dob:"20/09/2002", gender:"Nữ", address:"TP. Hồ Chí Minh" },
+  { id:"U001", name:"Nguyễn Văn A", email:"nva@email.com", phone:"0901234567", kyc:"verified", status:"active", balance:formatVND(12500000), joined:"01/01/2025", cccd:"034095009876", dob:"12/04/1995", gender:"Male", address:"Hà Nội" },
+  { id:"U002", name:"Trần Thị B",    email:"ttb@email.com", phone:"0912345678", kyc:"pending",  status:"active", balance:formatVND(3200000),  joined:"15/02/2025", cccd:"079102008888", dob:"20/09/2002", gender:"Female", address:"TP. Hồ Chí Minh" },
   { id:"U003", name:"Lê Văn C",      email:"lvc@email.com", phone:"0923456789", kyc:"none",     status:"locked", balance:formatVND(0),          joined:"20/03/2025", cccd:null, dob:null, gender:null, address:null },
-  { id:"U004", name:"Phạm Thị D",    email:"ptd@email.com", phone:"0934567890", kyc:"verified", status:"active", balance:formatVND(8750000),  joined:"05/04/2025", cccd:"036098006543", dob:"18/11/1998", gender:"Nữ", address:"Hải Phòng" },
-  { id:"U005", name:"Hoàng Minh E",  email:"hme@email.com", phone:"0945678901", kyc:"pending",  status:"active", balance:formatVND(1000000),  joined:"12/04/2025", cccd:"038101007777", dob:"05/05/2001", gender:"Nam", address:"Đà Nẵng" },
+  { id:"U004", name:"Phạm Thị D",    email:"ptd@email.com", phone:"0934567890", kyc:"verified", status:"active", balance:formatVND(8750000),  joined:"05/04/2025", cccd:"036098006543", dob:"18/11/1998", gender:"Female", address:"Hải Phòng" },
+  { id:"U005", name:"Hoàng Minh E",  email:"hme@email.com", phone:"0945678901", kyc:"pending",  status:"active", balance:formatVND(1000000),  joined:"12/04/2025", cccd:"038101007777", dob:"05/05/2001", gender:"Male", address:"Đà Nẵng" },
 ];
 
-const kycBadge = { verified:{ bg:"rgba(34,197,94,0.12)", color:"#22c55e", text:"Đã KYC" }, pending:{ bg:"rgba(245,158,11,0.12)", color:"#f59e0b", text:"Chờ duyệt" }, none:{ bg:"rgba(100,116,139,0.12)", color:"#94a3b8", text:"Chưa KYC" } };
-const statusBadge = { active:{ bg:"rgba(34,197,94,0.12)", color:"#22c55e", text:"Hoạt động" }, locked:{ bg:"rgba(239,68,68,0.12)", color:"#ef4444", text:"Bị khóa" } };
+const kycBadge = { verified:{ bg:"rgba(34,197,94,0.12)", color:"#22c55e", text:"KYC Verified" }, pending:{ bg:"rgba(245,158,11,0.12)", color:"#f59e0b", text:"Pending Review" }, none:{ bg:"rgba(100,116,139,0.12)", color:"#94a3b8", text:"Not KYC'd" } };
+const statusBadge = { active:{ bg:"rgba(34,197,94,0.12)", color:"#22c55e", text:"Active" }, locked:{ bg:"rgba(239,68,68,0.12)", color:"#ef4444", text:"Locked" } };
 
 const getUserBaseBalance = (email) => {
   if (!email) return 0;
@@ -110,9 +110,9 @@ export default function AdminUsersPage() {
             : "none";
           return {
             id: String(u.id),
-            name: u.kyc?.full_name || "Người dùng",
+            name: u.kyc?.full_name || "User",
             email: u.email,
-            phone: u.phone || "Chưa cập nhật",
+            phone: u.phone || "Not updated",
             kyc: kycState,
             kycStatus: kycState,
             status: u.status.toLowerCase(),
@@ -156,21 +156,21 @@ export default function AdminUsersPage() {
     try {
       await adminAPI.reviewKyc(id, 'VERIFIED');
       await fetchUsers();
-      alert(`✅ Đã duyệt KYC cho ${targetUser.name || targetUser.email}!`);
+      alert(`✅ KYC approved for ${targetUser.name || targetUser.email}!`);
     } catch (error) {
       console.error("Failed to approve KYC:", error);
-      alert("Lỗi hệ thống khi phê duyệt KYC.");
+      alert("System error while approving KYC.");
     }
   };
 
   const handleRejectKyc = (id) => {
     setRejectingUserId(id);
-    setRejectComment("Giấy tờ tùy thân không rõ nét hoặc không khớp thông tin.");
+    setRejectComment("Identity documents are unclear or information does not match.");
   };
 
   const submitRejectKyc = async () => {
     if (!rejectComment.trim()) {
-      alert("Vui lòng cung cấp lý do từ chối KYC.");
+      alert("Please provide a reason for rejecting KYC.");
       return;
     }
     const targetUser = users.find(u => u.id === rejectingUserId);
@@ -182,10 +182,10 @@ export default function AdminUsersPage() {
       }
       setRejectingUserId(null);
       setRejectComment("");
-      alert(`❌ Đã từ chối KYC của ${targetUser ? (targetUser.name || targetUser.email) : "người dùng"}.`);
+      alert(`❌ KYC rejected for ${targetUser ? (targetUser.name || targetUser.email) : "user"}.`);
     } catch (error) {
       console.error("Failed to reject KYC:", error);
-      alert("Lỗi hệ thống khi từ chối KYC.");
+      alert("System error while rejecting KYC.");
     }
   };
 
@@ -227,8 +227,8 @@ export default function AdminUsersPage() {
     <div style={{ maxWidth:1100 }}>
       <div style={{ display:"flex", alignItems:"center", justifycontent:"space-between", marginBottom:20, flexWrap:"wrap", gap:12 }}>
         <div>
-          <h1 style={{ fontSize:18, fontWeight:800, marginBottom:2 }}>Quản lý người dùng</h1>
-          <p style={{ color: "var(--text-secondary)", fontSize:13 }}>{users.length} người dùng</p>
+          <h1 style={{ fontSize:18, fontWeight:800, marginBottom:2 }}>User Management</h1>
+          <p style={{ color: "var(--text-secondary)", fontSize:13 }}>{users.length} users</p>
         </div>
       </div>
 
@@ -236,11 +236,11 @@ export default function AdminUsersPage() {
       <div style={{ display:"flex", gap:10, marginBottom:20, flexWrap:"wrap" }}>
         <div style={{ position:"relative", flex:1, minWidth:200 }}>
           <Search size={14} style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color: "var(--text-muted)" }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Tìm theo tên, email, ID..."
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, email, ID..."
             style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:8, padding:"9px 12px 9px 34px", color: "#000000", fontSize:13, outline:"none" }} />
         </div>
         <div style={{ display:"flex", gap:6 }}>
-          {[{v:"all",l:"Tất cả"},{v:"verified",l:"Đã KYC"},{v:"pending",l:"Chờ duyệt"},{v:"none",l:"Chưa KYC"}].map(f => (
+          {[{v:"all",l:"All"},{v:"verified",l:"KYC Verified"},{v:"pending",l:"Pending Review"},{v:"none",l:"Not KYC'd"}].map(f => (
             <button key={f.v} onClick={() => setKycFilter(f.v)} style={{
               padding:"8px 12px", borderRadius:8, fontSize:12, fontWeight:500,
               background: kycFilter===f.v ? "rgba(37,99,235,0.15)" : "#ffffff",
@@ -255,7 +255,7 @@ export default function AdminUsersPage() {
       <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius:14, overflow:"hidden" }}>
         {/* Header */}
         <div style={{ display:"grid", gridTemplateColumns:"80px 1fr 1fr 100px 100px 120px 80px", gap:0, padding:"12px 16px", borderBottom:"1px solid var(--border)", background: "var(--bg-dark)" }}>
-          {["ID","Tên","Email","KYC","Trạng thái","Số dư","Hành động"].map(h => (
+          {["ID","Name","Email","KYC","Status","Balance","Actions"].map(h => (
             <span key={h} style={{ fontSize:11, fontWeight:700, color: "var(--text-muted)", textTransform:"uppercase", letterSpacing:"0.5px" }}>{h}</span>
           ))}
         </div>
@@ -292,12 +292,12 @@ export default function AdminUsersPage() {
             </span>
             <span style={{ fontSize:13, fontWeight:600 }}>{u.balance}</span>
             <button onClick={() => { setSelectedUser(u); setModalTab("info"); }} style={{ background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:6, padding:"6px 10px", color: "var(--text-secondary)", cursor:"pointer", display:"flex", alignItems:"center", gap:4, fontSize:12 }}>
-              <Eye size={13} />Chi tiết
+              <Eye size={13} />Details
             </button>
           </motion.div>
         ))}
         {filtered.length === 0 && (
-          <div style={{ textAlign:"center", padding:40, color: "var(--text-muted)" }}>Không tìm thấy người dùng</div>
+          <div style={{ textAlign:"center", padding:40, color: "var(--text-muted)" }}>No users found</div>
         )}
       </div>
 
@@ -358,7 +358,7 @@ export default function AdminUsersPage() {
                   {!selectedUser.cccd ? (
                     <div style={{ textAlign: "center", padding: "30px 10px", color: "var(--text-muted)" }}>
                       <CreditCard size={32} style={{ marginBottom: 12, opacity: 0.3 }} />
-                      <p style={{ fontSize: 13 }}>Người dùng chưa cập nhật thông tin CCCD hoặc chưa yêu cầu duyệt KYC.</p>
+                      <p style={{ fontSize: 13 }}>This user has not submitted ID documents or has not requested KYC verification.</p>
                     </div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -403,7 +403,7 @@ export default function AdminUsersPage() {
 
                       {/* Styled citizen card mockups (Front & Back) */}
                       <div>
-                        <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 10, textTransform: "uppercase" }}>Hình ảnh đối chiếu (CCCD gắn chíp)</p>
+                        <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 10, textTransform: "uppercase" }}>Reference Images (Chip-Enabled ID Card)</p>
                         
                         <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
                           {/* CCCD Front side */}
@@ -416,9 +416,9 @@ export default function AdminUsersPage() {
                           }}>
                             {/* Card header */}
                             <div style={{ textAlign: "center", borderBottom: "1px solid rgba(26,62,86,0.5)", paddingBottom: 6, marginBottom: 8 }}>
-                              <p style={{ fontSize: 8, fontWeight: 800, color: "#ffd700", letterSpacing: "0.2px" }}>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</p>
-                              <p style={{ fontSize: 6, color: "#fff", opacity: 0.8 }}>Độc lập - Tự do - Hạnh phúc</p>
-                              <p style={{ fontSize: 9, fontWeight: 900, color: "#fff", marginTop: 4, letterSpacing: "0.5px" }}>CĂN CƯỚC CÔNG DÂN / CITIZEN IDENTITY CARD</p>
+                              <p style={{ fontSize: 8, fontWeight: 800, color: "#ffd700", letterSpacing: "0.2px" }}>SOCIALIST REPUBLIC OF VIETNAM</p>
+                              <p style={{ fontSize: 6, color: "#fff", opacity: 0.8 }}>Independence - Freedom - Happiness</p>
+                              <p style={{ fontSize: 9, fontWeight: 900, color: "#fff", marginTop: 4, letterSpacing: "0.5px" }}>CITIZEN IDENTITY CARD</p>
                             </div>
 
                             {/* Card body */}
@@ -440,13 +440,13 @@ export default function AdminUsersPage() {
 
                               {/* Card info */}
                               <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 3 }}>
-                                <p style={{ fontSize: 7, color: "#8ab4cd" }}>Số / No: <span style={{ fontSize: 11, fontWeight: 800, color: "#ff4444" }}>{selectedUser.cccd}</span></p>
-                                <p style={{ fontSize: 7, color: "#8ab4cd" }}>Họ và tên / Full name: <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", display: "block" }}>{selectedUser.name.toUpperCase()}</span></p>
+                                <p style={{ fontSize: 7, color: "#8ab4cd" }}>No: <span style={{ fontSize: 11, fontWeight: 800, color: "#ff4444" }}>{selectedUser.cccd}</span></p>
+                                <p style={{ fontSize: 7, color: "#8ab4cd" }}>Full name: <span style={{ fontSize: 9, fontWeight: 700, color: "#fff", display: "block" }}>{selectedUser.name.toUpperCase()}</span></p>
                                 <div style={{ display: "flex", gap: 10 }}>
-                                  <p style={{ fontSize: 7, color: "#8ab4cd" }}>Ngày sinh / Date of birth: <span style={{ fontSize: 8, fontWeight: 600, color: "#fff", display: "block" }}>{selectedUser.dob}</span></p>
-                                  <p style={{ fontSize: 7, color: "#8ab4cd" }}>Giới tính / Sex: <span style={{ fontSize: 8, fontWeight: 600, color: "#fff", display: "block" }}>{selectedUser.gender || "—"}</span></p>
+                                  <p style={{ fontSize: 7, color: "#8ab4cd" }}>Date of birth: <span style={{ fontSize: 8, fontWeight: 600, color: "#fff", display: "block" }}>{selectedUser.dob}</span></p>
+                                  <p style={{ fontSize: 7, color: "#8ab4cd" }}>Sex: <span style={{ fontSize: 8, fontWeight: 600, color: "#fff", display: "block" }}>{selectedUser.gender || "—"}</span></p>
                                 </div>
-                                <p style={{ fontSize: 7, color: "#8ab4cd" }}>Nơi thường trú / Place of residence: <span style={{ fontSize: 8, fontWeight: 600, color: "#fff", display: "block" }}>{selectedUser.address || "—"}</span></p>
+                                <p style={{ fontSize: 7, color: "#8ab4cd" }}>Place of residence: <span style={{ fontSize: 8, fontWeight: 600, color: "#fff", display: "block" }}>{selectedUser.address || "—"}</span></p>
                               </div>
                             </div>
 
@@ -502,12 +502,12 @@ export default function AdminUsersPage() {
                                 }}>
                                   <span style={{ fontSize: 14 }}>🌀</span>
                                 </div>
-                                <span style={{ fontSize: 6, color: "#8ab4cd" }}>VÂN TAY TRÁI</span>
+                                <span style={{ fontSize: 6, color: "#8ab4cd" }}>LEFT FINGERPRINT</span>
                               </div>
 
                               {/* Seal / Sign info */}
                               <div style={{ flex: 1 }}>
-                                <p style={{ fontSize: 6, color: "#8ab4cd" }}>Cục trưởng Cục Cảnh sát quản lý hành chính về trật tự xã hội</p>
+                                <p style={{ fontSize: 6, color: "#8ab4cd" }}>Director General of the Administrative Police Department for Social Order</p>
                                 <p style={{ fontSize: 5, color: "#5c8ba9", fontStyle: "italic" }}>Director General of Police Department for Administrative...</p>
                                 
                                 {/* Signature overlay */}
@@ -543,8 +543,8 @@ export default function AdminUsersPage() {
                     const isSender = tx.sender_wallet?.user?.email === selectedUser.email;
                     const type = isSender ? "send" : "receive";
                     const otherUser = isSender
-                      ? tx.receiver_wallet?.user?.email || "Ngân hàng"
-                      : tx.sender_wallet?.user?.email || "Ngân hàng";
+                      ? tx.receiver_wallet?.user?.email || "Bank"
+                      : tx.sender_wallet?.user?.email || "Bank";
                     
                     return {
                       id: tx.reference_code || `TX${tx.id}`,
@@ -563,9 +563,9 @@ export default function AdminUsersPage() {
                     {/* Summary stats */}
                     <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:16 }}>
                       {[
-                        { label:"Tổng GD", val: txList.length, color:"#3b82f6" },
-                        { label:"Thành công", val: txList.filter(t=>t.status==="success").length, color:"#22c55e" },
-                        { label:"Chờ duyệt", val: txList.filter(t=>t.status==="pending").length, color:"#f59e0b" }
+                        { label:"Total Txns", val: txList.length, color:"#3b82f6" },
+                        { label:"Successful", val: txList.filter(t=>t.status==="success").length, color:"#22c55e" },
+                        { label:"Pending", val: txList.filter(t=>t.status==="pending").length, color:"#f59e0b" }
                       ].map(s => (
                         <div key={s.label} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius:10, padding:"10px 14px", textAlign:"center" }}>
                           <p style={{ fontSize:20, fontWeight:900, color: s.color }}>{s.val}</p>
@@ -579,7 +579,7 @@ export default function AdminUsersPage() {
                       {txList.length === 0 ? (
                         <div style={{ textAlign:"center", padding:"30px 0", color: "var(--text-muted)" }}>
                           <History size={28} style={{ marginBottom:8, opacity:0.3 }} />
-                          <p style={{ fontSize:13 }}>Không có lịch sử giao dịch</p>
+                          <p style={{ fontSize:13 }}>No transaction history</p>
                         </div>
                       ) : txList.map((tx, i) => (
                         <div key={tx.id || i} style={{
@@ -619,7 +619,7 @@ export default function AdminUsersPage() {
                               background: tx.status==="success" ? "rgba(34,197,94,0.1)" : tx.status==="pending" ? "rgba(245,158,11,0.1)" : "rgba(239,68,68,0.1)",
                               color: tx.status==="success" ? "#22c55e" : tx.status==="pending" ? "#f59e0b" : "#ef4444"
                             }}>
-                              {tx.status==="success" ? "Thành công" : tx.status==="pending" ? "Chờ duyệt" : "Thất bại"}
+                              {tx.status==="success" ? "Successful" : tx.status==="pending" ? "Pending" : "Failed"}
                             </span>
                           </div>
                         </div>
@@ -652,7 +652,7 @@ export default function AdminUsersPage() {
                       onMouseEnter={e => e.currentTarget.style.background = "rgba(34,197,94,0.25)"}
                       onMouseLeave={e => e.currentTarget.style.background = "rgba(34,197,94,0.15)"}
                     >
-                      ✅ Duyệt KYC
+                      ✅ Approve KYC
                     </button>
                     <button
                       onClick={() => handleRejectKyc(selectedUser.id)}
@@ -671,7 +671,7 @@ export default function AdminUsersPage() {
                       onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.25)"}
                       onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,0.12)"}
                     >
-                      ❌ Từ chối KYC
+                      ❌ Reject KYC
                     </button>
                   </>
                 )}
@@ -725,13 +725,13 @@ export default function AdminUsersPage() {
             <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} exit={{scale:0.95,opacity:0}} onClick={e => e.stopPropagation()}
               style={{ background: "var(--bg-dark)", border:"1px solid #222", borderRadius:20, padding:28, width:"100%", maxWidth:400 }}>
               
-              <h3 style={{ fontSize:16, fontWeight:700, marginBottom:16, color: "#000000" }}>Từ chối hồ sơ KYC</h3>
-              <p style={{ fontSize:13, color: "var(--text-secondary)", marginBottom:14 }}>Vui lòng nhập lý do từ chối hồ sơ xác minh để thông báo cho người dùng:</p>
+              <h3 style={{ fontSize:16, fontWeight:700, marginBottom:16, color: "#000000" }}>Reject KYC Application</h3>
+              <p style={{ fontSize:13, color: "var(--text-secondary)", marginBottom:14 }}>Please enter a reason for rejecting the verification application to notify the user:</p>
 
               <textarea 
                 value={rejectComment}
                 onChange={e => setRejectComment(e.target.value)}
-                placeholder="Nhập lý do từ chối..."
+                placeholder="Enter rejection reason..."
                 style={{
                   width: "100%", height: 100, background: "var(--bg-card2)", border: "1px solid var(--border)",
                   borderRadius: 10, padding: "10px 12px", color: "#000000", fontSize: 13, outline: "none",
@@ -750,7 +750,7 @@ export default function AdminUsersPage() {
                   onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.25)"}
                   onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,0.15)"}
                 >
-                  Xác nhận
+                  Confirm
                 </button>
                 <button 
                   onClick={() => { setRejectingUserId(null); setRejectComment(""); }}
@@ -759,7 +759,7 @@ export default function AdminUsersPage() {
                     color: "var(--text-secondary)", borderRadius: 8, padding: "10px", fontWeight: 600, fontSize: 13, cursor: "pointer"
                   }}
                 >
-                  Hủy
+                  Cancel
                 </button>
               </div>
             </motion.div>

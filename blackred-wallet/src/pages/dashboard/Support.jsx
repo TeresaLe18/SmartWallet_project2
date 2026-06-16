@@ -55,7 +55,7 @@ export default function Support() {
 
     // Check size (limit to 5MB for base64 safety)
     if (file.size > 5 * 1024 * 1024) {
-      alert("Kích thước ảnh đính kèm không được vượt quá 5MB.");
+      alert("Attached image size must not exceed 5MB.");
       return;
     }
 
@@ -81,6 +81,7 @@ export default function Support() {
 
     try {
       const res = await supportAPI.sendMessage(textToSend, imgToSend);
+      console.log("res: ", res);
       if (res.success) {
         // Optimistically append the message, or wait for polling to fetch it
         setMessages((prev) => [...prev, res.message]);
@@ -88,7 +89,7 @@ export default function Support() {
       }
     } catch (error) {
       console.error("Failed to send message:", error);
-      alert("Không thể gửi tin nhắn hỗ trợ. Vui lòng thử lại.");
+      alert("Failed to send support message. Please try again.");
     } finally {
       setSending(false);
     }
@@ -102,10 +103,10 @@ export default function Support() {
           <Headphones size={20} />
         </div>
         <div>
-          <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Trung tâm Hỗ trợ Khách hàng</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Customer Support Center</h3>
           <p style={{ fontSize: 11, color: "#22c55e", fontWeight: 500, margin: "2px 0 0 0", display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e" }} />
-            Hỗ trợ viên đang trực tuyến
+            Support agent is online
           </p>
         </div>
       </div>
@@ -119,8 +120,8 @@ export default function Support() {
         ) : messages.length === 0 ? (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "var(--text-secondary)", textAlign: "center", padding: 24 }}>
             <Headphones size={48} style={{ color: "rgba(255,255,255,0.1)" }} />
-            <h4 style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Chào bạn! Bạn cần hỗ trợ gì hôm nay?</h4>
-            <p style={{ fontSize: 13, maxWidth: 320, margin: 0 }}>Hãy nhắn tin hoặc gửi hình ảnh lỗi cho chúng tôi. Đội ngũ quản trị viên sẽ phản hồi bạn ngay lập tức tại đây.</p>
+            <h4 style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Hello! How can we help you today?</h4>
+            <p style={{ fontSize: 13, maxWidth: 320, margin: 0 }}>Send us a message or attach a screenshot of the issue. Our admin team will respond to you right here.</p>
           </div>
         ) : (
           messages.map((msg) => {
@@ -150,7 +151,7 @@ export default function Support() {
                       {/* Image Attachment inside Bubble */}
                       {msg.image_url && (
                         <div style={{ marginBottom: msg.message ? 8 : 0, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
-                          <img src={msg.image_url} alt="Đính kèm" style={{ maxWidth: "100%", maxHeight: 220, objectFit: "cover", display: "block" }} />
+                          <img src={msg.image_url} alt="Attachment" style={{ maxWidth: "100%", maxHeight: 220, objectFit: "cover", display: "block" }} />
                         </div>
                       )}
                       {msg.message && <div style={{ wordBreak: "break-word", whiteSpace: "pre-wrap" }}>{msg.message}</div>}
@@ -178,7 +179,7 @@ export default function Support() {
             style={{ padding: "0 24px", background: "rgba(0,0,0,0.02)", borderTop: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 12 }}
           >
             <div style={{ position: "relative", width: 64, height: 64, borderRadius: 8, overflow: "hidden", border: "1px solid var(--border)" }}>
-              <img src={selectedImage} alt="Xem trước" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={selectedImage} alt="Preview" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               <button
                 onClick={() => setSelectedImage(null)}
                 style={{ position: "absolute", top: 2, right: 2, width: 18, height: 18, borderRadius: "50%", background: "rgba(0,0,0,0.7)", border: "none", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "white" }}
@@ -186,7 +187,7 @@ export default function Support() {
                 <X size={10} />
               </button>
             </div>
-            <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Hình ảnh đã được chọn</span>
+            <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Image selected</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -216,7 +217,7 @@ export default function Support() {
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          placeholder="Nhập tin nhắn hỗ trợ..."
+          placeholder="Type a support message..."
           style={{ flex: 1, height: 40, padding: "0 16px", borderRadius: 20, border: "1px solid var(--border)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 13.5 }}
         />
 
