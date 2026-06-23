@@ -782,4 +782,215 @@ const payment = async (req, res) => {
   }
 };  
 
-module.exports = { getStats, getTransactions, deposit, withdraw, transfer, payment };
+const createQrDeposit = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { amount, bank_code = "SANDBOX_BANK" } = req.body;
+
+    if (!amount || Number(amount) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid amount",
+      });
+    }
+
+    const kyc = await prisma.userKyc.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!kyc || kyc.status !== "VERIFIED") {
+      return res.status(403).json({
+        success: false,
+        message: "Account not verified KYC. Please complete KYC before QR deposit.",
+      });
+    }
+
+    const wallet = await prisma.wallet.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!wallet) {
+      return res.status(404).json({
+        success: false,
+        message: "Wallet not found",
+      });
+    }
+
+    const referenceCode =
+      "QRD-" + Date.now() + "-" + crypto.randomBytes(4).toString("hex");
+
+    const transaction = await prisma.transaction.create({
+      data: {
+        transaction_type: "DEPOSIT",
+        amount: new Prisma.Decimal(amount),
+        fee_amount: new Prisma.Decimal(0),
+        discount_amount: new Prisma.Decimal(0),
+        final_amount: new Prisma.Decimal(amount),
+        receiver_wallet_id: wallet.id,
+        payment_method: "QR_SANDBOX",
+        bank_code,
+        account_number: `SW-WALLET-${wallet.id}`,
+        account_name: "SMARTWALLET QR SANDBOX",
+        message: `QR deposit sandbox ${referenceCode}`,
+        reference_code: referenceCode,
+        status: "PENDING",
+      },
+    });
+
+    const qrPayload = JSON.stringify({
+      type: "SMARTWALLET_QR_DEPOSIT",
+      mode: "SANDBOX",
+      transactionId: transaction.id,
+      referenceCode,
+      walletId: wallet.id,
+      amount: Number(amount),
+      bankCode: bank_code,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "QR deposit created",
+      qrPayload,
+      transactionId: transaction.id,
+      referenceCode,
+      amount: Number(amount),
+      status: "PENDING",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const confirmQrDeposit = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { transactionId } = req.body;
+
+    if (!transactionId) {
+      return res.status(400).json({
+        success: false,
+        message: "Transaction ID is required",
+      });
+    }
+
+    const wallet = await prisma.wallet.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!wallet) {
+      return res.status(404).json({
+        success: false,
+        message: "Wallet not found",
+      });
+    }
+
+    const transaction = await prisma.transaction.findUnique({
+      where: { id: Number(transactionId) },
+    });
+
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        message: "QR transaction not found",
+      });
+    }
+
+    if (transaction.receiver_wallet_id !== wallet.id) {
+      return res.status(403).json({
+        success: false,
+        message: "This QR transaction does not belong to your wallet",
+      });
+    }
+
+    if (transaction.status === "SUCCESS") {
+      return res.status(409).json({
+        success: false,
+        message: "Transaction already confirmed",
+      });
+    }
+
+    if (transaction.status !== "PENDING") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid transaction status",
+      });
+    }
+
+    const providerReferenceCode =
+      "QR-SANDBOX-" + Date.now() + "-" + crypto.randomBytes(4).toString("hex");
+
+    await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM wallets WHERE id = ${wallet.id} FOR UPDATE`;
+
+      const currentWallet = await tx.wallet.findUnique({
+        where: { id: wallet.id },
+      });
+
+      const balanceBefore = currentWallet.balance;
+      const balanceAfter = balanceBefore.plus(transaction.amount);
+
+      await tx.wallet.update({
+        where: { id: wallet.id },
+        data: {
+          balance: {
+            increment: transaction.amount,
+          },
+        },
+      });
+
+      await tx.ledgerEntry.create({
+        data: {
+          transaction_id: transaction.id,
+          wallet_id: wallet.id,
+          type: "CREDIT",
+          amount: transaction.amount,
+          balance_before: balanceBefore,
+          balance_after: balanceAfter,
+        },
+      });
+
+      await tx.transaction.update({
+        where: { id: transaction.id },
+        data: {
+          status: "SUCCESS",
+          provider_reference_code: providerReferenceCode,
+        },
+      });
+    });
+
+    const updatedWallet = await prisma.wallet.findUnique({
+      where: { id: wallet.id },
+    });
+
+    await prisma.notification.create({
+      data: {
+        user_id: userId,
+        title: "QR deposit successful ✅",
+        content: `${Number(transaction.amount).toLocaleString("vi-VN")} ₫ has been added to your SmartWallet via QR Sandbox. Reference: ${transaction.reference_code}.`,
+      },
+    }).catch(() => {});
+
+    return res.status(200).json({
+      success: true,
+      message: "QR deposit successful",
+      transactionId: transaction.id,
+      referenceCode: transaction.reference_code,
+      providerReferenceCode,
+      wallet: {
+        balance:
+          Number(updatedWallet.balance) - Number(updatedWallet.locked_balance),
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+module.exports = { getStats, getTransactions, deposit, withdraw, transfer, payment, createQrDeposit,
+  confirmQrDeposit,};

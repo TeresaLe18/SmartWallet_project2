@@ -2,14 +2,16 @@ import { useState, useEffect } from "react";
 import { Upload, CheckCircle, Clock, AlertCircle, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { authAPI, kycAPI, getUploadUrl } from "../../services/api";
-
-const steps = [
-  { id:1, title:"Personal Info",    desc:"ID card & full name" },
-  { id:2, title:"Upload Documents", desc:"Front & back of ID card" },
-  { id:3, title:"Under Review",     desc:"1–3 business days" },
-];
+import { useLanguage } from "../../context/LanguageContext";
+import "./Kyc.css";
 
 export default function KycPage() {
+  const { t } = useLanguage();
+  const steps = [
+    { id:1, title: t.kyc.personalInfo,    desc: "ID card & name" },
+    { id:2, title: t.kyc.uploadDocuments, desc: "Front & back of ID" },
+    { id:3, title: t.kyc.underReviewStep, desc: "1–3 business days" },
+  ];
   const [step, setStep] = useState(1);
   const [form, setForm] = useState({ fullname:"", cccd:"", dob:"", gender:"Male", address:"", frontImg:null, backImg:null, selfieImg:null });
   const [submitted, setSubmitted] = useState(false);
@@ -192,67 +194,60 @@ export default function KycPage() {
   // ── Verified view ──────────────────────────────────────────────────────────
   if (user && (user.kyc === true || user.kyc === "verified" || user.kycStatus === "verified")) {
     return (
-      <div style={{ maxWidth: 560 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>Identity Verification (KYC)</h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: 14, marginBottom: 24 }}>
-          Your account has been officially verified by the Administration.
-        </p>
+      <div className="kyc-container">
+        <h1 className="kyc-title">{t.kyc.title}</h1>
+        <p className="kyc-subtitle">{t.kyc.verifiedDesc}</p>
 
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          style={{
-            background: "var(--bg-card)", border: "1px solid var(--border)",
-            borderRadius: 16, padding: 28, boxShadow: "0 10px 30px rgba(0,0,0,0.02)"
-          }}
+          className="kyc-verified-box"
         >
           {/* Status Badge */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 24, padding: "12px 16px", background: "rgba(34,197,94,0.06)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 10 }}>
+          <div className="kyc-status-alert">
             <CheckCircle size={20} style={{ color: "#22c55e" }} />
             <div>
-              <p style={{ fontSize: 14, fontWeight: 700, color: "#22c55e" }}>Identity Verified</p>
-              <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 2 }}>
-                Your transaction limits have been upgraded to the maximum level.
-              </p>
+              <p className="kyc-status-title">{t.kyc.verifiedTitle}</p>
+              <p className="kyc-status-desc">{t.kyc.verifiedDesc}</p>
             </div>
           </div>
 
           {/* Information Table */}
-          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 14, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-secondary)" }}>
-            Verified Personal Information
+          <h3 className="kyc-info-section-title">
+            {t.kyc.verifiedInfo}
           </h3>
-          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 24 }}>
+          <div className="kyc-info-table">
             {[
-              { label: "Full Name",         value: savedKyc?.full_name || "Not provided" },
-              { label: "National ID",       value: savedKyc?.national_id || "Not provided" },
-              { label: "Date of Birth",     value: savedKyc?.date_of_birth ? new Date(savedKyc.date_of_birth).toLocaleDateString("en-GB") : "Not provided" },
-              { label: "Gender",            value: savedKyc?.gender || "Not provided" },
-              { label: "Permanent Address", value: savedKyc?.address || "Not provided" },
+              { label: t.kyc.fullName,         value: savedKyc?.full_name || "Not provided" },
+              { label: t.kyc.nationalId,       value: savedKyc?.national_id || "Not provided" },
+              { label: t.kyc.dob,     value: savedKyc?.date_of_birth ? new Date(savedKyc.date_of_birth).toLocaleDateString("en-GB") : "Not provided" },
+              { label: t.kyc.gender,            value: savedKyc?.gender || "Not provided" },
+              { label: t.kyc.address, value: savedKyc?.address || "Not provided" },
             ].map((item, idx) => (
-              <div key={idx} style={{ display: "flex", justifyContent: "space-between", paddingBottom: 8, borderBottom: "1px solid var(--border)" }}>
-                <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{item.label}</span>
-                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{item.value}</span>
+              <div key={idx} className="kyc-info-row">
+                <span className="kyc-info-label">{item.label}</span>
+                <span className="kyc-info-value">{item.value}</span>
               </div>
             ))}
           </div>
 
           {/* Document Images */}
-          <h3 style={{ fontSize: 14, fontWeight: 700, marginBottom: 12, textTransform: "uppercase", letterSpacing: "0.5px", color: "var(--text-secondary)" }}>
-            ID Documents &amp; Portrait
+          <h3 className="kyc-info-section-title">
+            {t.kyc.documentsTitle}
           </h3>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginBottom: 28 }}>
+          <div className="kyc-images-grid">
             {[
-              { label: "ID Card – Front", src: getUploadUrl(savedKyc?.front_image) },
-              { label: "ID Card – Back",  src: getUploadUrl(savedKyc?.back_image) },
-              { label: "Selfie",          src: getUploadUrl(savedKyc?.selfie_image) },
+              { label: t.kyc.idFront, src: getUploadUrl(savedKyc?.front_image) },
+              { label: t.kyc.idBack,  src: getUploadUrl(savedKyc?.back_image) },
+              { label: t.kyc.selfie,          src: getUploadUrl(savedKyc?.selfie_image) },
             ].map(({ label, src }) => (
               <div key={label}>
-                <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 6 }}>{label}</p>
-                <div style={{ height: 110, background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 12, overflow: "hidden" }}>
+                <p className="kyc-image-label">{label}</p>
+                <div className="kyc-image-preview-box">
                   {src ? (
-                    <img src={src} alt={label} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    <img src={src} alt={label} />
                   ) : (
-                    <span style={{ fontSize: 11 }}>No image</span>
+                    <span>{t.kyc.noImage}</span>
                   )}
                 </div>
               </div>
@@ -284,15 +279,9 @@ export default function KycPage() {
               }
               window.dispatchEvent(new Event("kyc_updated"));
             }}
-            style={{
-              width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)",
-              borderRadius: 10, padding: "12px", color: "var(--text-primary)", fontWeight: 700,
-              fontSize: 14, cursor: "pointer", transition: "all 0.2s"
-            }}
-            onMouseEnter={e => e.currentTarget.style.borderColor = "var(--primary)"}
-            onMouseLeave={e => e.currentTarget.style.borderColor = "var(--border)"}
+            className="kyc-btn"
           >
-            ✏️ Request KYC Information Update
+            ✏️ {t.kyc.requestUpdate}
           </button>
         </motion.div>
       </div>
@@ -307,10 +296,9 @@ export default function KycPage() {
           style={{ width:80, height:80, background:"rgba(245,158,11,0.15)", borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 20px" }}>
           <Clock size={36} style={{ color:"#f59e0b" }} />
         </motion.div>
-        <h2 style={{ fontSize:22, fontWeight:800, marginBottom:8 }}>Application Under Review</h2>
+        <h2 style={{ fontSize:22, fontWeight:800, marginBottom:8, color: "var(--text-primary)" }}>{t.kyc.underReviewTitle}</h2>
         <p style={{ color: "var(--text-secondary)", fontSize:14, lineHeight:1.6 }}>
-          We have received your KYC application.<br />
-          It is currently being reviewed by the administration. Please wait for our response!
+          {t.kyc.underReviewDesc}
         </p>
       </div>
     );
@@ -318,11 +306,9 @@ export default function KycPage() {
 
   // ── Submission form ────────────────────────────────────────────────────────
   return (
-    <div style={{ maxWidth:560 }}>
-      <h1 style={{ fontSize:20, fontWeight:800, marginBottom:4 }}>Identity Verification (KYC)</h1>
-      <p style={{ color: "var(--text-secondary)", fontSize:14, marginBottom:28 }}>
-        Verify your identity to increase transaction limits and unlock all features.
-      </p>
+    <div className="kyc-container">
+      <h1 className="kyc-title">{t.kyc.title}</h1>
+      <p className="kyc-subtitle">{t.kyc.subtitle}</p>
 
       {rejectReason && (
         <div style={{
@@ -331,35 +317,34 @@ export default function KycPage() {
         }}>
           <AlertCircle size={20} style={{ color: "#ef4444", flexShrink: 0, marginTop: 2 }} />
           <div>
-            <p style={{ fontSize: 14, fontWeight: 700, color: "#ef4444", marginBottom: 4 }}>Previous KYC Application Rejected</p>
+            <p style={{ fontSize: 14, fontWeight: 700, color: "#ef4444", marginBottom: 4 }}>{t.kyc.rejectedTitle}</p>
             <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>{rejectReason}</p>
             <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6 }}>
-              Please correct the information and resubmit your application.
+              {t.kyc.rejectedDesc}
             </p>
           </div>
         </div>
       )}
 
       {/* Stepper */}
-      <div style={{ display:"flex", alignItems:"center", marginBottom:32 }}>
+      <div className="kyc-stepper">
         {steps.map((s, i) => (
-          <div key={s.id} style={{ display:"flex", alignItems:"center", flex: i < steps.length-1 ? 1 : "none" }}>
+          <div key={s.id} className="kyc-step-item" style={{ flex: i < steps.length-1 ? 1 : "none" }}>
             <div style={{ display:"flex", alignItems:"center", gap:10, flexShrink:0 }}>
-              <div style={{
-                width:32, height:32, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontWeight:700, fontSize:13,
-                background: step > s.id ? "#22c55e" : step === s.id ? "#2563eb" : "#ffffff",
+              <div className="kyc-step-circle" style={{
+                background: step > s.id ? "#22c55e" : step === s.id ? "#2563eb" : "var(--bg-card)",
                 border: `2px solid ${step > s.id ? "#22c55e" : step === s.id ? "#2563eb" : "var(--border)"}`,
-                color: step >= s.id ? "white" : "var(--text-muted)", transition:"all 0.3s"
+                color: step >= s.id ? "white" : "var(--text-muted)",
               }}>
                 {step > s.id ? <CheckCircle size={16} /> : s.id}
               </div>
               <div className="hidden sm:block">
-                <p style={{ fontSize:12, fontWeight:600, color: step >= s.id ? "var(--primary)" : "var(--text-muted)" }}>{s.title}</p>
-                <p style={{ fontSize:10, color: "var(--text-muted)" }}>{s.desc}</p>
+                <p className="kyc-step-text-title" style={{ color: step >= s.id ? "var(--primary)" : "var(--text-muted)" }}>{s.title}</p>
+                <p className="kyc-step-text-desc">{s.desc}</p>
               </div>
             </div>
             {i < steps.length-1 && (
-              <div style={{ flex:1, height:2, margin:"0 12px", background: step > s.id ? "#22c55e" : "var(--border)", transition:"all 0.3s" }} />
+              <div className="kyc-step-line" style={{ background: step > s.id ? "#22c55e" : "var(--border)" }} />
             )}
           </div>
         ))}
@@ -367,31 +352,28 @@ export default function KycPage() {
 
       {/* Step 1 — Personal Information */}
       {step === 1 && (
-        <motion.div initial={{opacity:0,x:20}} animate={{opacity:1,x:0}}
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius:16, padding:28 }}>
-          <h3 style={{ fontSize:15, fontWeight:700, marginBottom:20 }}>Personal Information</h3>
+        <motion.div initial={{opacity:0,x:20}} animate={{opacity:1,x:0}} className="kyc-card">
+          <h3 className="kyc-info-section-title">{t.kyc.personalInfo}</h3>
 
           {[
-            { label:"Full Name (as on ID card)", key:"fullname", placeholder:"e.g. John Smith" },
-            { label:"National ID Number",        key:"cccd",     placeholder:"9 or 12 digits" },
-            { label:"Date of Birth",             key:"dob",      placeholder:"", type:"date" },
+            { label: t.kyc.fullName, key:"fullname", placeholder: lang === "vi" ? "VD: Nguyễn Văn A" : "e.g. John Smith" },
+            { label: t.kyc.nationalId,        key:"cccd",     placeholder: lang === "vi" ? "9 hoặc 12 số" : "9 or 12 digits" },
+            { label: t.kyc.dob,             key:"dob",      placeholder:"", type:"date" },
           ].map(f => (
             <div key={f.key} style={{ marginBottom:16 }}>
               <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>{f.label}</label>
               <input value={form[f.key]} onChange={e => setForm(p => ({...p,[f.key]:e.target.value}))}
                 type={f.type||"text"} placeholder={f.placeholder}
-                style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"11px 14px", color: "#000000", fontSize:14, outline:"none" }}
-                onFocus={e => { e.target.style.borderColor="#2563eb"; }}
-                onBlur={e => { e.target.style.borderColor="var(--border)"; }}
+                style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"11px 14px", color: "var(--text-primary)", fontSize:14, outline:"none" }}
               />
             </div>
           ))}
 
           {/* Gender */}
           <div style={{ marginBottom:16 }}>
-            <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Gender</label>
+            <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>{t.kyc.gender}</label>
             <div style={{ display:"flex", gap:10 }}>
-              {["Male", "Female", "Other"].map(g => (
+              {[(lang === "vi" ? "Nam" : "Male"), (lang === "vi" ? "Nữ" : "Female"), (lang === "vi" ? "Khác" : "Other")].map(g => (
                 <button
                   key={g}
                   type="button"
@@ -412,74 +394,66 @@ export default function KycPage() {
 
           {/* Address */}
           <div style={{ marginBottom:16 }}>
-            <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>Permanent Address</label>
+            <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>{t.kyc.address}</label>
             <input
               value={form.address}
               onChange={e => setForm(p => ({...p, address: e.target.value}))}
               type="text"
-              placeholder="House number, street, ward, district, city / province"
-              style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"11px 14px", color: "#000000", fontSize:14, outline:"none" }}
-              onFocus={e => { e.target.style.borderColor="#2563eb"; }}
-              onBlur={e => { e.target.style.borderColor="var(--border)"; }}
+              placeholder={lang === "vi" ? "Số nhà, tên đường, phường, quận, thành phố" : "House number, street, city"}
+              style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"11px 14px", color: "var(--text-primary)", fontSize:14, outline:"none" }}
             />
           </div>
 
           <button onClick={handleSubmit} style={{ width:"100%", background:"linear-gradient(135deg,#2563eb,#1d4ed8)", color: "white", border:"none", borderRadius:10, padding:"13px", fontWeight:700, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:8, marginTop:8 }}>
-            Next <ArrowRight size={16} />
+            {t.kyc.next} <ArrowRight size={16} />
           </button>
         </motion.div>
       )}
 
       {/* Step 2 — Upload Documents */}
       {step === 2 && (
-        <motion.div initial={{opacity:0,x:20}} animate={{opacity:1,x:0}}
-          style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius:16, padding:28 }}>
-          <h3 style={{ fontSize:15, fontWeight:700, marginBottom:20 }}>Upload ID Documents &amp; Selfie</h3>
-          <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(130px, 1fr))", gap:12, marginBottom:24 }}>
+        <motion.div initial={{opacity:0,x:20}} animate={{opacity:1,x:0}} className="kyc-card">
+          <h3 className="kyc-info-section-title">{t.kyc.documentsTitle}</h3>
+          <div className="kyc-upload-row">
             {[
-              { label:"ID Card – Front", key:"frontImg",  serverKey:"front_image" },
-              { label:"ID Card – Back",  key:"backImg",   serverKey:"back_image" },
-              { label:"Selfie Photo",    key:"selfieImg", serverKey:"selfie_image" },
+              { label: t.kyc.idFront, key:"frontImg",  serverKey:"front_image" },
+              { label: t.kyc.idBack,  key:"backImg",   serverKey:"back_image" },
+              { label: t.kyc.selfie,    key:"selfieImg", serverKey:"selfie_image" },
             ].map(f => {
               const preview = form[f.key] || getUploadUrl(savedKyc?.[f.serverKey]);
               const hasImage = !!preview;
               return (
                 <div key={f.key}>
                   <p style={{ fontSize:13, color: "var(--text-secondary)", marginBottom:8 }}>{f.label}</p>
-                  <label style={{
-                    display:"flex", flexDirection:"column", alignItems:"center", justifyContent:"center",
-                    height:140, border:`2px dashed ${hasImage ? "#22c55e" : "var(--border)"}`,
-                    borderRadius:12, cursor:"pointer", background: hasImage ? "rgba(34,197,94,0.05)" : "var(--bg-card2)",
-                    overflow:"hidden", transition:"all 0.2s", position:"relative"
-                  }}>
+                  <label className="kyc-upload-box" style={{ border: `2px dashed ${hasImage ? "#22c55e" : "var(--border)"}` }}>
                     {hasImage
-                      ? <img src={preview} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                      ? <img src={preview} alt="" />
                       : <>
                           <Upload size={24} style={{ color: "var(--text-muted)", marginBottom:8 }} />
-                          <span style={{ fontSize:12, color: "var(--text-muted)" }}>Choose image</span>
+                          <span style={{ fontSize:12, color: "var(--text-muted)" }}>{t.kyc.uploadPrompt}</span>
                         </>
                     }
                     <input type="file" accept="image/*" onChange={e => handleFile(f.key, e)} style={{ position:"absolute", inset:0, opacity:0, cursor:"pointer" }} />
                   </label>
                   {form[f.key] && (
-                    <p style={{ fontSize:11, color:"#22c55e", marginTop:4, textAlign:"center" }}>✓ New image selected</p>
+                    <p style={{ fontSize:11, color:"#22c55e", marginTop:4, textAlign:"center" }}>✓ New</p>
                   )}
                 </div>
               );
             })}
           </div>
-          <div style={{ background:"rgba(245,158,11,0.08)", border:"1px solid rgba(245,158,11,0.2)", borderRadius:10, padding:"12px 14px", marginBottom:20, display:"flex", gap:8 }}>
+          <div className="kyc-alert-banner">
             <AlertCircle size={15} style={{ color:"#f59e0b", flexShrink:0, marginTop:2 }} />
-            <p style={{ fontSize:12, color:"#a16207", lineHeight:1.5 }}>
-              Photos must be clear, unblurred, and unobstructed. Accepted formats: JPG / PNG / WEBP / GIF, max 5 MB.
+            <p className="kyc-alert-text">
+              {t.kyc.alertNote}
             </p>
           </div>
           <div style={{ display:"flex", gap:10 }}>
-            <button onClick={() => setStep(1)} style={{ flex:1, background: "var(--bg-card2)", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius:10, padding:"12px", fontWeight:600, fontSize:14, cursor:"pointer" }}>
-              Back
+            <button onClick={() => setStep(1)} className="kyc-btn" style={{ flex:1 }}>
+              {t.kyc.back}
             </button>
             <button onClick={handleSubmit} style={{ flex:2, background:"linear-gradient(135deg,#2563eb,#1d4ed8)", color: "white", border:"none", borderRadius:10, padding:"13px", fontWeight:700, fontSize:14, cursor:"pointer" }}>
-              Submit for Verification
+              {t.kyc.submitKyc}
             </button>
           </div>
         </motion.div>

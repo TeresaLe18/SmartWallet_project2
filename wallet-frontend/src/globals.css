@@ -16,6 +16,24 @@
   --danger: #ef4444;
 }
 
+[data-theme='dark'] {
+  --bg-dark: #0f172a;
+  --bg-card: #1e293b;
+  --bg-card2: #0f172a;
+  --border: #334155;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #64748b;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+}
+
+*, *::before, *::after {
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+
 * {
   margin: 0;
   padding: 0;
@@ -23,6 +41,10 @@
 }
 
 html, body {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
   background-color: var(--bg-dark);
   color: var(--text-primary);
   font-family: 'Inter', sans-serif;

@@ -45,4 +45,21 @@ router.post(
   pinMiddleware,
   walletController.payment,
 );
+
+router.post(
+  "/qr-deposit/create",
+  authMiddleware,
+  accountMiddleware,
+  walletMiddleware,
+  walletController.createQrDeposit,
+);
+
+router.post(
+  "/qr-deposit/confirm",
+  authMiddleware,
+  accountMiddleware,
+  walletMiddleware,
+  walletController.confirmQrDeposit,
+);
+
 module.exports = router;

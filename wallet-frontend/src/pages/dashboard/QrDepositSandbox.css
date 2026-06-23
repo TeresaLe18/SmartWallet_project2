@@ -1,0 +1,229 @@
+/* Stylesheet for QrDepositSandbox page - SmartWallet */
+
+.qr-sandbox-page {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.qr-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 24px;
+  padding: 32px;
+  border-radius: 28px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 12% 20%, rgba(255,255,255,.2), transparent 24%),
+    linear-gradient(135deg, #30415c 0%, #09b6b6 100%);
+  box-shadow: 0 24px 70px rgba(9, 182, 182, .22);
+}
+
+.qr-hero span {
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 1.3px;
+  opacity: .8;
+}
+
+.qr-hero h1 {
+  margin: 8px 0;
+  font-size: 38px;
+}
+
+.qr-hero p {
+  margin: 0;
+  max-width: 700px;
+  line-height: 1.65;
+  opacity: .85;
+}
+
+.qr-hero-icon {
+  width: 92px;
+  height: 92px;
+  display: grid;
+  place-items: center;
+  border-radius: 26px;
+  background: rgba(255,255,255,.16);
+}
+
+.qr-grid {
+  display: grid;
+  grid-template-columns: .9fr 1.1fr;
+  gap: 24px;
+}
+
+.qr-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 28px;
+  box-shadow: 0 18px 44px rgba(29,45,70,.07);
+}
+
+.qr-card h2 {
+  margin: 0 0 20px;
+  color: var(--text-primary);
+  font-size: 20px;
+}
+
+.qr-card label {
+  display: block;
+  color: var(--text-secondary);
+  font-weight: 800;
+  font-size: 13px;
+}
+
+.qr-card input {
+  width: 100%;
+  margin-top: 8px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  outline: none;
+  font-weight: 800;
+  background: var(--bg-card2);
+  color: var(--text-primary);
+}
+
+.qr-card input:focus {
+  border-color: var(--primary);
+}
+
+.qr-card button {
+  width: 100%;
+  margin-top: 18px;
+  border: 0;
+  padding: 15px;
+  border-radius: 15px;
+  color: #fff;
+  background: linear-gradient(135deg, #ef2f5f, #09b6b6);
+  font-weight: 900;
+  cursor: pointer;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+}
+
+.qr-card button:disabled {
+  opacity: .65;
+  cursor: not-allowed;
+}
+
+.sandbox-note {
+  margin-top: 22px;
+  padding: 16px;
+  border-radius: 16px;
+  background: var(--bg-card2);
+  color: var(--text-secondary);
+  border: 1px solid var(--border);
+}
+
+.sandbox-note b {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text-primary);
+}
+
+.sandbox-note p {
+  margin: 4px 0;
+  font-size: 13px;
+}
+
+.qr-display-card {
+  text-align: center;
+}
+
+.empty-qr {
+  min-height: 330px;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+}
+
+.empty-qr p {
+  margin: 0;
+}
+
+.qr-box {
+  display: inline-flex;
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 14px 35px rgba(29,45,70,.08);
+}
+
+.qr-info {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+  text-align: left;
+}
+
+.qr-info div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 14px;
+  border-radius: 14px;
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+}
+
+.qr-info span {
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.qr-info b {
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.confirm-btn {
+  background: linear-gradient(135deg, #09b6b6, #11c981) !important;
+}
+
+.result-box {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  border-radius: 20px;
+}
+
+.result-box h3,
+.result-box p {
+  margin: 0 0 5px;
+}
+
+.result-box.success {
+  color: #0f9f6e;
+  background: rgba(17,201,129,.09);
+  border: 1px solid rgba(17,201,129,.2);
+}
+
+.result-box.failed {
+  color: #ef2f5f;
+  background: rgba(239,47,95,.09);
+  border: 1px solid rgba(239,47,95,.2);
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@media (max-width: 900px) {
+  .qr-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .qr-hero {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

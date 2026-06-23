@@ -15,6 +15,7 @@ const USERS = [
   { email: 'thuan@smartwallet.com', role: 'USER', balance: 100000000 },
   { email: 'duyen@smartwallet.com', role: 'USER', balance: 100000000 },
   { email: 'phong@smartwallet.com', role: 'USER', balance: 100000000 },
+  { email: 'rajpham@gmail.com', role: 'USER', balance: 100000000 },
 ];
 
 async function main() {
