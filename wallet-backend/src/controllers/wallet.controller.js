@@ -691,6 +691,11 @@ const payment = async (req, res) => {
 
     const referenceCode = 'PAY-' + Date.now() + '-' + crypto.randomBytes(4).toString('hex');
 
+    // Check if the destination bank account is linked to a wallet in our system
+    const recipientBank = await prisma.bankAccount.findFirst({
+      where: { bank_code, account_number },
+    });
+
     transaction = await prisma.transaction.create({
       data: {
         transaction_type: 'PAYMENT',
@@ -700,7 +705,7 @@ const payment = async (req, res) => {
         discount_amount: new Prisma.Decimal(0),
         final_amount: finalAmount,
         sender_wallet_id: wallet.id,
-        receiver_wallet_id: null,
+        receiver_wallet_id: recipientBank ? recipientBank.wallet_id : null,
         payment_method: 'BANK',
         bank_code,
         account_number,
@@ -712,37 +717,96 @@ const payment = async (req, res) => {
       },
     });
 
-    await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM wallets WHERE id = ${wallet.id} FOR UPDATE`;
-      const currentWallet = await tx.wallet.findUnique({ where: { id: wallet.id } });
+    if (recipientBank) {
+      // Intrasystem interbank sandbox transfer: credit receiver wallet
+      await prisma.$transaction(async (tx) => {
+        const firstId = Math.min(wallet.id, recipientBank.wallet_id);
+        const secondId = Math.max(wallet.id, recipientBank.wallet_id);
+        await tx.$queryRaw`SELECT id FROM wallets WHERE id = ${firstId} FOR UPDATE`;
+        await tx.$queryRaw`SELECT id FROM wallets WHERE id = ${secondId} FOR UPDATE`;
 
-      const currentAvailable = currentWallet.balance.minus(currentWallet.locked_balance);
-      if (currentAvailable.lt(finalAmount)) throw new Error('Insufficient balance');
+        const currentSender = await tx.wallet.findUnique({ where: { id: wallet.id } });
+        const currentReceiver = await tx.wallet.findUnique({ where: { id: recipientBank.wallet_id } });
 
-      const balanceBefore = currentWallet.balance;
-      const balanceAfter = balanceBefore.minus(finalAmount);
+        const currentAvailable = currentSender.balance.minus(currentSender.locked_balance);
+        if (currentAvailable.lt(finalAmount)) throw new Error('Insufficient balance');
 
-      await tx.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: { decrement: finalAmount } },
+        const senderBefore = currentSender.balance;
+        const senderAfter = senderBefore.minus(finalAmount);
+        const receiverBefore = currentReceiver.balance;
+        const receiverAfter = receiverBefore.plus(new Prisma.Decimal(amount));
+
+        await tx.wallet.update({
+          where: { id: wallet.id },
+          data: { balance: { decrement: finalAmount } },
+        });
+
+        await tx.wallet.update({
+          where: { id: recipientBank.wallet_id },
+          data: { balance: { increment: new Prisma.Decimal(amount) } },
+        });
+
+        await tx.ledgerEntry.create({
+          data: {
+            transaction_id: transaction.id,
+            wallet_id: wallet.id,
+            type: 'DEBIT',
+            amount: finalAmount,
+            balance_before: senderBefore,
+            balance_after: senderAfter,
+          },
+        });
+
+        await tx.ledgerEntry.create({
+          data: {
+            transaction_id: transaction.id,
+            wallet_id: recipientBank.wallet_id,
+            type: 'CREDIT',
+            amount: new Prisma.Decimal(amount),
+            balance_before: receiverBefore,
+            balance_after: receiverAfter,
+          },
+        });
+
+        await tx.transaction.update({
+          where: { id: transaction.id },
+          data: { status: 'SUCCESS' },
+        });
       });
+    } else {
+      // External sandbox bank payment: funds leave system
+      await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM wallets WHERE id = ${wallet.id} FOR UPDATE`;
+        const currentWallet = await tx.wallet.findUnique({ where: { id: wallet.id } });
 
-      await tx.ledgerEntry.create({
-        data: {
-          transaction_id: transaction.id,
-          wallet_id: wallet.id,
-          type: 'DEBIT',
-          amount: finalAmount,
-          balance_before: balanceBefore,
-          balance_after: balanceAfter,
-        },
-      });
+        const currentAvailable = currentWallet.balance.minus(currentWallet.locked_balance);
+        if (currentAvailable.lt(finalAmount)) throw new Error('Insufficient balance');
 
-      await tx.transaction.update({
-        where: { id: transaction.id },
-        data: { status: 'SUCCESS' },
+        const balanceBefore = currentWallet.balance;
+        const balanceAfter = balanceBefore.minus(finalAmount);
+
+        await tx.wallet.update({
+          where: { id: wallet.id },
+          data: { balance: { decrement: finalAmount } },
+        });
+
+        await tx.ledgerEntry.create({
+          data: {
+            transaction_id: transaction.id,
+            wallet_id: wallet.id,
+            type: 'DEBIT',
+            amount: finalAmount,
+            balance_before: balanceBefore,
+            balance_after: balanceAfter,
+          },
+        });
+
+        await tx.transaction.update({
+          where: { id: transaction.id },
+          data: { status: 'SUCCESS' },
+        });
       });
-    });
+    }
 
     const updatedWallet = await prisma.wallet.findUnique({ where: { id: wallet.id } });
     const fullTx = await prisma.transaction.findUnique({
@@ -753,6 +817,7 @@ const payment = async (req, res) => {
       },
     });
 
+    // Notify sender
     await prisma.notification.create({
       data: {
         user_id: userId,
@@ -760,6 +825,23 @@ const payment = async (req, res) => {
         content: `${Number(amount).toLocaleString('vi-VN')} ₫ has been sent to ${bank_code} (Account: ${account_number}). Reference: ${referenceCode}.`,
       },
     }).catch(() => { /* non-critical */ });
+
+    // Notify receiver if they are in the system
+    if (recipientBank) {
+      const receiver = await prisma.wallet.findUnique({
+        where: { id: recipientBank.wallet_id },
+        include: { user: true }
+      });
+      if (receiver?.user) {
+        await prisma.notification.create({
+          data: {
+            user_id: receiver.user.id,
+            title: 'Nhận tiền từ ngân hàng liên kết 📥',
+            content: `Bạn vừa nhận được ${Number(amount).toLocaleString('vi-VN')} ₫ chuyển khoản từ ngân hàng ${bank_code} (Số TK: ${account_number}). Mã giao dịch: ${referenceCode}.`,
+          }
+        }).catch(() => {});
+      }
+    }
 
     return res.status(200).json({
       success: true,

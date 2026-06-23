@@ -739,17 +739,32 @@ export default function WalletsPage() {
       setQrUploadPreview(ev.target.result);
       showToast(t.wallets.scanningQr, "success");
       setTimeout(() => {
-        setBankTransferForm({
-          bank: "Vietcombank",
-          account: "9998887776",
-          ownerName: "NGUYEN VAN A"
-        });
-        setTxForm(prev => ({
-          ...prev,
-          amount: "50000",
-          note: t.wallets.qrTransferPayment,
-          category: categories[0]?.id ? String(categories[0].id) : "1"
-        }));
+        const isRaj = file.name.toLowerCase().includes("rajpham") || file.name.toLowerCase().includes("raj");
+        if (isRaj) {
+          setBankTransferForm({
+            bank: "Vietcombank",
+            account: "0967373148",
+            ownerName: "Raj Pham"
+          });
+          setTxForm(prev => ({
+            ...prev,
+            amount: "100000",
+            note: "Chuyển khoản QR Sandbox cho Raj Pham",
+            category: categories[0]?.id ? String(categories[0].id) : "1"
+          }));
+        } else {
+          setBankTransferForm({
+            bank: "Vietcombank",
+            account: "9998887776",
+            ownerName: "NGUYEN VAN A"
+          });
+          setTxForm(prev => ({
+            ...prev,
+            amount: "50000",
+            note: t.wallets.qrTransferPayment,
+            category: categories[0]?.id ? String(categories[0].id) : "1"
+          }));
+        }
         showToast(t.wallets.qrScanSuccess, "success");
       }, 1000);
     };

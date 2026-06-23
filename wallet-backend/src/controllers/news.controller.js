@@ -37,11 +37,14 @@ const persistImage = (image, req) => {
 const toPost = (p) => ({
   id: p.id,
   title: p.title,
+  title_en: p.title_en || p.title,
   tag: p.tag,
+  tag_en: p.tag_en || p.tag,
   time: p.time,
   image: p.image,
   link: p.link,
   content: p.content,
+  content_en: p.content_en || p.content,
   active: p.active,
 });
 
@@ -73,7 +76,7 @@ const getAdminNews = async (req, res) => {
 // POST /api/news/admin — admin tạo bài mới.
 const createPost = async (req, res) => {
   try {
-    const { title, tag, time, content, image, link, active } = req.body || {};
+    const { title, title_en, tag, tag_en, time, content, content_en, image, link, active } = req.body || {};
 
     if (!title || !String(title).trim()) {
       return res.status(400).json({ success: false, message: 'Title is required' });
@@ -82,9 +85,12 @@ const createPost = async (req, res) => {
     const post = await prisma.newsPost.create({
       data: {
         title: String(title).trim(),
+        title_en: title_en ? String(title_en).trim() : null,
         tag: tag || 'Kinh tế',
+        tag_en: tag_en || 'Economic',
         time: time || 'Vừa xong',
         content: content ?? '',
+        content_en: content_en ?? '',
         image: persistImage(image, req),
         link: link || null,
         active: active === undefined ? true : Boolean(active),
@@ -110,7 +116,7 @@ const updatePost = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
 
-    const { title, tag, time, content, image, link, active } = req.body || {};
+    const { title, title_en, tag, tag_en, time, content, content_en, image, link, active } = req.body || {};
 
     if (title !== undefined && !String(title).trim()) {
       return res.status(400).json({ success: false, message: 'Title is required' });
@@ -120,9 +126,12 @@ const updatePost = async (req, res) => {
       where: { id },
       data: {
         ...(title !== undefined ? { title: String(title).trim() } : {}),
+        ...(title_en !== undefined ? { title_en: title_en ? String(title_en).trim() : null } : {}),
         ...(tag !== undefined ? { tag } : {}),
+        ...(tag_en !== undefined ? { tag_en } : {}),
         ...(time !== undefined ? { time } : {}),
         ...(content !== undefined ? { content: content ?? '' } : {}),
+        ...(content_en !== undefined ? { content_en: content_en ?? '' } : {}),
         ...(image !== undefined ? { image: persistImage(image, req) } : {}),
         ...(link !== undefined ? { link: link || null } : {}),
         ...(active !== undefined ? { active: Boolean(active) } : {}),

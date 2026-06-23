@@ -49,7 +49,7 @@ app.use('/api/admin/vouchers', voucherRoutes);
 
 // User: xem danh sách category, kiểm tra voucher
 app.get('/api/categories', authMiddleware, categoryController.listCategories);
-app.get('/api/vouchers', authMiddleware, voucherController.listActiveVouchers);
+app.get('/api/vouchers', voucherController.listActiveVouchers);
 app.post('/api/vouchers/check', authMiddleware, voucherController.checkVoucher);
 
 const PORT = process.env.PORT || 5000;

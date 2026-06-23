@@ -207,10 +207,11 @@ export default function Index() {
   const getOfferDescription = (item, index) =>
     t.offers[index]?.description || item.description;
 
-  const getNewsTitle = (item, index) => t.news[index]?.title || item.title;
-  const getNewsTag = (item, index) => t.news[index]?.tag || item.tag;
-  const getNewsTime = (item, index) => t.news[index]?.time || item.time;
-  const getNewsContent = (item, index) => t.news[index]?.content || item.content;
+  const getNewsTitle = (item) => (lang === "en" && item.title_en) ? item.title_en : item.title;
+  const getNewsTag = (item) => (lang === "en" && item.tag_en) ? item.tag_en : item.tag;
+  const getNewsTime = (item) => item.time;
+  const getNewsContent = (item) => (lang === "en" && item.content_en) ? item.content_en : item.content;
+
 
   return (
     <>
@@ -381,15 +382,15 @@ export default function Index() {
 
                 <div className="featured-news-body">
                   <div className="news-meta">
-                    <span>{getNewsTag(featuredNews, 0) || t.index.finance}</span>
+                    <span>{getNewsTag(featuredNews) || t.index.finance}</span>
                     <small>
                       <Clock size={14} />
-                      {getNewsTime(featuredNews, 0) || t.index.justNow}
+                      {getNewsTime(featuredNews) || t.index.justNow}
                     </small>
                   </div>
 
-                  <h3>{getNewsTitle(featuredNews, 0)}</h3>
-                  <p>{shortText(getNewsContent(featuredNews, 0), 180)}</p>
+                  <h3>{getNewsTitle(featuredNews)}</h3>
+                  <p>{shortText(getNewsContent(featuredNews), 180)}</p>
 
                   <div className="news-read-more">
                     {t.index.readPost}
@@ -399,7 +400,7 @@ export default function Index() {
               </button>
 
               <div className="finance-news-list">
-                {sideNews.map((item, index) => (
+                {sideNews.map((item) => (
                   <button
                     className="finance-news-item"
                     key={item.id}
@@ -416,12 +417,12 @@ export default function Index() {
 
                     <div>
                       <div className="news-meta compact">
-                        <span>{getNewsTag(item, index + 1) || "SmartWallet"}</span>
-                        <small>{getNewsTime(item, index + 1) || t.index.newText}</small>
+                        <span>{getNewsTag(item) || "SmartWallet"}</span>
+                        <small>{getNewsTime(item) || t.index.newText}</small>
                       </div>
 
-                      <h4>{getNewsTitle(item, index + 1)}</h4>
-                      <p>{shortText(getNewsContent(item, index + 1), 90)}</p>
+                      <h4>{getNewsTitle(item)}</h4>
+                      <p>{shortText(getNewsContent(item), 90)}</p>
                     </div>
                   </button>
                 ))}
@@ -459,12 +460,12 @@ export default function Index() {
 
               <div className="news-modal-content">
                 <div className="news-meta">
-                  <span>{selectedNews.tag || t.index.finance}</span>
+                  <span>{(lang === "en" && selectedNews.tag_en) ? selectedNews.tag_en : selectedNews.tag || t.index.finance}</span>
                   <small>{selectedNews.time || t.index.justNow}</small>
                 </div>
 
-                <h3>{selectedNews.title}</h3>
-                <p>{selectedNews.content}</p>
+                <h3>{(lang === "en" && selectedNews.title_en) ? selectedNews.title_en : selectedNews.title}</h3>
+                <p>{(lang === "en" && selectedNews.content_en) ? selectedNews.content_en : selectedNews.content}</p>
               </div>
             </article>
           </div>

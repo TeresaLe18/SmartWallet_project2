@@ -437,13 +437,16 @@ model PostLike {
 // `image`/`content` dùng LongText để chứa ảnh base64 / nội dung dài.
 
 model NewsPost {
-  id      Int     @id @default(autoincrement())
-  title   String
-  tag     String  @default("Economic")
-  time    String  @default("Just published")
-  image   String? @db.LongText
-  link    String?
-  content String  @db.LongText
+  id         Int     @id @default(autoincrement())
+  title      String
+  title_en   String?
+  tag        String  @default("Economic")
+  tag_en     String?
+  time       String  @default("Just published")
+  image      String? @db.LongText
+  link       String?
+  content    String  @db.LongText
+  content_en String? @db.LongText
 
   active Boolean @default(true)
 

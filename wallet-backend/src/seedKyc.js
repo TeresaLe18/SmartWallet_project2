@@ -39,6 +39,27 @@ async function main() {
     });
 
     console.log(`✅ KYC của ${email} (user id ${user.id}) -> ${kyc.status}`);
+
+    // Seed linked bank account so they can receive sandbox interbank transfers in real-time
+    const wallet = await prisma.wallet.findUnique({ where: { user_id: user.id } });
+    if (wallet) {
+      const bankCode = 'Vietcombank';
+      const accountNumber = email === 'rajpham@gmail.com' ? '0967373148' : '1234567890';
+      const accountName = fullName;
+
+      await prisma.bankAccount.upsert({
+        where: { bank_code_account_number: { bank_code: bankCode, account_number: accountNumber } },
+        update: { is_verified: true },
+        create: {
+          wallet_id: wallet.id,
+          bank_code: bankCode,
+          account_number: accountNumber,
+          account_name: accountName,
+          is_verified: true,
+        },
+      });
+      console.log(`   ✓ Linked Bank: ${bankCode} - ${accountNumber} (${accountName})`);
+    }
   }
 }
 
