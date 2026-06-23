@@ -26,7 +26,8 @@ export default function MyQr() {
     const url = canvas.toDataURL("image/png");
     const link = document.createElement("a");
     link.href = url;
-    link.download = `smartwallet-qr-${user?.id || "user"}.png`;
+    const namePart = user?.name ? user.name.toLowerCase().replace(/\s+/g, "") : "user";
+    link.download = `smartwallet-qr-${namePart}-${user?.id || "user"}.png`;
     link.click();
   };
 

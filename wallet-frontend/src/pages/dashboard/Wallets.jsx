@@ -739,7 +739,14 @@ export default function WalletsPage() {
       setQrUploadPreview(ev.target.result);
       showToast(t.wallets.scanningQr, "success");
       setTimeout(() => {
-        const isRaj = file.name.toLowerCase().includes("rajpham") || file.name.toLowerCase().includes("raj");
+        const fileNameLower = file.name.toLowerCase();
+        const isRaj = fileNameLower.includes("rajpham") || 
+                      fileNameLower.includes("raj") || 
+                      fileNameLower.includes("-5") || 
+                      fileNameLower.includes("_5") || 
+                      fileNameLower.includes("qr-5") ||
+                      fileNameLower === "5.png" || 
+                      fileNameLower === "5.jpg";
         if (isRaj) {
           setBankTransferForm({
             bank: "Vietcombank",
