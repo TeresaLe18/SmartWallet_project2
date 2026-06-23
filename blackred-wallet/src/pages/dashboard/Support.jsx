@@ -22,7 +22,7 @@ export default function Support() {
     try {
       const res = await supportAPI.getMessages();
       if (res.success) {
-        setMessages(res.messages);
+        setMessages(res.data);
         if (isFirstLoad) {
           setTimeout(() => scrollToBottom("auto"), 100);
         } else {
@@ -84,12 +84,12 @@ export default function Support() {
       console.log("res: ", res);
       if (res.success) {
         // Optimistically append the message, or wait for polling to fetch it
-        setMessages((prev) => [...prev, res.message]);
+        setMessages((prev) => [...prev, res.data]);
         setTimeout(() => scrollToBottom("smooth"), 50);
       }
     } catch (error) {
       console.error("Failed to send message:", error);
-      alert("Failed to send support message. Please try again.");
+      alert(error.response?.data?.message || "Failed to send support message. Please try again.");
     } finally {
       setSending(false);
     }
@@ -125,7 +125,7 @@ export default function Support() {
           </div>
         ) : (
           messages.map((msg) => {
-            const isAdmin = msg.sender_role === "ADMIN";
+            const isAdmin = msg.is_admin === true;
             return (
               <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: isAdmin ? "flex-start" : "flex-end" }}>
                 {/* Bubble Container */}

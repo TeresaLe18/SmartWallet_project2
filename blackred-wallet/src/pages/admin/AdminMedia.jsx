@@ -88,7 +88,7 @@ export default function AdminMedia() {
       }
     } catch (error) {
       console.error("Failed to save post:", error);
-      alert("Unable to save article. Please try again.");
+      alert(error.response?.data?.message || "Unable to save article. Please try again.");
     }
   };
 
@@ -101,7 +101,7 @@ export default function AdminMedia() {
       }
     } catch (error) {
       console.error("Failed to delete post:", error);
-      alert("Unable to delete article. Please try again.");
+      alert(error.response?.data?.message || "Unable to delete article. Please try again.");
     }
   };
 
@@ -113,7 +113,7 @@ export default function AdminMedia() {
       }
     } catch (error) {
       console.error("Failed to toggle active status:", error);
-      alert("Unable to toggle article visibility. Please try again.");
+      alert(error.response?.data?.message || "Unable to toggle article visibility. Please try again.");
     }
   };
 

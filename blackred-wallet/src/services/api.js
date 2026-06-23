@@ -393,7 +393,7 @@ export const supportAPI = {
     return res.data;
   },
   sendAdminReply: async (user_id, message, image_url) => {
-    const res = await api.post(`/support/admin/conversations/${user_id}`, { message, image_url });
+    const res = await api.post(`/support/admin/reply/${user_id}`, { message, image_url });
     return res.data;
   },
 };

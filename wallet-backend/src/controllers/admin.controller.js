@@ -532,7 +532,13 @@ const reviewTransaction = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Status must be SUCCESS or FAILED' });
     }
 
-    const tx = await prisma.transaction.findUnique({ where: { id: txId } });
+    const tx = await prisma.transaction.findUnique({
+      where: { id: txId },
+      include: {
+        sender_wallet: true,
+        receiver_wallet: true,
+      },
+    });
     if (!tx) return res.status(404).json({ success: false, message: 'Transaction not found' });
 
     if (tx.status !== 'PENDING' && tx.status !== 'PROCESSING') {
@@ -542,16 +548,66 @@ const reviewTransaction = async (req, res) => {
       });
     }
 
-    const updated = await prisma.transaction.update({
-      where: { id: txId },
-      data: { status },
+    const amount = Number(tx.amount);
+
+    // Xử lý balance theo loại giao dịch và kết quả duyệt
+    await prisma.$transaction(async (prisma) => {
+      // 1. Cập nhật status giao dịch
+      await prisma.transaction.update({
+        where: { id: txId },
+        data: { status },
+      });
+
+      if (status === 'SUCCESS') {
+        if (tx.transaction_type === 'DEPOSIT' && tx.receiver_wallet_id) {
+          // Nạp tiền: cộng balance vào ví người nhận
+          await prisma.wallet.update({
+            where: { id: tx.receiver_wallet_id },
+            data: { balance: { increment: amount } },
+          });
+        } else if (tx.transaction_type === 'WITHDRAW' && tx.sender_wallet_id) {
+          // Rút tiền approve: trừ locked_balance (tiền đã bị khóa khi tạo lệnh)
+          await prisma.wallet.update({
+            where: { id: tx.sender_wallet_id },
+            data: { locked_balance: { decrement: amount } },
+          });
+        } else if (tx.transaction_type === 'TRANSFER') {
+          // Chuyển khoản approve: trừ locked_balance sender, cộng balance receiver
+          if (tx.sender_wallet_id) {
+            await prisma.wallet.update({
+              where: { id: tx.sender_wallet_id },
+              data: { locked_balance: { decrement: amount } },
+            });
+          }
+          if (tx.receiver_wallet_id) {
+            await prisma.wallet.update({
+              where: { id: tx.receiver_wallet_id },
+              data: { balance: { increment: amount } },
+            });
+          }
+        }
+      } else if (status === 'FAILED') {
+        // Từ chối: hoàn lại locked_balance về balance cho sender (WITHDRAW / TRANSFER)
+        if ((tx.transaction_type === 'WITHDRAW' || tx.transaction_type === 'TRANSFER') && tx.sender_wallet_id) {
+          await prisma.wallet.update({
+            where: { id: tx.sender_wallet_id },
+            data: {
+              locked_balance: { decrement: amount },
+              balance: { increment: amount },
+            },
+          });
+        }
+        // DEPOSIT thất bại: không cần làm gì (tiền chưa vào)
+      }
     });
 
-    return res.status(200).json({ success: true, transaction: updated });
+    return res.status(200).json({ success: true, message: `Transaction ${status === 'SUCCESS' ? 'approved' : 'rejected'} successfully` });
   } catch (error) {
+    console.error('reviewTransaction error:', error);
     return res.status(500).json({ success: false, message: error.message });
   }
 };
+
 
 // ─── Fraud Logs ───────────────────────────────────────────────────────────────
 

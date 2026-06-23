@@ -58,8 +58,8 @@ export default function AdminLayout() {
 
     try {
       const supportRes = await supportAPI.getAdminConversations();
-      if (supportRes.success && supportRes.conversations) {
-        const unreadSupport = supportRes.conversations.filter(c => c.unreadCount > 0).length;
+      if (supportRes.success && supportRes.data) {
+        const unreadSupport = supportRes.data.filter(c => c.unread_count > 0).length;
         setSupportUnreadCount(unreadSupport);
       }
     } catch (e) { /* silent */ }

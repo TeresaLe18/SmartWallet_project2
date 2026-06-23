@@ -88,7 +88,7 @@ export default function AdminUsersPage() {
       alert(`✅ KYC approved for ${targetUser.name || targetUser.email}!`);
     } catch (error) {
       console.error("Failed to approve KYC:", error);
-      alert("System error while approving KYC.");
+      alert(error.response?.data?.message || "System error while approving KYC.");
     }
   };
 
@@ -114,7 +114,7 @@ export default function AdminUsersPage() {
       alert(`❌ KYC rejected for ${targetUser ? (targetUser.name || targetUser.email) : "user"}.`);
     } catch (error) {
       console.error("Failed to reject KYC:", error);
-      alert("System error while rejecting KYC.");
+      alert(error.response?.data?.message || "System error while rejecting KYC.");
     }
   };
 

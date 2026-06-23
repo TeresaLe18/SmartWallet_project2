@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   Check, X, Search, Filter, ArrowDownLeft, ArrowUpRight, 
   Clock, AlertCircle, CheckCircle2, XCircle, ArrowRightLeft,
@@ -39,6 +39,7 @@ export default function AdminTransactions() {
   const [loading, setLoading] = useState(true);
   const [selectedTx, setSelectedTx] = useState(null);
   const [toast, setToast] = useState(null);
+  const toastTimeoutRef = useRef(null);
 
   // Load transactions from live backend
   const loadTransactions = async () => {
@@ -82,10 +83,49 @@ export default function AdminTransactions() {
   }, []);
 
   const showToast = (message, type="success") => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
   };
 
+  const handleApprove = async (txDisplayId, e) => {
+    if (e) e.stopPropagation();
+    // Tìm realId từ txList (txDisplayId là reference_code hoặc "TX{id}")
+    const tx = txList.find(t => t.id === txDisplayId);
+    if (!tx) return;
+    try {
+      const res = await adminAPI.reviewTransaction(tx.realId, "SUCCESS");
+      if (res.success) {
+        showToast(`✅ Transaction ${txDisplayId} approved successfully`, "success");
+        setSelectedTx(null);
+        await loadTransactions();
+      } else {
+        showToast(res.message || "Failed to approve transaction", "error");
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || "Server error", "error");
+    }
+  };
+
+  const handleReject = async (txDisplayId, e) => {
+    if (e) e.stopPropagation();
+    const tx = txList.find(t => t.id === txDisplayId);
+    if (!tx) return;
+    try {
+      const res = await adminAPI.reviewTransaction(tx.realId, "FAILED");
+      if (res.success) {
+        showToast(`❌ Transaction ${txDisplayId} rejected`, "success");
+        setSelectedTx(null);
+        await loadTransactions();
+      } else {
+        showToast(res.message || "Failed to reject transaction", "error");
+      }
+    } catch (err) {
+      showToast(err.response?.data?.message || "Server error", "error");
+    }
+  };
 
   const filtered = txList.filter(tx => {
     const matchStatus = filterStatus === "all" || tx.status === filterStatus;

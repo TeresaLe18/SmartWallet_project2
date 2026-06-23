@@ -115,6 +115,7 @@ model User {
   post_comment_replies PostCommentReply[]
   fraud_logs           FraudLog[]
   notifications        Notification[]
+  support_messages     SupportMessage[]   @relation("user_support_messages")
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -451,4 +452,19 @@ model NewsPost {
   updated_at DateTime @updatedAt
 
   @@map("news_posts")
+}
+
+// ===================== SUPPORT CHAT =====================
+model SupportMessage {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  is_admin   Boolean  @default(false)
+  message    String?  @db.Text
+  image_url  String?  @db.LongText
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user       User     @relation("user_support_messages", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("support_messages")
 }
