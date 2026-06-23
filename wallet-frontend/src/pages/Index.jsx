@@ -109,7 +109,7 @@ const features = [
 export default function Index() {
   useLandingAnimation();
 
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const [cards, setCards] = useState(initialCards);
   const [offers, setOffers] = useState(fallbackOffers);
   const [activeOffer, setActiveOffer] = useState(0);
@@ -207,10 +207,19 @@ export default function Index() {
   const getOfferDescription = (item, index) =>
     t.offers[index]?.description || item.description;
 
-  const getNewsTitle = (item) => (lang === "en" && item.title_en) ? item.title_en : item.title;
-  const getNewsTag = (item) => (lang === "en" && item.tag_en) ? item.tag_en : item.tag;
-  const getNewsTime = (item) => item.time;
-  const getNewsContent = (item) => (lang === "en" && item.content_en) ? item.content_en : item.content;
+  const getNewsTitle = (item) => {
+    if (!item) return "";
+    return (lang === "en" && item.title_en) ? item.title_en : item.title;
+  };
+  const getNewsTag = (item) => {
+    if (!item) return "";
+    return (lang === "en" && item.tag_en) ? item.tag_en : item.tag;
+  };
+  const getNewsTime = (item) => item ? item.time : "";
+  const getNewsContent = (item) => {
+    if (!item) return "";
+    return (lang === "en" && item.content_en) ? item.content_en : item.content;
+  };
 
 
   return (
