@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   TrendingUp, Wallet, Calculator, ShieldAlert, CheckCircle, 
   Clock, ArrowUpRight, Lock, PlusCircle, AlertTriangle, ArrowRightLeft, HelpCircle
@@ -31,10 +31,14 @@ export default function Investment() {
 
   // Success/Error Toasts
   const [toast, setToast] = useState(null);
+  const toastTimeoutRef = useRef(null);
 
   const showToast = (message, type = "success") => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
     setToast({ message, type });
-    setTimeout(() => setToast(null), 5000);
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 5000);
   };
 
   const loadData = async () => {

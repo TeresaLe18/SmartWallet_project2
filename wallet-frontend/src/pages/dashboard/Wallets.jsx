@@ -276,6 +276,7 @@ export default function WalletsPage() {
   const [linkedBanks, setLinkedBanks] = useState([]);
   const [selectedBankId, setSelectedBankId] = useState("");
   const [toast, setToast] = useState(null);
+  const toastTimeoutRef = useRef(null);
   const [transferMethod, setTransferMethod] = useState("smartwallet"); // 'smartwallet' | 'bank'
   const [bankTransferForm, setBankTransferForm] = useState({ bank: "", account: "", ownerName: "" });
   const [qrUploadFile, setQrUploadFile] = useState(null);
@@ -581,8 +582,11 @@ export default function WalletsPage() {
   };
 
   const showToast = (message, type = "success") => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
     setToast({ message, type });
-    setTimeout(() => setToast(null), 3000);
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
   };
 
   // Sau khi trả PayOS, returnUrl đưa user về Ví với ?deposit=<orderCode>.

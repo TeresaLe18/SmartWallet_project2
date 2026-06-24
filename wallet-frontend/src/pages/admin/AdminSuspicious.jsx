@@ -174,7 +174,7 @@ export default function AdminSuspiciousPage() {
       alert("✅ Risk alert resolved successfully.");
     } catch (error) {
       console.error("Failed to resolve fraud warning:", error);
-      alert("System error while processing alert.");
+      alert(error.response?.data?.message || "System error while processing alert.");
     }
   };
 

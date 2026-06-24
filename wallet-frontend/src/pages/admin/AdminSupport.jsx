@@ -25,7 +25,7 @@ export default function AdminSupport() {
     try {
       const res = await supportAPI.getAdminConversations();
       if (res.success) {
-        setConversations(res.conversations);
+        setConversations(res.data);
       }
     } catch (error) {
       console.error("Failed to load admin conversations:", error);
@@ -35,15 +35,22 @@ export default function AdminSupport() {
   };
 
   // Load specific user's chat history
-  const loadChatHistory = async (userId, isFirst = false) => {
+  const loadChatHistory = async (userId, isFirst = false, convData = null) => {
     if (isFirst) setLoadingChat(true);
     try {
       const res = await supportAPI.getAdminChatHistory(userId);
       if (res.success) {
-        setSelectedConversation({
-          user: res.user,
-          messages: res.messages,
-        });
+        // Use passed convData or find from existing conversations list
+        const conv = convData || conversations.find((c) => c.user_id === userId);
+        setSelectedConversation((prev) => ({
+          user: prev?.user?.id === userId ? prev.user : {
+            id: userId,
+            email: conv?.email || "",
+            phone: conv?.phone || "",
+            name: conv?.full_name || conv?.email || "",
+          },
+          messages: res.data,
+        }));
         if (isFirst) {
           setTimeout(() => scrollToBottom("auto"), 50);
         } else {
@@ -80,8 +87,8 @@ export default function AdminSupport() {
   }, [selectedConversation?.user?.id]);
 
   // Handle selecting a user conversation
-  const handleSelectConversation = (userId) => {
-    loadChatHistory(userId, true);
+  const handleSelectConversation = (userId, convData) => {
+    loadChatHistory(userId, true, convData);
   };
 
   // Handle image attachment
@@ -122,7 +129,7 @@ export default function AdminSupport() {
         // Append message and update local state
         setSelectedConversation((prev) => ({
           ...prev,
-          messages: [...prev.messages, res.message],
+          messages: [...prev.messages, res.data],
         }));
         setTimeout(() => scrollToBottom("smooth"), 50);
         // Refresh conversations list to show updated last message
@@ -130,7 +137,7 @@ export default function AdminSupport() {
       }
     } catch (error) {
       console.error("Failed to send admin reply:", error);
-      alert("Unable to send reply. Please try again.");
+      alert(error.response?.data?.message || "Unable to send reply. Please try again.");
     } finally {
       setSending(false);
     }
@@ -139,8 +146,8 @@ export default function AdminSupport() {
   // Filter conversations by search query
   const filteredConversations = conversations.filter(
     (c) =>
-      c.user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      c.user.phone?.includes(searchQuery)
+      (c.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (c.phone || "").includes(searchQuery)
   );
 
   return (
@@ -178,11 +185,11 @@ export default function AdminSupport() {
             </div>
           ) : (
             filteredConversations.map((c) => {
-              const active = selectedConversation?.user?.id === c.user.id;
+              const active = selectedConversation?.user?.id === c.user_id;
               return (
                 <div
-                  key={c.user.id}
-                  onClick={() => handleSelectConversation(c.user.id)}
+                  key={c.user_id}
+                  onClick={() => handleSelectConversation(c.user_id, c)}
                   style={{
                     padding: "16px 20px",
                     borderBottom: "1px solid var(--border)",
@@ -199,30 +206,30 @@ export default function AdminSupport() {
                       <div style={{ width: 24, height: 24, borderRadius: "50%", background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         <User size={12} style={{ color: "var(--text-secondary)" }} />
                       </div>
-                      <span style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.user.name}</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.full_name || c.email}</span>
                     </div>
                     {/* Unread Badge Count */}
-                    {c.unreadCount > 0 && (
+                    {c.unread_count > 0 && (
                       <span style={{
                         background: "#ef4444", color: "white", fontSize: 10,
                         fontWeight: 700, padding: "2px 6px", borderRadius: 10, minWidth: 16, textAlign: "center"
                       }}>
-                        {c.unreadCount}
+                        {c.unread_count}
                       </span>
                     )}
                   </div>
                   {/* Subtitle / Last Message */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <p style={{
-                      fontSize: 11.5, color: c.unreadCount > 0 ? "var(--text-primary)" : "var(--text-muted)",
-                      fontWeight: c.unreadCount > 0 ? 600 : 400,
+                      fontSize: 11.5, color: c.unread_count > 0 ? "var(--text-primary)" : "var(--text-muted)",
+                      fontWeight: c.unread_count > 0 ? 600 : 400,
                       margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1, marginRight: 8
                     }}>
-                      {c.lastMessage ? c.lastMessage.message || c.lastMessage.image_url : "No messages yet"}
+                      {c.last_message || (c.last_image_url ? "📎 Image" : "No messages yet")}
                     </p>
-                    {c.lastMessage && (
+                    {c.last_message_at && (
                       <span style={{ fontSize: 10, color: "var(--text-muted)" }}>
-                        {new Date(c.lastMessage.created_at || c.lastMessage.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                        {new Date(c.last_message_at).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
                       </span>
                     )}
                   </div>
@@ -258,7 +265,7 @@ export default function AdminSupport() {
                 </div>
               ) : (
                 selectedConversation.messages.map((msg) => {
-                  const isAdmin = msg.sender_role === "ADMIN";
+                  const isAdmin = msg.is_admin === true;
                   return (
                     <div key={msg.id} style={{ display: "flex", flexDirection: "column", alignItems: isAdmin ? "flex-end" : "flex-start" }}>
                       <div style={{ display: "flex", gap: 10, maxWidth: "75%", alignItems: "flex-end" }}>
