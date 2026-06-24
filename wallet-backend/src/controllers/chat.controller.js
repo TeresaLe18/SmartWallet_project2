@@ -9,11 +9,11 @@ const getFinancialAdvisorResponse = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Message is required' });
     }
 
-    const geminiApiKey = process.env.GEMINI_API_KEY;
-    if (!geminiApiKey || geminiApiKey === 'YOUR_GEMINI_API_KEY') {
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+    if (!openaiApiKey || openaiApiKey === 'YOUR_OPENAI_API_KEY') {
       return res.status(400).json({
         success: false,
-        message: 'GEMINI_API_KEY is not configured in the backend .env file. Please add your key to continue.',
+        message: 'OPENAI_API_KEY is not configured in the backend .env file. Please add your key to continue.',
       });
     }
 
@@ -71,54 +71,52 @@ Quy tắc ứng xử:
 - Khi người dùng hỏi về kế hoạch tiết kiệm hoặc phân tích chi tiêu, hãy dùng thông tin số dư và giao dịch thực tế ở trên để đưa ra lời khuyên thực tế.
 - Sử dụng định dạng Markdown đẹp, phân chia các ý rõ ràng.`;
 
-    // 3. Format contents history for Gemini API
-    // Gemini API format: [{ role: 'user'|'model', parts: [{ text: string }] }]
-    const contents = [];
+    // 3. Format messages history for OpenAI API
+    // OpenAI API format: [{ role: 'system'|'user'|'assistant', content: string }]
+    const messages = [
+      { role: 'system', content: systemPrompt }
+    ];
     
     if (history && Array.isArray(history)) {
       history.forEach(h => {
-        const role = h.sender === 'user' ? 'user' : 'model';
-        contents.push({
-          role: role,
-          parts: [{ text: h.text }]
+        messages.push({
+          role: h.sender === 'user' ? 'user' : 'assistant',
+          content: h.text
         });
       });
     }
 
     // Add current user message
-    contents.push({
+    messages.push({
       role: 'user',
-      parts: [{ text: message }]
+      content: message
     });
 
-    // 4. Call Google Gemini API directly using fetch
+    // 4. Call OpenAI API directly using fetch
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`,
+      'https://api.openai.com/v1/chat/completions',
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiApiKey}`
         },
         body: JSON.stringify({
-          contents: contents,
-          systemInstruction: {
-            parts: [{ text: systemPrompt }]
-          },
-          generationConfig: {
-            maxOutputTokens: 1000,
-            temperature: 0.7,
-          }
+          model: 'gpt-4o-mini',
+          messages: messages,
+          max_completion_tokens: 1000,
+          temperature: 0.7,
         }),
       }
     );
 
     if (!response.ok) {
       const errText = await response.text();
-      throw new Error(`Gemini API error: ${response.status} - ${errText}`);
+      throw new Error(`OpenAI API error: ${response.status} - ${errText}`);
     }
 
     const data = await response.json();
-    const replyText = data.candidates?.[0]?.content?.parts?.[0]?.text || 'Xin lỗi, tôi chưa thể trả lời lúc này.';
+    const replyText = data.choices?.[0]?.message?.content || 'Xin lỗi, tôi chưa thể trả lời lúc này.';
 
     return res.status(200).json({
       success: true,
@@ -126,7 +124,7 @@ Quy tắc ứng xử:
     });
 
   } catch (error) {
-    console.error('Gemini financial advisor error:', error);
+    console.error('OpenAI financial advisor error:', error);
     return res.status(500).json({
       success: false,
       message: error.message || 'System error. Please try again.',
