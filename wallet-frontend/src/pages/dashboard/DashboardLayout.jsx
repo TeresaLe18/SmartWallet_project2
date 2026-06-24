@@ -19,7 +19,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { authAPI } from "../../services/api";
+import { authAPI, getUploadUrl } from "../../services/api";
 
 import { QrCode } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
@@ -160,8 +160,9 @@ export default function DashboardLayout() {
         const nextUser = {
           id: data.user.id,
           email: data.user.email,
-          name: data.user.full_name || data.user.email?.split("@")[0] || "User",
+          name: savedUser?.name || data.user.full_name || data.user.email?.split("@")[0] || "User",
           phone: data.user.phone || undefined,
+          avatar: getUploadUrl(data.user.avatar),
           status: data.user.status,
           kyc: kycStatus === "VERIFIED",
           kycStatus: kycStatus.toLowerCase(),
@@ -173,6 +174,17 @@ export default function DashboardLayout() {
       })
       .catch(() => { });
   }, [navigate]);
+
+  useEffect(() => {
+    const handleKycUpdated = () => {
+      const savedUser = safeParse(localStorage.getItem("bw_user"));
+      if (savedUser) {
+        setUser(savedUser);
+      }
+    };
+    window.addEventListener("kyc_updated", handleKycUpdated);
+    return () => window.removeEventListener("kyc_updated", handleKycUpdated);
+  }, []);
 
   useEffect(() => {
     fetchDbNotifications();
