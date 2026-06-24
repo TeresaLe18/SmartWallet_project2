@@ -237,25 +237,28 @@ export default function WalletsPage() {
   };
 
   const handleActionClick = (targetModal) => {
-    if ((targetModal === "deposit" || targetModal === "withdraw" || targetModal === "transfer") && walletStatus === "frozen") {
+    if ((targetModal === "deposit" || targetModal === "withdraw" || targetModal === "transfer" || targetModal === "qr_scan") && walletStatus === "frozen") {
       showToast("Your wallet is frozen. Please contact support to unfreeze it.", "error");
       return;
     }
-    if ((targetModal === "deposit" || targetModal === "withdraw" || targetModal === "transfer") && kycStatus !== "verified") {
+    if ((targetModal === "deposit" || targetModal === "withdraw" || targetModal === "transfer" || targetModal === "qr_scan") && kycStatus !== "verified") {
       showToast(
         kycStatus === "pending"
-          ? `Your KYC is under review. Please wait for approval before you can ${targetModal}.`
-          : `KYC verification required before you can ${targetModal}. Go to the KYC section to complete it.`,
+          ? `Your KYC is under review. Please wait for approval before you can proceed.`
+          : `KYC verification required before you can proceed. Go to the KYC section to complete it.`,
         "error"
       );
       return;
     }
-    if (targetModal === "withdraw" || targetModal === "transfer") {
+    if (targetModal === "withdraw" || targetModal === "transfer" || targetModal === "qr_scan") {
       if (!hasPin) {
         setPinActionType(targetModal);
         setModal("pin_setup");
         return;
       }
+    }
+    if (targetModal === "qr_scan") {
+      setTransferMethod("bank");
     }
     setModal(targetModal);
   };
@@ -747,6 +750,13 @@ export default function WalletsPage() {
                       fileNameLower.includes("qr-5") ||
                       fileNameLower === "5.png" || 
                       fileNameLower === "5.jpg";
+        const isThuan = fileNameLower.includes("thuan") || 
+                        fileNameLower.includes("nguyenvanthuan") || 
+                        fileNameLower.includes("-2") || 
+                        fileNameLower.includes("_2") || 
+                        fileNameLower.includes("qr-2") ||
+                        fileNameLower === "2.png" || 
+                        fileNameLower === "2.jpg";
         if (isRaj) {
           setBankTransferForm({
             bank: "Vietcombank",
@@ -757,6 +767,18 @@ export default function WalletsPage() {
             ...prev,
             amount: "100000",
             note: "Chuyển khoản QR Sandbox cho Raj Pham",
+            category: categories[0]?.id ? String(categories[0].id) : "1"
+          }));
+        } else if (isThuan) {
+          setBankTransferForm({
+            bank: "Vietcombank",
+            account: "1234567890",
+            ownerName: "Nguyễn Văn Thuận"
+          });
+          setTxForm(prev => ({
+            ...prev,
+            amount: "100000",
+            note: "Chuyển khoản QR Sandbox cho Nguyễn Văn Thuận",
             category: categories[0]?.id ? String(categories[0].id) : "1"
           }));
         } else {
@@ -985,9 +1007,10 @@ export default function WalletsPage() {
             { label: t.dashboard.withdraw, icon:ArrowUpRight,  className: "action-withdraw", modal:"withdraw" },
             { label: t.dashboard.transfer, icon:CreditCard,    className: "action-transfer", modal:"transfer" },
             { label: t.dashboard.qrCode,  icon:QrCode,        className: "action-qr",       modal:"qr" },
+            { label: lang === "vi" ? "Quét VietQR" : "Scan VietQR", icon: QrCode, className: "action-qr-scan", modal: "qr_scan" }
           ].map(({ label, icon:Icon, className: cls, modal:m }) => {
             const isFrozen = walletStatus === "frozen" && m !== "qr";
-            const isKycLocked = !isFrozen && (m === "deposit" || m === "withdraw" || m === "transfer") && kycStatus !== "verified";
+            const isKycLocked = !isFrozen && (m === "deposit" || m === "withdraw" || m === "transfer" || m === "qr_scan") && kycStatus !== "verified";
             const isLocked = isFrozen || isKycLocked;
             return (
               <button key={m} onClick={() => handleActionClick(m)}
@@ -1589,39 +1612,6 @@ export default function WalletsPage() {
                             <AlertCircle size={14} className="flex-shrink-0" />
                             <p className="alert-box-info-text">{t.wallets.bankTransferInfo}</p>
                           </div>
-
-                          {/* QR Upload */}
-                          <div className="form-group">
-                            <label className="form-label">{t.wallets.uploadQrTitle}</label>
-                            <input ref={qrInputRef} type="file" accept="image/*" onChange={handleQrFileChange} className="display-none" />
-                            {qrUploadPreview ? (
-                              <div className="qr-upload-preview-container">
-                                <img src={qrUploadPreview} alt="QR preview" className="qr-upload-preview-img" />
-                                <button onClick={() => { setQrUploadFile(null); setQrUploadPreview(null); }} className="qr-upload-btn-delete">
-                                  <X size={14} />
-                                </button>
-                                <button onClick={() => qrInputRef.current?.click()} className="btn-quick-amount width-100 margin-top-8">
-                                  {t.wallets.changeImage}
-                                </button>
-                              </div>
-                            ) : (
-                              <button onClick={() => qrInputRef.current?.click()} className="qr-upload-dashed-btn">
-                                <div className="qr-upload-icon-wrap">
-                                  <Upload size={20} />
-                                </div>
-                                <span className="qr-upload-title">{t.wallets.clickToUploadQr}</span>
-                                <span className="qr-upload-subtitle">PNG, JPG, JPEG (max 5MB)</span>
-                              </button>
-                            )}
-                          </div>
-
-                          {/* Divider */}
-                          <div className="divider-with-text">
-                            <div className="divider-line" />
-                            <span className="divider-text">{t.wallets.orEnterManually}</span>
-                            <div className="divider-line" />
-                          </div>
-
                           {/* Bank selector */}
                           <div className="form-group">
                             <label className="form-label">{t.wallets.selectBank} *</label>
@@ -1826,6 +1816,130 @@ export default function WalletsPage() {
                           );
                         })}
                       </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* QR SCAN TRANSFER MODAL */}
+              {modal==="qr_scan" && (
+                <div>
+                  {pinStep ? (
+                    <div className="pin-step-container text-center">
+                      <h3 className="modal-title">🔒 {t.wallets.enterPinToConfirm}</h3>
+                      <p className="modal-subtitle">
+                        {t.wallets.enterPinTransferDesc}
+                      </p>
+
+                      <div className="pin-grid">
+                        {pinTransactionInputs.map((digit, i) => (
+                          <input
+                            key={`tx-pin-${i}`}
+                            ref={el => pinTransactionRefs.current[i] = el}
+                            type="password"
+                            inputMode="numeric"
+                            maxLength={1}
+                            value={digit}
+                            onChange={(e) => handlePinTransactionChange(i, e.target.value)}
+                            onKeyDown={(e) => handlePinTransactionKeyDown(i, e)}
+                            className={`pin-box ${digit ? "filled" : ""}`}
+                          />
+                        ))}
+                      </div>
+
+                      <div className="btn-group-row">
+                        <button onClick={() => setPinStep(false)} className="btn-cancel">
+                          {t.wallets.cancel}
+                        </button>
+                        <button onClick={handleConfirmTransfer} className="btn-submit">
+                          {t.wallets.confirmTransferBtn}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <h3 className="modal-title">📷 {lang === "vi" ? "Quét mã VietQR" : "Scan VietQR"}</h3>
+                      <p className="modal-subtitle">{lang === "vi" ? "Tải lên hình ảnh mã QR ngân hàng để tự động nhận diện thông tin nhận tiền." : "Upload a bank QR image to auto-detect payment details."}</p>
+
+                      {/* QR Upload Area */}
+                      {!qrUploadPreview ? (
+                        <div className="form-group">
+                          <input ref={qrInputRef} type="file" accept="image/*" onChange={handleQrFileChange} className="display-none" />
+                          <button onClick={() => qrInputRef.current?.click()} className="qr-upload-dashed-btn" style={{ width: "100%", padding: "40px 20px", border: "2px dashed var(--border)", borderRadius: "16px", background: "var(--bg-card2)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: "10px" }}>
+                            <div className="qr-upload-icon-wrap" style={{ background: "rgba(37,99,235,0.08)", width: "48px", height: "48px", borderRadius: "50%", display: "grid", placeItems: "center", color: "#2563eb" }}>
+                              <Upload size={20} />
+                            </div>
+                            <span className="qr-upload-title" style={{ fontWeight: 700, fontSize: "14px", color: "var(--text-primary)" }}>{t.wallets.clickToUploadQr}</span>
+                            <span className="qr-upload-subtitle" style={{ fontSize: "12px", color: "var(--text-muted)" }}>PNG, JPG, JPEG (max 5MB)</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="qr-upload-preview-container" style={{ position: "relative", display: "flex", flexDirection: "column", alignItems: "center", background: "var(--bg-card2)", padding: "16px", borderRadius: "16px", marginBottom: "20px", border: "1px solid var(--border)" }}>
+                            <img src={qrUploadPreview} alt="QR preview" className="qr-upload-preview-img" style={{ maxHeight: "150px", objectFit: "contain", borderRadius: "8px" }} />
+                            <button onClick={() => { setQrUploadFile(null); setQrUploadPreview(null); setBankTransferForm({ bank: "", account: "", ownerName: "" }); }} className="qr-upload-btn-delete" style={{ position: "absolute", top: "10px", right: "10px", background: "rgba(239, 68, 68, 0.1)", border: "none", color: "#ef4444", borderRadius: "50%", width: "24px", height: "24px", display: "grid", placeItems: "center", cursor: "pointer" }}>
+                              <X size={14} />
+                            </button>
+                            <button onClick={() => qrInputRef.current?.click()} className="btn-quick-amount" style={{ marginTop: "12px", width: "100%" }}>
+                              {t.wallets.changeImage}
+                            </button>
+                          </div>
+
+                          {/* Scanned & Parsed Details */}
+                          <div style={{ background: "rgba(34, 197, 94, 0.06)", border: "1px solid rgba(34, 197, 94, 0.15)", borderRadius: "14px", padding: "16px", marginBottom: "20px" }}>
+                            <h4 style={{ color: "#22c55e", fontSize: "14px", fontWeight: "800", marginBottom: "12px", display: "flex", alignItems: "center", gap: "6px" }}>✓ {lang === "vi" ? "Thông tin nhận tiền từ VietQR" : "Scanned VietQR Payment Details"}</h4>
+                            <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "13px" }}>
+                              <div><span style={{ color: "var(--text-muted)" }}>{t.wallets.bankNameLabel}:</span> <strong style={{ color: "var(--text-primary)" }}>{bankTransferForm.bank || "—"}</strong></div>
+                              <div><span style={{ color: "var(--text-muted)" }}>{t.wallets.accountNumberLabel}:</span> <strong style={{ color: "var(--text-primary)" }}>{bankTransferForm.account || "—"}</strong></div>
+                              <div><span style={{ color: "var(--text-muted)" }}>{t.wallets.accountHolderLabel}:</span> <strong style={{ color: "var(--text-primary)" }}>{bankTransferForm.ownerName || "—"}</strong></div>
+                            </div>
+                          </div>
+
+                          {/* Category Selection */}
+                          <div className="form-group">
+                            <label className="form-label">{t.wallets.selectCategory} *</label>
+                            <select value={txForm.category} onChange={e => setTxForm({...txForm, category: e.target.value})} className="form-select">
+                              <option value="">-- {t.wallets.selectCategory} --</option>
+                              {categories.map(c => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                              ))}
+                            </select>
+                          </div>
+
+                          {/* Amount */}
+                          <div className="form-group">
+                            <label className="form-label">{t.wallets.amountToTransfer} *</label>
+                            <div className="currency-input-wrap">
+                              <input
+                                type="text" inputMode="numeric"
+                                value={txForm.amount ? Number(txForm.amount).toLocaleString("vi-VN") : ""}
+                                onChange={e => { const raw = e.target.value.replace(/\D/g,""); setTxForm({...txForm, amount:raw}); }}
+                                placeholder="0"
+                                className="form-input"
+                              />
+                              <span className="currency-suffix">₫</span>
+                            </div>
+                          </div>
+
+                          {/* Note */}
+                          <div className="form-group">
+                            <label className="form-label">{t.wallets.note}</label>
+                            <input value={txForm.note} onChange={e => setTxForm({...txForm, note:e.target.value})}
+                              placeholder={t.wallets.transferNotePlaceholder}
+                              className="form-input" />
+                          </div>
+
+                          {/* Available balance display */}
+                          <div className="balance-display-row" style={{ display: "flex", justifyContent: "space-between", margin: "16px 0", fontSize: "13px" }}>
+                            <span className="balance-display-label" style={{ color: "var(--text-secondary)" }}>{t.dashboard.availableBalance}</span>
+                            <span className="balance-display-value" style={{ fontWeight: 800, color: "var(--text-primary)" }}>{fmtCurrency(balance)}</span>
+                          </div>
+
+                          <button onClick={handleConfirmTransfer} className="btn-submit" style={{ background: "linear-gradient(135deg, #11c981 0%, #0b784a 100%)", boxShadow: "0 4px 12px rgba(17, 201, 129, 0.25)" }}>
+                            💸 {t.wallets.confirmTransferBtn} {txForm.amount ? fmtCurrency(Number(txForm.amount)) : ""}
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

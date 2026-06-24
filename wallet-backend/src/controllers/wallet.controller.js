@@ -909,7 +909,7 @@ const createQrDeposit = async (req, res) => {
         discount_amount: new Prisma.Decimal(0),
         final_amount: new Prisma.Decimal(amount),
         receiver_wallet_id: wallet.id,
-        payment_method: "QR_SANDBOX",
+        payment_method: "BANK",
         bank_code,
         account_number: `SW-WALLET-${wallet.id}`,
         account_name: "SMARTWALLET QR SANDBOX",

@@ -166,7 +166,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="register-copyright">
-              © 2025 SmartWallet Wallet. All rights reserved.
+              © 2026 SmartWallet Wallet. All rights reserved.
             </div>
           </motion.div>
 

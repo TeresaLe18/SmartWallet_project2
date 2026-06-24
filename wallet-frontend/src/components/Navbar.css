@@ -1,8 +1,8 @@
 :root {
   --navy: #07172f;
   --navy2: #102447;
-  --pink: #ef315f;
-  --pink2: #ff7d9d;
+  --pink: #2563eb;
+  --pink2: #11c981;
 }
 
 /* HEADER */
@@ -68,7 +68,7 @@
   right: -90px;
   top: -100px;
   border-radius: 50%;
-  background: rgba(239, 49, 95, 0.32);
+  background: rgba(37, 99, 235, 0.32);
   filter: blur(35px);
 }
 
@@ -158,20 +158,20 @@
   padding: 0 22px;
   border: none;
   border-radius: 999px;
-  background: linear-gradient(135deg, var(--pink), #d92552);
+  background: linear-gradient(135deg, var(--pink), #1d4ed8);
   color: #fff;
   font-size: 13px;
   font-weight: 900;
   text-transform: uppercase;
   letter-spacing: 0.03em;
   cursor: pointer;
-  box-shadow: 0 16px 34px rgba(239, 49, 95, 0.25);
+  box-shadow: 0 16px 34px rgba(37, 99, 235, 0.25);
   transition: 0.28s ease;
 }
 
 .login-btn:hover {
   transform: translateY(-3px);
-  box-shadow: 0 24px 48px rgba(239, 49, 95, 0.35);
+  box-shadow: 0 24px 48px rgba(37, 99, 235, 0.35);
 }
 
 /* Đẩy nội dung xuống dưới fixed navbar */

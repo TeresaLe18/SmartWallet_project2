@@ -16,6 +16,7 @@ import {
   User,
   Wallet,
   X,
+  Sparkles,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { authAPI } from "../../services/api";
@@ -27,15 +28,15 @@ import { useLanguage } from "../../context/LanguageContext";
 const navItems = [
   { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { href: "/dashboard/profile", icon: User, label: "Profile"},
-  { href: "/dashboard/qr-deposit", icon: QrCode, label: "QR Deposit"}, 
   { href: "/dashboard/qr", icon: QrCode, label: "My QR"},  
   { href: "/dashboard/wallets", icon: CreditCard, label: "My Wallets" },
   { href: "/dashboard/investment", icon: TrendingUp, label: "Investments & Savings" },
   { href: "/dashboard/offers", icon: Gift, label: "Offers" },
   { href: "/dashboard/support", icon: MessageSquare, label: "Live Support" },
+  { href: "/dashboard/ai-chatbot", icon: Sparkles, label: "AI Advisor" },
 ];
 
-const pageTitle = (pathname, t) => {
+const pageTitle = (pathname, t, lang) => {
   if (pathname === "/dashboard") return t.nav.dashboard;
   if (pathname.includes("wallets")) return t.nav.myWallets;
   if (pathname.includes("investment")) return t.nav.investment;
@@ -43,6 +44,8 @@ const pageTitle = (pathname, t) => {
   if (pathname.includes("support")) return t.nav.support;
   if (pathname.includes("kyc")) return t.kyc.title;
   if (pathname.includes("profile")) return t.nav.profile;
+  if (pathname.includes("notifications")) return t.notifications.title;
+  if (pathname.includes("ai-chatbot")) return lang === "vi" ? "Trợ lý AI" : "AI Advisor";
   return "SmartWallet";
 };
 
@@ -75,7 +78,7 @@ export default function DashboardLayout() {
   const [showNotif, setShowNotif] = useState(false);
   const [dbNotifications, setDbNotifications] = useState([]);
 
-  const title = pageTitle(pathname, t);
+  const title = pageTitle(pathname, t, lang);
 
   const isKycVerified =
     user?.kyc === true || user?.kyc === "verified" || user?.kycStatus === "verified";
@@ -328,60 +331,18 @@ export default function DashboardLayout() {
             </button>
 
             <div className="dash-pop-wrap">
-              <button
+              <Link
                 className="dash-icon-btn"
-                type="button"
+                to="/dashboard/notifications"
                 onClick={() => {
-                  setShowNotif((prev) => !prev);
                   setShowUserMenu(false);
-                  fetchDbNotifications();
+                  setShowNotif(false);
                 }}
+                title={t.notifications.title}
               >
                 <Bell size={18} />
                 {unreadCount > 0 && <em>{unreadCount}</em>}
-              </button>
-
-              <AnimatePresence>
-                {showNotif && (
-                  <motion.div
-                    className="dash-dropdown dash-notif"
-                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
-                    animate={{ opacity: 1, y: 0, scale: 1 }}
-                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
-                  >
-                    <div className="dash-dropdown-head">
-                      <strong>Notifications</strong>
-                      <span>{unreadCount} new</span>
-                    </div>
-                    <div className="dash-notif-list">
-                      {notifications.length === 0 ? (
-                        <p className="dash-empty">No notifications</p>
-                      ) : (
-                        notifications.slice(0, 8).map((n) => (
-                          <button
-                            key={n.id}
-                            className={`dash-notif-item ${!n.read ? "unread" : ""}`}
-                            type="button"
-                            onClick={() => {
-                              if (n.dbId) {
-                                setDbNotifications((prev) =>
-                                  prev.map((item) =>
-                                    item.id === n.dbId ? { ...item, is_read: true } : item
-                                  )
-                                );
-                                authAPI.markNotificationRead(n.dbId).catch(() => { });
-                              }
-                            }}
-                          >
-                            <strong>{n.title}</strong>
-                            <span>{n.desc}</span>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              </Link>
             </div>
 
             <div className="dash-pop-wrap">
@@ -450,17 +411,17 @@ export default function DashboardLayout() {
 
 const dashboardLayoutCss = `
 :root {
-  --dash-navy: #30415c;
-  --dash-navy-2: #3b4c68;
+  --dash-navy: #1e3a8a;
+  --dash-navy-2: #1d4ed8;
   --dash-bg: #f4f7fb;
   --dash-card: #ffffff;
   --dash-line: #e7edf5;
   --dash-text: #172033;
   --dash-muted: #7a879a;
-  --dash-teal: #09b6b6;
+  --dash-teal: #0d9488;
   --dash-green: #11c981;
-  --dash-coral: #ff8e6e;
-  --dash-pink: #f05278;
+  --dash-coral: #11c981;
+  --dash-pink: #2563eb;
   --dash-blue: #2563eb;
 }
 
@@ -926,7 +887,7 @@ const dashboardLayoutCss = `
   inset: 0;
   border: 0;
   background: transparent;
-  z-index: 35;
+  z-index: 29;
   cursor: default;
 }
 

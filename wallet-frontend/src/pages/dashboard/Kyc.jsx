@@ -6,7 +6,7 @@ import { useLanguage } from "../../context/LanguageContext";
 import "./Kyc.css";
 
 export default function KycPage() {
-  const { t } = useLanguage();
+  const { t, lang } = useLanguage();
   const steps = [
     { id:1, title: t.kyc.personalInfo,    desc: "ID card & name" },
     { id:2, title: t.kyc.uploadDocuments, desc: "Front & back of ID" },

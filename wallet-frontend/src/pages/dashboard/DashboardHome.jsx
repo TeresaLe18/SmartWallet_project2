@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Area,
   AreaChart,
@@ -117,6 +118,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export default function DashboardPage() {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(() => safeParse(localStorage.getItem("bw_user")));
   const [balance, setBalance] = useState(0);
@@ -401,7 +403,7 @@ export default function DashboardPage() {
             <h3>AI Financial Advisor</h3>
             <p>Ask SmartWallet AI for spending tips, saving plans and better cash-flow decisions.</p>
           </div>
-          <button type="button">Open Advisor</button>
+          <button type="button" onClick={() => navigate("/dashboard/ai-chatbot")}>Open Advisor</button>
         </article>
       </section>
     </div>

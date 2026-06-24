@@ -140,6 +140,10 @@ export const authAPI = {
     const res = await api.patch("/auth/notifications/read-all");
     return res.data;
   },
+  deleteNotification: async (id) => {
+    const res = await api.delete(`/auth/notifications/${id}`);
+    return res.data;
+  },
   setPin: async (pin) => {
     const res = await api.post("/auth/set-pin", { pin });
     return res.data;
@@ -488,6 +492,14 @@ export const voucherAPI = {
   create:     async (data) => (await api.post("/admin/vouchers", data)).data,
   update:     async (id, data) => (await api.patch(`/admin/vouchers/${id}`, data)).data,
   remove:     async (id) => (await api.delete(`/admin/vouchers/${id}`)).data,
+};
+
+// ─── Chat API ───────────────────────────────────────────────────────────────
+export const chatAPI = {
+  getAdvice: async (message, history) => {
+    const res = await api.post("/chat/advisor", { message, history });
+    return res.data;
+  },
 };
 
 export default api;

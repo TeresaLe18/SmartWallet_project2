@@ -25,8 +25,9 @@ import AdminSuspicious from "./pages/admin/AdminSuspicious";
 import AdminSupport from "./pages/admin/AdminSupport";
 import AdminInvestment from "./pages/admin/AdminInvestment";
 
-import QrDepositSandbox from "./pages/dashboard/QrDepositSandbox";
 import MyQr from "./pages/dashboard/MyQr";
+import Notifications from "./pages/dashboard/Notifications";
+import AiChatbot from "./pages/dashboard/AiChatbot";
 
 export default function App() {
   return (
@@ -43,13 +44,14 @@ export default function App() {
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<DashboardHome />} />
           <Route path="profile" element={<Profile />} />
-          <Route path="qr-deposit" element={<QrDepositSandbox />} />
           <Route path="qr" element={<MyQr />} />          
           <Route path="wallets" element={<Wallets />} />
           <Route path="kyc" element={<Kyc />} />
           <Route path="offers" element={<Offers />} />
           <Route path="support" element={<Support />} />
           <Route path="investment" element={<Investment />} />
+          <Route path="notifications" element={<Notifications />} />
+          <Route path="ai-chatbot" element={<AiChatbot />} />
         </Route>
 
         <Route path="/admin" element={<AdminLayout />}>

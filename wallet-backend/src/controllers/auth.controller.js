@@ -594,6 +594,26 @@ const markAllNotificationsRead = async (req, res) => {
     }
 };
 
+// DELETE /auth/notifications/:id — xóa 1 thông báo của user
+const deleteNotification = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const id = Number(req.params.id);
+        if (isNaN(id)) {
+            return res.status(400).json({ success: false, message: 'Invalid notification id' });
+        }
+        const result = await prisma.notification.deleteMany({
+            where: { id, user_id: userId },
+        });
+        if (result.count === 0) {
+            return res.status(404).json({ success: false, message: 'Notification not found' });
+        }
+        return res.status(200).json({ success: true, message: 'Notification deleted successfully' });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     register,
     verifyRegister,
@@ -607,4 +627,5 @@ module.exports = {
     getNotifications,
     markNotificationRead,
     markAllNotificationsRead,
+    deleteNotification,
 };

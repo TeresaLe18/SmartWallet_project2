@@ -167,6 +167,12 @@
   color: #2563eb;
 }
 
+.action-qr-scan .action-icon-wrap {
+  background: rgba(17, 201, 129, 0.12);
+  border: 1px solid rgba(17, 201, 129, 0.25);
+  color: #11c981;
+}
+
 .action-btn:disabled .action-icon-wrap {
   background: rgba(148, 163, 184, 0.1) !important;
   border: 1px solid rgba(148, 163, 184, 0.2) !important;

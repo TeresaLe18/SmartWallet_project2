@@ -318,7 +318,7 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 login-copyright">
-          © 2025 SmartWallet Wallet. All rights reserved.
+          © 2026 SmartWallet Wallet. All rights reserved.
         </div>
       </motion.div>
 

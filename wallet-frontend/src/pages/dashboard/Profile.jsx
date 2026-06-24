@@ -13,13 +13,18 @@ export default function ProfilePage() {
     phone: "",
   });
 
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameVal, setEditNameVal] = useState("");
+
   useEffect(() => {
     const loadProfile = async () => {
       try {
         const res = await authAPI.getProfile();
         const data = res.data || res.user || {};
+        const local = JSON.parse(localStorage.getItem("bw_user") || "{}");
         setUser({
           ...data,
+          name: local.name || data.full_name || data.email?.split("@")[0] || "User",
           avatar: getUploadUrl(data.avatar),
         });
       } catch (err) {
@@ -132,6 +137,30 @@ export default function ProfilePage() {
     } finally {
       setAvatarLoading(false);
     }
+  };
+
+  const handleSaveName = () => {
+    if (!editNameVal.trim()) {
+      alert("Name cannot be empty");
+      return;
+    }
+    const updatedUser = {
+      ...user,
+      name: editNameVal.trim(),
+    };
+    setUser(updatedUser);
+    
+    // Save to localStorage
+    const local = localStorage.getItem("bw_user");
+    if (local) {
+      const parsed = JSON.parse(local);
+      parsed.name = editNameVal.trim();
+      localStorage.setItem("bw_user", JSON.stringify(parsed));
+    }
+    
+    // Dispatch event to sync with other components
+    window.dispatchEvent(new Event("kyc_updated"));
+    setIsEditingName(false);
   };
   //-------------------------------------
 
@@ -377,8 +406,87 @@ export default function ProfilePage() {
           </div>
 
           <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)" }}>{user.name || "User"}</p>
-            <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{user.email}</p>
+            {isEditingName ? (
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <input
+                  type="text"
+                  value={editNameVal}
+                  onChange={(e) => setEditNameVal(e.target.value)}
+                  style={{
+                    background: "var(--bg-card2)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 8,
+                    padding: "4px 8px",
+                    color: "var(--text-primary)",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    outline: "none"
+                  }}
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveName();
+                    if (e.key === "Escape") setIsEditingName(false);
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={handleSaveName}
+                  style={{
+                    background: "#22c55e",
+                    color: "white",
+                    border: "none",
+                    borderRadius: 6,
+                    padding: "4px 8px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer"
+                  }}
+                >
+                  Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsEditingName(false)}
+                  style={{
+                    background: "var(--bg-card2)",
+                    color: "var(--text-secondary)",
+                    border: "1px solid var(--border)",
+                    borderRadius: 6,
+                    padding: "4px 8px",
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer"
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <p style={{ fontSize: 15, fontWeight: 700, color: "var(--text-primary)", margin: 0 }}>
+                  {user.name || "User"}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditNameVal(user.name || "");
+                    setIsEditingName(true);
+                  }}
+                  style={{
+                    background: "none",
+                    border: "none",
+                    color: "var(--primary)",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                    padding: "2px 6px"
+                  }}
+                >
+                  ✏️ Edit
+                </button>
+              </div>
+            )}
+            <p style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 4, marginBottom: 0 }}>{user.email}</p>
           </div>
 
           <div>
@@ -415,7 +523,7 @@ export default function ProfilePage() {
       >
         <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>2. Email & Phone Number</h3>
         <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
-          A verification OTP will be sent to your current email: <strong>{user.email}</strong>
+          A verification OTP will be sent to your email to confirm phone number updates.
         </p>
 
         {contactSuccess && (
@@ -431,39 +539,11 @@ export default function ProfilePage() {
         )}
 
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {/* ── Email section ── */}
+          {/* ── Email section (Read-only) ── */}
           <div style={{ background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
-            <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>
-              Current email: <span style={{ color: "var(--text-primary)" }}>{user.email || "—"}</span>
+            <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 0 }}>
+              Email address: <span style={{ color: "var(--text-primary)", marginLeft: 6 }}>{user.email || "—"}</span>
             </p>
-            <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <div style={{ flex: 1, position: "relative" }}>
-                <Mail size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
-                <input
-                  type="email"
-                  placeholder="Enter new email"
-                  value={newEmail}
-                  onChange={(e) => { setNewEmail(e.target.value); setOtpError(""); }}
-                  style={{ width: "100%", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 14px 10px 38px", color: "#000000", fontSize: 13, outline: "none", boxSizing: "border-box" }}
-                />
-              </div>
-              <button
-                type="button"
-                disabled={otpSending && changeTarget === "email"}
-                onClick={() => handleRequestContactChange("email")}
-                style={{
-                  flexShrink: 0, background: "linear-gradient(135deg,#2563eb,#1d4ed8)",
-                  color: "white", border: "none", borderRadius: 10, padding: "10px 16px",
-                  fontWeight: 700, fontSize: 13, cursor: (otpSending && changeTarget === "email") ? "not-allowed" : "pointer",
-                  display: "flex", alignItems: "center", gap: 6, whiteSpace: "nowrap"
-                }}
-              >
-                {otpSending && changeTarget === "email" ? (
-                  <div style={{ width: 13, height: 13, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                ) : <Send size={13} />}
-                {otpSending && changeTarget === "email" ? "Sending..." : "Change Email"}
-              </button>
-            </div>
           </div>
 
           {/* ── Phone section ── */}
@@ -613,127 +693,7 @@ export default function ProfilePage() {
         </form>
       </motion.div>
 
-      {/* CARD 4: DISABLE ACCOUNT */}
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.25 }}
-        style={{
-          background: "var(--bg-card)", border: "1px solid rgba(239,68,68,0.2)",
-          borderRadius: 16, padding: 24, boxShadow: "0 4px 20px rgba(0, 0, 0, 0.01)"
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "flex-start", gap: 12, marginBottom: 16 }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-            background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)",
-            display: "flex", alignItems: "center", justifyContent: "center"
-          }}>
-            <UserX size={18} style={{ color: "#ef4444" }} />
-          </div>
-          <div>
-            <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>4. Disable Account</h3>
-            <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.6 }}>
-              Permanently disable your account and freeze your wallet. You will be logged out immediately
-              and will not be able to sign in until an administrator reactivates your account.
-            </p>
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => { setDisableError(""); setShowDisableConfirm(true); }}
-          style={{
-            background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)",
-            borderRadius: 10, padding: "10px 18px", color: "#ef4444",
-            fontSize: 13, fontWeight: 700, cursor: "pointer", transition: "all 0.2s"
-          }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.14)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(239,68,68,0.08)"; }}
-        >
-          Disable My Account
-        </button>
-      </motion.div>
 
-      {/* Disable account confirmation modal */}
-      <AnimatePresence>
-        {showDisableConfirm && (
-          <div
-            style={{
-              position: "fixed", inset: 0, zIndex: 100,
-              display: "flex", alignItems: "center", justifyContent: "center",
-              background: "rgba(0, 0, 0, 0.4)", backdropFilter: "blur(6px)", padding: 20
-            }}
-            onClick={() => !disableLoading && setShowDisableConfirm(false)}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              onClick={(e) => e.stopPropagation()}
-              style={{
-                background: "var(--bg-card)", border: "1px solid var(--border)",
-                borderRadius: 20, padding: 28, width: "100%", maxWidth: 420,
-                boxShadow: "0 20px 60px rgba(0,0,0,0.2)"
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-                <div style={{
-                  width: 44, height: 44, borderRadius: 12,
-                  background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.2)",
-                  display: "flex", alignItems: "center", justifyContent: "center"
-                }}>
-                  <UserX size={20} style={{ color: "#ef4444" }} />
-                </div>
-                <div>
-                  <h3 style={{ fontSize: 16, fontWeight: 700 }}>Disable your account?</h3>
-                  <p style={{ fontSize: 12, color: "var(--text-muted)" }}>This action requires admin to reactivate</p>
-                </div>
-              </div>
-              <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 16 }}>
-                Your account will be set to <strong>Disabled</strong>, your wallet will be frozen,
-                and you will be signed out. Contact support if you need your account restored.
-              </p>
-              {disableError && (
-                <div style={{
-                  background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)",
-                  borderRadius: 10, padding: "10px 14px", marginBottom: 16, color: "#ef4444", fontSize: 13
-                }}>
-                  {disableError}
-                </div>
-              )}
-              <div style={{ display: "flex", gap: 10 }}>
-                <button
-                  type="button"
-                  onClick={() => setShowDisableConfirm(false)}
-                  disabled={disableLoading}
-                  style={{
-                    flex: 1, background: "var(--bg-card2)", border: "1px solid var(--border)",
-                    borderRadius: 10, padding: "12px", fontSize: 13, fontWeight: 600,
-                    color: "var(--text-secondary)", cursor: disableLoading ? "not-allowed" : "pointer"
-                  }}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleDisableAccount}
-                  disabled={disableLoading}
-                  style={{
-                    flex: 1, background: "rgba(239,68,68,0.1)", border: "1px solid rgba(239,68,68,0.25)",
-                    borderRadius: 10, padding: "12px", fontSize: 13, fontWeight: 700,
-                    color: "#ef4444", cursor: disableLoading ? "not-allowed" : "pointer",
-                    display: "flex", alignItems: "center", justifyContent: "center", gap: 8
-                  }}
-                >
-                  {disableLoading ? (
-                    <div style={{ width: 16, height: 16, border: "2px solid rgba(239,68,68,0.3)", borderTopColor: "#ef4444", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                  ) : "Yes, Disable Account"}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* ─── OTP CONFIRMATION MODAL (shared for profile & password) ─────────── */}
       <AnimatePresence>

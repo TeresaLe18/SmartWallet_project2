@@ -324,6 +324,16 @@ export const translations = {
       failedTitle: "Giao dịch thất bại",
       newBalance: "Số dư mới",
     },
+    notifications: {
+      title: "Thông báo của bạn",
+      subtitle: "Xem và quản lý tất cả các thông báo bảo mật và giao dịch.",
+      empty: "Không có thông báo nào.",
+      markAllRead: "Đánh dấu tất cả đã đọc",
+      read: "Đã đọc",
+      unread: "Chưa đọc",
+      time: "Thời gian",
+      viewAll: "Xem tất cả thông báo",
+    },
   },
 
   en: {
@@ -646,6 +656,16 @@ export const translations = {
       successTitle: "Deposit Successful",
       failedTitle: "Transaction Failed",
       newBalance: "New Balance",
+    },
+    notifications: {
+      title: "Your Notifications",
+      subtitle: "View and manage all transaction and security notifications.",
+      empty: "No notifications found.",
+      markAllRead: "Mark all as read",
+      read: "Read",
+      unread: "Unread",
+      time: "Time",
+      viewAll: "View all notifications",
     },
   },
 };

@@ -2,15 +2,15 @@
 
 :root{
   --navy:#07172f;
-  --pink:#ef315f;
-  --pink2:#ff7d9d;
+  --pink:#2563eb;
+  --pink2:#11c981;
   --light:#eef5f8;
   --text:#1e293b;
   --muted:#667085;
   --shadow:0 25px 70px rgba(7,23,47,.14);
 
-  --hero-red:#e94d7b;
-  --hero-purple:#5b435f;
+  --hero-red:#2563eb;
+  --hero-purple:#11c981;
   --hero-navy:#07172f;
 }
 
@@ -114,7 +114,7 @@ body{
   padding:70px 6% 90px;
   overflow:hidden;
   background:
-    radial-gradient(circle at 76% 24%,rgba(239,49,95,.16),transparent 18%),
+    radial-gradient(circle at 76% 24%,rgba(37,99,235,.16),transparent 18%),
     linear-gradient(180deg,#f6fbfd 0%,#eef5f8 100%);
 }
 
@@ -175,7 +175,7 @@ h1 span{
 .btn-primary{
   background:var(--pink);
   color:#fff;
-  box-shadow:0 16px 30px rgba(239,49,95,.28);
+  box-shadow:0 16px 30px rgba(37,99,235,.28);
 }
 
 .btn-dark{
@@ -240,7 +240,7 @@ h1 span{
   width:270px;
   height:270px;
   border-radius:50%;
-  background:rgba(239,49,95,.18);
+  background:rgba(37,99,235,.18);
   filter:blur(80px);
   pointer-events:none;
   animation:heroGlow 7s ease-in-out infinite;
@@ -310,8 +310,8 @@ h1 span{
   flex-direction:column;
   align-items:center;
   justify-content:center;
-  background:linear-gradient(180deg,#ff4d80 0%,#d81b60 55%,#a8003a 100%);
-  box-shadow:0 24px 60px rgba(168,0,58,.42);
+  background:linear-gradient(180deg,#11c981 0%,#0f9f65 55%,#0b784a 100%);
+  box-shadow:0 24px 60px rgba(17,201,129,.42);
 }
 
 .offer-badge strong{
@@ -653,7 +653,7 @@ h1 span{
   height: 72%;
   border-radius: 38px;
   background:
-    radial-gradient(circle at 12% 18%, rgba(239, 49, 95, 0.13), transparent 34%),
+    radial-gradient(circle at 12% 18%, rgba(37, 99, 235, 0.13), transparent 34%),
     linear-gradient(135deg, rgba(7, 23, 47, 0.06), rgba(255, 255, 255, 0));
   pointer-events: none;
 }
@@ -687,7 +687,7 @@ h1 span{
 }
 
 .news-eyebrow {
-  color: #ef315f;
+  color: #2563eb;
 }
 
 .news-view-all,
@@ -695,7 +695,7 @@ h1 span{
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  color: #ef315f;
+  color: #2563eb;
   font-weight: 800;
   text-decoration: none;
 }
@@ -799,8 +799,8 @@ h1 span{
   display: inline-flex;
   padding: 7px 11px;
   border-radius: 999px;
-  color: #ef315f;
-  background: rgba(239, 49, 95, 0.1);
+  color: #2563eb;
+  background: rgba(37, 99, 235, 0.1);
   font-size: 0.82rem;
   font-weight: 800;
 }
@@ -852,7 +852,7 @@ h1 span{
   min-height: 118px;
   overflow: hidden;
   border-radius: 18px;
-  background: linear-gradient(135deg, #07172f, #ef315f);
+  background: linear-gradient(135deg, #07172f, #2563eb);
 }
 
 .mini-news-image span {

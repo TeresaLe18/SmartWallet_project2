@@ -8,6 +8,7 @@ const walletManageRoutes = require('./routes/wallet.routes');
 const newsRoutes = require('./routes/news.routes');
 const payosRoutes = require('./routes/payos.routes');
 const statisticsRoutes = require('./routes/statistics.routes');
+const chatRoutes = require('./routes/chat.routes');
 const feeRoutes = require('./routes/fee.routes');
 const categoryRoutes = require('./routes/category.routes');
 const voucherRoutes = require('./routes/voucher.routes');
@@ -41,6 +42,7 @@ app.use('/api/wallet', walletManageRoutes);
 app.use('/api/news', newsRoutes);
 app.use('/api/payos', payosRoutes);
 app.use('/api/statistics', statisticsRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Admin: quản lý phí dịch vụ / voucher / category
 app.use('/api/admin/fees', feeRoutes);
