@@ -204,15 +204,15 @@ export default function AdminUsersPage() {
         <div style={{ position:"relative", flex:1, minWidth:200 }}>
           <Search size={14} style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color: "var(--text-muted)" }} />
           <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, email, ID..."
-            style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:8, padding:"9px 12px 9px 34px", color: "#000000", fontSize:13, outline:"none" }} />
+            style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:8, padding:"9px 12px 9px 34px", color: "var(--text-primary)", fontSize:13, outline:"none" }} />
         </div>
         <div style={{ display:"flex", gap:6 }}>
           {[{v:"all",l:"All"},{v:"verified",l:"KYC Verified"},{v:"pending",l:"Pending Review"},{v:"none",l:"Not KYC'd"}].map(f => (
             <button key={f.v} onClick={() => setKycFilter(f.v)} style={{
               padding:"8px 12px", borderRadius:8, fontSize:12, fontWeight:500,
-              background: kycFilter===f.v ? "rgba(37,99,235,0.15)" : "#ffffff",
+              background: kycFilter===f.v ? "rgba(37,99,235,0.15)" : "var(--bg-card)",
               border:`1px solid ${kycFilter===f.v ? "rgba(37,99,235,0.3)" : "var(--border)"}`,
-              color: kycFilter===f.v ? "#2563eb" : "#000000", cursor:"pointer"
+              color: kycFilter===f.v ? "#2563eb" : "var(--text-primary)", cursor:"pointer"
             }}>{f.l}</button>
           ))}
         </div>
@@ -275,7 +275,7 @@ export default function AdminUsersPage() {
             <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} onClick={e => e.stopPropagation()}
               style={{ background: "var(--bg-dark)", border:"1px solid #222", borderRadius:20, padding:"20px 24px", width:"100%", maxWidth:500, maxHeight:"90vh", display:"flex", flexDirection:"column" }}>
               
-              <h3 style={{ fontSize:15, fontWeight:700, marginBottom:12, color: "#000000", flexShrink:0 }}>User: {selectedUser.name}</h3>
+              <h3 style={{ fontSize:15, fontWeight:700, marginBottom:12, color: "var(--text-primary)", flexShrink:0 }}>User: {selectedUser.name}</h3>
 
               {/* Tabs Selector */}
               <div style={{ display:"flex", borderBottom: "1px solid var(--border)", marginBottom:14, gap:2, overflowX:"auto", scrollbarWidth:"none", flexShrink:0 }}>
@@ -313,7 +313,7 @@ export default function AdminUsersPage() {
                   }).map(([k,v]) => (
                     <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"9px 0", borderBottom: "1px solid var(--border)" }}>
                       <span style={{ fontSize:13, color: "var(--text-secondary)" }}>{k}</span>
-                      <span style={{ fontSize:13, fontWeight:600, color: "#000000" }}>{v}</span>
+                      <span style={{ fontSize:13, fontWeight:600, color: "var(--text-primary)" }}>{v}</span>
                     </div>
                   ))}
                 </div>
@@ -340,7 +340,7 @@ export default function AdminUsersPage() {
                         ].map(item => (
                           <div key={item.k} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                             <span style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase" }}>{item.k}</span>
-                            <span style={{ fontSize: 13, fontWeight: 700, color: "#000000" }}>{item.v}</span>
+                            <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{item.v}</span>
                           </div>
                         ))}
                       </div>
@@ -567,7 +567,7 @@ export default function AdminUsersPage() {
 
                           <div style={{ flex:1, minWidth:0 }}>
                             <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                              <p style={{ fontSize:12, fontWeight:600, color: "#000000", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{tx.name}</p>
+                              <p style={{ fontSize:12, fontWeight:600, color: "var(--text-primary)", whiteSpace:"nowrap", overflow:"hidden", textOverflow:"ellipsis" }}>{tx.name}</p>
                               {tx.category && (
                                 <span style={{ fontSize:9, background:"rgba(255,255,255,0.06)", border:"1px solid rgba(255,255,255,0.1)", borderRadius:4, padding:"0 4px", color: "var(--text-secondary)", fontWeight:500 }}>
                                   {tx.category}
@@ -713,7 +713,7 @@ export default function AdminUsersPage() {
             <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} exit={{scale:0.95,opacity:0}} onClick={e => e.stopPropagation()}
               style={{ background: "var(--bg-dark)", border:"1px solid #222", borderRadius:20, padding:28, width:"100%", maxWidth:400 }}>
               
-              <h3 style={{ fontSize:16, fontWeight:700, marginBottom:16, color: "#000000" }}>Reject KYC Application</h3>
+              <h3 style={{ fontSize:16, fontWeight:700, marginBottom:16, color: "var(--text-primary)" }}>Reject KYC Application</h3>
               <p style={{ fontSize:13, color: "var(--text-secondary)", marginBottom:14 }}>Please enter a reason for rejecting the verification application to notify the user:</p>
 
               <textarea 
@@ -722,7 +722,7 @@ export default function AdminUsersPage() {
                 placeholder="Enter rejection reason..."
                 style={{
                   width: "100%", height: 100, background: "var(--bg-card2)", border: "1px solid var(--border)",
-                  borderRadius: 10, padding: "10px 12px", color: "#000000", fontSize: 13, outline: "none",
+                  borderRadius: 10, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none",
                   resize: "none", marginBottom: 20
                 }}
               />

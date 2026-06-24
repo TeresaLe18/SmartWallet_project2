@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { Clock, ChevronRight, Flame } from "lucide-react";
 import { motion } from "framer-motion";
 import { voucherAPI } from "../../services/api";
+import { useLanguage } from "../../context/LanguageContext";
 
 const discountLabel = (v) => v.discount_type === "PERCENT" ? `${Number(v.discount_value)}%` : `${Number(v.discount_value).toLocaleString("vi-VN")}₫`;
 const fmtDate = (d) => { try { return new Date(d).toLocaleDateString("vi-VN"); } catch { return ""; } };
@@ -20,8 +21,23 @@ const TAG_MAP = {
 
 const normalizeTag = (tag) => TAG_MAP[tag] || tag;
 
+const getTagLabel = (tagKey, lang) => {
+  if (lang === "vi") {
+    if (tagKey === "All") return "Tất cả";
+    if (tagKey === "Transfer") return "Chuyển tiền";
+    if (tagKey === "Shopping") return "Mua sắm";
+    if (tagKey === "Withdraw") return "Rút tiền";
+    if (tagKey === "Referral") return "Giới thiệu";
+    if (tagKey === "Deposit") return "Nạp tiền";
+    if (tagKey === "Bills") return "Hóa đơn";
+    return tagKey;
+  }
+  return tagKey;
+};
+
 export default function OffersPage() {
   const navigate = useNavigate();
+  const { t, lang } = useLanguage();
   const [activeTag, setActiveTag] = useState("All");
   const [vouchers, setVouchers] = useState([]);
 
@@ -46,19 +62,19 @@ export default function OffersPage() {
   return (
     <div style={{ maxWidth:900 }}>
       <div style={{ marginBottom:24 }}>
-        <h1 style={{ fontSize:22, fontWeight:800, marginBottom:4 }}>🎁 Offers & Vouchers</h1>
-        <p style={{ color: "var(--text-secondary)", fontSize:14 }}>Exclusive deals available only for SmartWallet members</p>
+        <h1 style={{ fontSize:22, fontWeight:800, marginBottom:4 }}>🎁 {t.offersPage.title}</h1>
+        <p style={{ color: "var(--text-secondary)", fontSize:14 }}>{t.offersPage.subtitle}</p>
       </div>
 
       {/* Tags filter */}
       <div style={{ display:"flex", gap:8, marginBottom:24, flexWrap:"wrap" }}>
-        {tags.map(t => (
-          <button key={t} onClick={() => setActiveTag(t)} style={{
+        {tags.map(tagKey => (
+          <button key={tagKey} onClick={() => setActiveTag(tagKey)} style={{
             padding:"6px 14px", borderRadius:20, fontSize:13, fontWeight:500,
-            background: activeTag===t ? "rgba(37,99,235,0.15)" : "#ffffff",
-            border:`1px solid ${activeTag===t ? "rgba(37,99,235,0.4)" : "var(--border)"}`,
-            color: activeTag===t ? "#2563eb" : "#000000", cursor:"pointer", transition:"all 0.2s"
-          }}>{t}</button>
+            background: activeTag===tagKey ? "rgba(37,99,235,0.15)" : "#ffffff",
+            border:`1px solid ${activeTag===tagKey ? "rgba(37,99,235,0.4)" : "var(--border)"}`,
+            color: activeTag===tagKey ? "#2563eb" : "#000000", cursor:"pointer", transition:"all 0.2s"
+          }}>{getTagLabel(tagKey, lang)}</button>
         ))}
       </div>
 
@@ -66,7 +82,7 @@ export default function OffersPage() {
       {filtered.length === 0 ? (
         <div style={{ textAlign:"center", padding:"60px 0", color: "var(--text-muted)", fontSize:14 }}>
           <p style={{ fontSize:40, marginBottom:12 }}>🎟️</p>
-          <p>No offers available{activeTag !== "All" ? ` for "${activeTag}"` : ""}.</p>
+          <p>{t.offersPage.noOffers}{activeTag !== "All" ? ` ${lang === "vi" ? "cho" : "for"} "${getTagLabel(activeTag, lang)}"` : ""}.</p>
         </div>
       ) : (
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:16 }}>
@@ -85,7 +101,7 @@ export default function OffersPage() {
                 {v.hot && (
                   <div style={{ position:"absolute", top:12, right:12, display:"flex", alignItems:"center", gap:4, background:"rgba(37,99,235,0.15)", border:"1px solid rgba(37,99,235,0.3)", borderRadius:6, padding:"3px 8px" }}>
                     <Flame size={11} style={{ color:"#2563eb" }} />
-                    <span style={{ fontSize:10, fontWeight:700, color:"#2563eb" }}>HOT</span>
+                    <span style={{ fontSize:10, fontWeight:700, color:"#2563eb" }}>{t.offersPage.hot}</span>
                   </div>
                 )}
                 {/* Discount badge */}
@@ -97,16 +113,16 @@ export default function OffersPage() {
                   <p style={{ fontSize:12, color: "var(--text-secondary)", marginBottom:12 }}>{v.description || ""}</p>
                   <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
                     <div style={{ display:"flex", alignItems:"center", gap:6 }}>
-                      <span style={{ fontSize:10, padding:"3px 8px", borderRadius:6, background:`${color}18`, color, fontWeight:600 }}>{type}</span>
+                      <span style={{ fontSize:10, padding:"3px 8px", borderRadius:6, background:`${color}18`, color, fontWeight:600 }}>{getTagLabel(type, lang)}</span>
                       {v.expired_at && (
                         <div style={{ display:"flex", alignItems:"center", gap:4, color: "var(--text-muted)" }}>
                           <Clock size={11} />
-                          <span style={{ fontSize:11 }}>Exp: {fmtDate(v.expired_at)}</span>
+                          <span style={{ fontSize:11 }}>{t.offersPage.exp}: {fmtDate(v.expired_at)}</span>
                         </div>
                       )}
                     </div>
                     <button style={{ background:"none", border:"none", cursor:"pointer", color, display:"flex", alignItems:"center", gap:2, fontSize:12, fontWeight:600 }}>
-                      Use <ChevronRight size={12} />
+                      {lang === "vi" ? "Dùng ngay" : "Use"} <ChevronRight size={12} />
                     </button>
                   </div>
                 </div>

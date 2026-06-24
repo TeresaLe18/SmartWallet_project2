@@ -2,14 +2,11 @@ import { useState, useRef, useEffect } from "react";
 import { Sparkles, Send, Bot, User, ArrowRight, AlertCircle, RefreshCw, Landmark } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { chatAPI } from "../../services/api";
+import { useLanguage } from "../../context/LanguageContext";
 
 export default function AiChatbot() {
-  const [messages, setMessages] = useState([
-    {
-      sender: "ai",
-      text: "Xin chào! Tôi là Trợ lý Tư vấn Tài chính AI của SmartWallet. Tôi có thể giúp gì cho bạn hôm nay? Bạn có thể yêu cầu tôi phân tích chi tiêu, gợi ý kế hoạch tiết kiệm hoặc tư vấn tối ưu hóa dòng tiền.",
-    },
-  ]);
+  const { t, lang } = useLanguage();
+  const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
@@ -45,15 +42,17 @@ export default function AiChatbot() {
       if (res.success) {
         setMessages((prev) => [...prev, { sender: "ai", text: res.reply }]);
       } else {
-        setErrorMsg(res.message || "Không thể tải phản hồi từ trợ lý.");
+        setErrorMsg(res.message || (lang === "vi" ? "Không thể tải phản hồi từ trợ lý." : "Failed to load advice from advisor."));
       }
     } catch (err) {
       console.error("Chat error:", err);
       const backendError = err.response?.data?.message;
-      if (backendError && backendError.includes("GEMINI_API_KEY")) {
-        setErrorMsg("GEMINI_API_KEY chưa được cấu hình. Vui lòng thêm khóa GEMINI_API_KEY vào tệp .env của Backend.");
+      if (backendError && backendError.includes("OPENAI_API_KEY")) {
+        setErrorMsg(lang === "vi" ? t.aiChatbot.errorApiKey : "OPENAI_API_KEY is not configured. Please add the OPENAI_API_KEY key to the Backend .env file.");
+      } else if (backendError && backendError.includes("GEMINI_API_KEY")) {
+        setErrorMsg(lang === "vi" ? "GEMINI_API_KEY chưa được cấu hình. Vui lòng thêm khóa GEMINI_API_KEY vào tệp .env của Backend." : "GEMINI_API_KEY is not configured. Please add the GEMINI_API_KEY key to the Backend .env file.");
       } else {
-        setErrorMsg("Có lỗi xảy ra kết nối với hệ thống AI. Vui lòng kiểm tra và thử lại.");
+        setErrorMsg(backendError || (lang === "vi" ? t.aiChatbot.errorGeneric : "An error occurred connecting to the AI system. Please check and try again."));
       }
     } finally {
       setLoading(false);
@@ -67,12 +66,7 @@ export default function AiChatbot() {
     }
   };
 
-  const quickPrompts = [
-    "Phân tích chi tiêu của tôi gần đây",
-    "Gợi ý cho tôi kế hoạch tiết kiệm 10 triệu đồng",
-    "Tư vấn cách tối ưu số dư ví hiện tại",
-    "Làm sao để hạn chế chi tiêu lãng phí?"
-  ];
+  const quickPrompts = t.aiChatbot.prompts;
 
   return (
     <div className="ai-advisor-container">
@@ -84,8 +78,8 @@ export default function AiChatbot() {
           <span className="badge-ai">
             <Sparkles size={13} /> SMARTWALLET AI
           </span>
-          <h1>AI Financial Advisor</h1>
-          <p>Trợ lý thông minh phân tích dòng tiền, chi tiêu và đưa ra các kế hoạch tích lũy tài chính dành riêng cho bạn.</p>
+          <h1>{t.aiChatbot.title}</h1>
+          <p>{t.aiChatbot.subtitle}</p>
         </div>
         <div className="advisor-hero-icon">
           <Bot size={44} />
@@ -102,13 +96,28 @@ export default function AiChatbot() {
               </div>
               <div>
                 <strong>SmartWallet Assistant</strong>
-                <span className="status-online">● Trực tuyến</span>
+                <span className="status-online">● {t.aiChatbot.online}</span>
               </div>
             </div>
           </div>
 
           <div className="chat-messages-scroll">
             <AnimatePresence initial={false}>
+              {/* Static welcome message as first bubble */}
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ type: "spring", stiffness: 350, damping: 25 }}
+                className="message-row ai-row"
+              >
+                <div className="message-avatar">
+                  <Bot size={15} />
+                </div>
+                <div className="message-content-bubble">
+                  <p style={{ whiteSpace: "pre-line" }}>{t.aiChatbot.welcomeMsg}</p>
+                </div>
+              </motion.div>
+
               {messages.map((m, index) => (
                 <motion.div
                   key={index}
@@ -162,7 +171,7 @@ export default function AiChatbot() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Nhập câu hỏi của bạn tại đây (ví dụ: Phân tích giúp tôi 10 giao dịch gần nhất)..."
+              placeholder={t.aiChatbot.placeholder}
               rows={2}
             />
             <button
@@ -178,8 +187,8 @@ export default function AiChatbot() {
         {/* RIGHT PANEL: QUICK PROMPTS & UTILITIES */}
         <div className="quick-panel">
           <div className="panel-section">
-            <h3>💡 Gợi ý nhanh câu hỏi</h3>
-            <p className="panel-desc">Click vào các câu hỏi gợi ý bên dưới để trợ lý phân tích dữ liệu ví của bạn ngay lập tức:</p>
+            <h3>💡 {t.aiChatbot.quickSuggestions}</h3>
+            <p className="panel-desc">{t.aiChatbot.clickPrompt}</p>
             <div className="prompts-list">
               {quickPrompts.map((p, idx) => (
                 <button
@@ -198,11 +207,10 @@ export default function AiChatbot() {
           <div className="panel-section dashboard-stats-card">
             <div className="stats-card-header">
               <Landmark size={18} />
-              <h4>Lưu ý bảo mật</h4>
+              <h4>{t.aiChatbot.securityNotice}</h4>
             </div>
             <p className="security-note">
-              Trợ lý tài chính SmartWallet AI hoạt động dựa trên dữ liệu giao dịch nội bộ của bạn. 
-              Chúng tôi bảo mật thông tin tuyệt đối và không chia sẻ dữ liệu này với bên thứ ba bên ngoài dịch vụ tư vấn.
+              {t.aiChatbot.securityDesc}
             </p>
           </div>
         </div>
@@ -605,5 +613,54 @@ const chatbotStyles = `
   .advisor-workspace {
     grid-template-columns: 1fr;
   }
+}
+
+[data-theme='dark'] .chatbox-panel {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+[data-theme='dark'] .chatbox-header {
+  background: var(--bg-card);
+  border-bottom-color: var(--border);
+}
+[data-theme='dark'] .advisor-avatar-status strong {
+  color: var(--text-primary);
+}
+[data-theme='dark'] .chat-messages-scroll {
+  background: var(--bg-card2);
+}
+[data-theme='dark'] .ai-row .message-content-bubble {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border-color: var(--border);
+}
+[data-theme='dark'] .chat-input-area {
+  background: var(--bg-card);
+  border-top-color: var(--border);
+}
+[data-theme='dark'] .chat-input-area textarea {
+  background: var(--bg-card2);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+[data-theme='dark'] .panel-section {
+  background: var(--bg-card);
+  border-color: var(--border);
+}
+[data-theme='dark'] .panel-section h3 {
+  color: var(--text-primary);
+}
+[data-theme='dark'] .prompt-card {
+  background: var(--bg-card2);
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+[data-theme='dark'] .prompt-card:hover {
+  background: rgba(37, 99, 235, 0.1);
+  border-color: var(--primary);
+  color: var(--primary-light);
+}
+[data-theme='dark'] .dashboard-stats-card {
+  border-color: rgba(52, 211, 153, 0.3);
 }
 `;

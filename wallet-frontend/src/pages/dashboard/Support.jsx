@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import { Send, Image, X, Headphones, User, Shield } from "lucide-react";
 import { supportAPI } from "../../services/api";
 import { motion, AnimatePresence } from "framer-motion";
+import { useLanguage } from "../../context/LanguageContext";
 
 export default function Support() {
+  const { t, lang } = useLanguage();
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const [selectedImage, setSelectedImage] = useState(null); // base64 string
@@ -55,7 +57,7 @@ export default function Support() {
 
     // Check size (limit to 5MB for base64 safety)
     if (file.size > 5 * 1024 * 1024) {
-      alert("Attached image size must not exceed 5MB.");
+      alert(lang === "vi" ? "Kích thước ảnh đính kèm không được vượt quá 5MB." : "Attached image size must not exceed 5MB.");
       return;
     }
 
@@ -89,7 +91,7 @@ export default function Support() {
       }
     } catch (error) {
       console.error("Failed to send message:", error);
-      alert(error.response?.data?.message || "Failed to send support message. Please try again.");
+      alert(error.response?.data?.message || (lang === "vi" ? "Không thể gửi tin nhắn hỗ trợ. Vui lòng thử lại." : "Failed to send support message. Please try again."));
     } finally {
       setSending(false);
     }
@@ -99,14 +101,14 @@ export default function Support() {
     <div style={{ display: "flex", flexDirection: "column", height: "calc(100vh - 120px)", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
       {/* Chat Header */}
       <div style={{ padding: "16px 24px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", gap: 14, background: "rgba(255,255,255,0.02)" }}>
-        <div style={{ width: 42, height: 42, borderRadius: "50%", background: "rgba(225,29,72,0.1)", border: "1px solid rgba(225,29,72,0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "#e11d48" }}>
+        <div style={{ width: 42, height: 42, borderRadius: "50%", background: "rgba(37,99,235,0.1)", border: "1px solid rgba(37,99,235,0.2)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--primary)" }}>
           <Headphones size={20} />
         </div>
         <div>
-          <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>Customer Support Center</h3>
+          <h3 style={{ fontSize: 15, fontWeight: 700, margin: 0 }}>{t.support.subtitle}</h3>
           <p style={{ fontSize: 11, color: "#22c55e", fontWeight: 500, margin: "2px 0 0 0", display: "flex", alignItems: "center", gap: 6 }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#22c55e" }} />
-            Support agent is online
+            {lang === "vi" ? "Tư vấn viên trực tuyến" : "Support agent is online"}
           </p>
         </div>
       </div>
@@ -115,13 +117,13 @@ export default function Support() {
       <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", gap: 16 }}>
         {loading ? (
           <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <div style={{ width: 30, height: 30, borderRadius: "50%", border: "2px solid #e11d48", borderTopColor: "transparent", animation: "spin 1s linear infinite" }} />
+            <div style={{ width: 30, height: 30, borderRadius: "50%", border: "2px solid var(--primary)", borderTopColor: "transparent", animation: "spin 1s linear infinite" }} />
           </div>
         ) : messages.length === 0 ? (
           <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12, color: "var(--text-secondary)", textAlign: "center", padding: 24 }}>
             <Headphones size={48} style={{ color: "rgba(255,255,255,0.1)" }} />
-            <h4 style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>Hello! How can we help you today?</h4>
-            <p style={{ fontSize: 13, maxWidth: 320, margin: 0 }}>Send us a message or attach a screenshot of the issue. Our admin team will respond to you right here.</p>
+            <h4 style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>{t.support.hello}</h4>
+            <p style={{ fontSize: 13, maxWidth: 320, margin: 0 }}>{t.support.desc}</p>
           </div>
         ) : (
           messages.map((msg) => {
@@ -141,8 +143,8 @@ export default function Support() {
                       borderRadius: 14,
                       borderTopLeftRadius: isAdmin ? 2 : 14,
                       borderTopRightRadius: !isAdmin ? 2 : 14,
-                      background: isAdmin ? "var(--bg-card2)" : "#e11d48",
-                      border: isAdmin ? "1px solid var(--border)" : "1px solid rgba(225,29,72,0.2)",
+                      background: isAdmin ? "var(--bg-card2)" : "var(--primary)",
+                      border: isAdmin ? "1px solid var(--border)" : "1px solid rgba(37,99,235,0.2)",
                       color: isAdmin ? "var(--text-primary)" : "white",
                       fontSize: 13.5,
                       lineHeight: 1.5,
@@ -158,7 +160,7 @@ export default function Support() {
                     </div>
                     {/* Timestamp */}
                     <span style={{ fontSize: 10, color: "var(--text-muted)", alignSelf: isAdmin ? "flex-start" : "flex-end", paddingLeft: 4, paddingRight: 4 }}>
-                      {new Date(msg.created_at || msg.createdAt).toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })}
+                      {new Date(msg.created_at || msg.createdAt).toLocaleTimeString(lang === "vi" ? "vi-VN" : "en-US", { hour: "2-digit", minute: "2-digit" })}
                     </span>
                   </div>
                 </div>
@@ -187,7 +189,7 @@ export default function Support() {
                 <X size={10} />
               </button>
             </div>
-            <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Image selected</span>
+            <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t.support.imageSelected}</span>
           </motion.div>
         )}
       </AnimatePresence>
@@ -199,7 +201,7 @@ export default function Support() {
           type="button"
           onClick={() => fileInputRef.current?.click()}
           style={{ width: 40, height: 40, borderRadius: "50%", background: "var(--bg-card)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-secondary)", cursor: "pointer", transition: "all 0.2s" }}
-          onMouseEnter={(e) => e.currentTarget.style.color = "#e11d48"}
+          onMouseEnter={(e) => e.currentTarget.style.color = "var(--primary)"}
           onMouseLeave={(e) => e.currentTarget.style.color = "var(--text-secondary)"}
         >
           <Image size={18} />
@@ -217,7 +219,7 @@ export default function Support() {
           type="text"
           value={inputText}
           onChange={(e) => setInputText(e.target.value)}
-          placeholder="Type a support message..."
+          placeholder={t.support.typeMessage}
           style={{ flex: 1, height: 40, padding: "0 16px", borderRadius: 20, border: "1px solid var(--border)", background: "var(--bg-card)", color: "var(--text-primary)", fontSize: 13.5 }}
         />
 
@@ -227,7 +229,7 @@ export default function Support() {
           disabled={sending || (!inputText.trim() && !selectedImage)}
           style={{
             width: 40, height: 40, borderRadius: "50%",
-            background: (inputText.trim() || selectedImage) ? "#e11d48" : "rgba(0,0,0,0.03)",
+            background: (inputText.trim() || selectedImage) ? "var(--primary)" : "rgba(0,0,0,0.03)",
             border: "none", display: "flex", alignItems: "center", justifyContent: "center",
             color: "white", cursor: (inputText.trim() || selectedImage) ? "pointer" : "not-allowed",
             transition: "all 0.2s"

@@ -3,9 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { User, Camera, Phone, Mail, Lock, CheckCircle, RefreshCw, AlertCircle, Eye, EyeOff, ShieldCheck, X, Send, UserX } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { authAPI, getUploadUrl } from "../../services/api";
+import { useLanguage } from "../../context/LanguageContext";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
+  const { t, lang } = useLanguage();
+  
   // 1. Fetch current logged-in user from localStorage
   const [user, setUser] = useState({
     avatar: "",
@@ -133,7 +136,7 @@ export default function ProfilePage() {
       setTimeout(() => setAvatarSuccess(false), 2000);
     } catch (err) {
       console.log(err);
-      alert(err.response?.data?.message || "Avatar upload failed. Please try again.");
+      alert(err.response?.data?.message || (lang === "vi" ? "Tải ảnh đại diện thất bại. Vui lòng thử lại." : "Avatar upload failed. Please try again."));
     } finally {
       setAvatarLoading(false);
     }
@@ -141,7 +144,7 @@ export default function ProfilePage() {
 
   const handleSaveName = () => {
     if (!editNameVal.trim()) {
-      alert("Name cannot be empty");
+      alert(t.profile.nameCannotBeEmpty);
       return;
     }
     const updatedUser = {
@@ -359,8 +362,8 @@ export default function ProfilePage() {
   return (
     <div style={{ maxWidth: 640, display: "flex", flexDirection: "column", gap: 24, paddingBottom: 40 }}>
       <div>
-        <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>Account Settings</h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>Manage your profile picture, contact information, and security password.</p>
+        <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>{t.profile.title}</h1>
+        <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>{t.profile.subtitle}</p>
       </div>
 
       {/* CARD 1: UPDATE AVATAR */}
@@ -372,7 +375,7 @@ export default function ProfilePage() {
           borderRadius: 16, padding: 24, boxShadow: "0 4px 20px rgba(0, 0, 0, 0.01)"
         }}
       >
-        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>1. Profile Picture</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 16 }}>{t.profile.section1}</h3>
         <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
           <div style={{ position: "relative", cursor: "pointer" }} onClick={handleAvatarClick}>
             <div style={{
@@ -442,7 +445,7 @@ export default function ProfilePage() {
                     cursor: "pointer"
                   }}
                 >
-                  Save
+                  {lang === "vi" ? "Lưu" : "Save"}
                 </button>
                 <button
                   type="button"
@@ -458,7 +461,7 @@ export default function ProfilePage() {
                     cursor: "pointer"
                   }}
                 >
-                  Cancel
+                  {lang === "vi" ? "Hủy" : "Cancel"}
                 </button>
               </div>
             ) : (
@@ -482,7 +485,7 @@ export default function ProfilePage() {
                     padding: "2px 6px"
                   }}
                 >
-                  ✏️ Edit
+                  ✏️ {t.profile.changeName}
                 </button>
               </div>
             )}
@@ -499,14 +502,14 @@ export default function ProfilePage() {
                 fontSize: 13, fontWeight: 600, cursor: "pointer"
               }}
             >
-              Choose Photo
+              {t.profile.changeAvatar}
             </button>
           </div>
         </div>
 
         {avatarSuccess && (
           <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} style={{ color: "#22c55e", fontSize: 12, marginTop: 12, display: "flex", alignItems: "center", gap: 4 }}>
-            ✓ Profile picture updated successfully!
+            ✓ {t.profile.avatarSuccess}
           </motion.div>
         )}
       </motion.div>
@@ -521,9 +524,9 @@ export default function ProfilePage() {
           borderRadius: 16, padding: 24, boxShadow: "0 4px 20px rgba(0, 0, 0, 0.01)"
         }}
       >
-        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>2. Email & Phone Number</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{t.profile.section2}</h3>
         <p style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 16 }}>
-          A verification OTP will be sent to your email to confirm phone number updates.
+          {lang === "vi" ? "Mã xác thực OTP sẽ được gửi về email để xác nhận thay đổi số điện thoại." : "A verification OTP will be sent to your email to confirm phone number updates."}
         </p>
 
         {contactSuccess && (
@@ -542,24 +545,24 @@ export default function ProfilePage() {
           {/* ── Email section (Read-only) ── */}
           <div style={{ background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 0 }}>
-              Email address: <span style={{ color: "var(--text-primary)", marginLeft: 6 }}>{user.email || "—"}</span>
+              {t.profile.emailLabel}: <span style={{ color: "var(--text-primary)", marginLeft: 6 }}>{user.email || "—"}</span>
             </p>
           </div>
 
           {/* ── Phone section ── */}
           <div style={{ background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 12, padding: 16 }}>
             <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)", marginBottom: 8 }}>
-              Current phone: <span style={{ color: "var(--text-primary)" }}>{user.phone || "Not set"}</span>
+              {lang === "vi" ? "SĐT hiện tại:" : "Current phone:"} <span style={{ color: "var(--text-primary)" }}>{user.phone || (lang === "vi" ? "Chưa thiết lập" : "Not set")}</span>
             </p>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
               <div style={{ flex: 1, position: "relative" }}>
                 <Phone size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                 <input
                   type="tel"
-                  placeholder="Enter new phone number (e.g. 0912345678)"
+                  placeholder={lang === "vi" ? "Nhập số điện thoại mới (ví dụ: 0912345678)" : "Enter new phone number (e.g. 0912345678)"}
                   value={newPhone}
                   onChange={(e) => { setNewPhone(e.target.value); setOtpError(""); }}
-                  style={{ width: "100%", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 14px 10px 38px", color: "#000000", fontSize: 13, outline: "none", boxSizing: "border-box" }}
+                  style={{ width: "100%", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 10, padding: "10px 14px 10px 38px", color: "var(--text-primary)", fontSize: 13, outline: "none", boxSizing: "border-box" }}
                 />
               </div>
               <button
@@ -576,7 +579,7 @@ export default function ProfilePage() {
                 {otpSending && changeTarget === "phone" ? (
                   <div style={{ width: 13, height: 13, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
                 ) : <Send size={13} />}
-                {otpSending && changeTarget === "phone" ? "Sending..." : "Change Phone"}
+                {otpSending && changeTarget === "phone" ? t.login.sending : (lang === "vi" ? "Đổi Số Điện Thoại" : "Change Phone")}
               </button>
             </div>
           </div>
@@ -593,7 +596,7 @@ export default function ProfilePage() {
           borderRadius: 16, padding: 24, boxShadow: "0 4px 20px rgba(0, 0, 0, 0.01)"
         }}
       >
-        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>3. Change Password</h3>
+        <h3 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4 }}>{t.profile.section3}</h3>
 
         {passError && (
           <div style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 16, color: "#ef4444", fontSize: 13 }}>
@@ -603,22 +606,22 @@ export default function ProfilePage() {
 
         {passSuccess && (
           <div style={{ background: "rgba(34,197,94,0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 16, color: "#22c55e", fontSize: 13 }}>
-            ✓ Password updated successfully!
+            ✓ {t.profile.passwordUpdated}
           </div>
         )}
 
         <form onSubmit={handleChangePasswordSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {/* Current Password */}
           <div>
-            <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Current Password</label>
+            <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>{t.profile.currentPassword}</label>
             <div style={{ position: "relative" }}>
               <Lock size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
               <input
                 type={showPassCurrent ? "text" : "password"}
-                placeholder="Enter current password"
+                placeholder={lang === "vi" ? "Nhập mật khẩu hiện tại" : "Enter current password"}
                 value={passForm.currentPass}
                 onChange={(e) => setPassForm({ ...passForm, currentPass: e.target.value })}
-                style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "11px 42px 11px 38px", color: "#000000", fontSize: 13, outline: "none" }}
+                style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "11px 42px 11px 38px", color: "var(--text-primary)", fontSize: 13, outline: "none" }}
               />
               <button
                 type="button"
@@ -633,15 +636,15 @@ export default function ProfilePage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             {/* New Password */}
             <div>
-              <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>New Password</label>
+              <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>{t.profile.newPassword}</label>
               <div style={{ position: "relative" }}>
                 <Lock size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                 <input
                   type={showPassNew ? "text" : "password"}
-                  placeholder="Minimum 8 characters"
+                  placeholder={lang === "vi" ? "Tối thiểu 8 ký tự" : "Minimum 8 characters"}
                   value={passForm.newPass}
                   onChange={(e) => setPassForm({ ...passForm, newPass: e.target.value })}
-                  style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "11px 42px 11px 38px", color: "#000000", fontSize: 13, outline: "none" }}
+                  style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "11px 42px 11px 38px", color: "var(--text-primary)", fontSize: 13, outline: "none" }}
                 />
                 <button
                   type="button"
@@ -655,15 +658,15 @@ export default function ProfilePage() {
 
             {/* Confirm Password */}
             <div>
-              <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Confirm New Password</label>
+              <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>{t.profile.confirmNewPassword}</label>
               <div style={{ position: "relative" }}>
                 <Lock size={15} style={{ position: "absolute", left: 13, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
                 <input
                   type={showPassConfirm ? "text" : "password"}
-                  placeholder="Re-enter new password"
+                  placeholder={lang === "vi" ? "Nhập lại mật khẩu mới" : "Re-enter new password"}
                   value={passForm.confirmPass}
                   onChange={(e) => setPassForm({ ...passForm, confirmPass: e.target.value })}
-                  style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "11px 42px 11px 38px", color: "#000000", fontSize: 13, outline: "none" }}
+                  style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 10, padding: "11px 42px 11px 38px", color: "var(--text-primary)", fontSize: 13, outline: "none" }}
                 />
                 <button
                   type="button"
@@ -688,12 +691,11 @@ export default function ProfilePage() {
           >
             {passLoading ? (
               <div style={{ width: 16, height: 16, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-            ) : "Change Password"}
+            ) : <Lock size={13} />}
+            {t.profile.updatePassword}
           </button>
         </form>
       </motion.div>
-
-
 
       {/* ─── OTP CONFIRMATION MODAL (shared for profile & password) ─────────── */}
       <AnimatePresence>
@@ -735,12 +737,12 @@ export default function ProfilePage() {
                   <Mail size={24} style={{ color: "var(--primary)" }} />
                 </div>
                 <h3 style={{ fontSize: 18, fontWeight: 800, color: "var(--text-primary)", marginBottom: 8 }}>
-                  Verify New Information
+                  {t.profile.otpTitle}
                 </h3>
                 <p style={{ color: "var(--text-secondary)", fontSize: 13, lineHeight: 1.6, marginBottom: 20 }}>
-                  An OTP code has been sent to your registered email:<br />
+                  {t.profile.otpSent}:<br />
                   <strong style={{ color: "var(--primary)" }}>{user.email}</strong>
-                  <br /><span style={{ fontSize: 12 }}>Check your inbox (including Spam folder)</span>
+                  <br /><span style={{ fontSize: 12 }}>{t.profile.checkInbox}</span>
                 </p>
 
                 {otpError && (
@@ -765,7 +767,7 @@ export default function ProfilePage() {
                         width: 44, height: 48, textAlign: "center", fontSize: 20, fontWeight: 700,
                         background: digit ? "rgba(37,99,235,0.08)" : "var(--bg-card2)",
                         border: `2px solid ${digit ? "var(--primary)" : "var(--border)"}`,
-                        borderRadius: 10, color: "#000000", outline: "none"
+                        borderRadius: 10, color: "var(--text-primary)", outline: "none"
                       }}
                     />
                   ))}
@@ -779,10 +781,10 @@ export default function ProfilePage() {
                       onClick={handleResendOtp}
                       style={{ background: "none", border: "none", color: "var(--primary)", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}
                     >
-                      <RefreshCw size={12} /> Resend OTP Code
+                      <RefreshCw size={12} /> {t.profile.resendCode}
                     </button>
                   ) : (
-                    <span>Resend in {countdown}s</span>
+                    <span>{t.profile.resendIn.replace("{seconds}", countdown)}</span>
                   )}
                 </div>
 
@@ -795,7 +797,7 @@ export default function ProfilePage() {
                       fontSize: 14, cursor: "pointer"
                     }}
                   >
-                    Cancel
+                    {lang === "vi" ? "Hủy" : "Cancel"}
                   </button>
                   <button
                     onClick={handleVerifyContactChange}
@@ -809,7 +811,8 @@ export default function ProfilePage() {
                   >
                     {otpLoading ? (
                       <div style={{ width: 18, height: 18, border: "2px solid rgba(255,255,255,0.3)", borderTopColor: "white", borderRadius: "50%", animation: "spin 0.8s linear infinite" }} />
-                    ) : "Confirm & Update"}
+                    ) : <CheckCircle size={14} />}
+                    {t.profile.submitOtp}
                   </button>
                 </div>
               </div>

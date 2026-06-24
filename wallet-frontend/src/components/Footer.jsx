@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { Users, Mail, MapPin } from "lucide-react";
+import { useLanguage } from "../context/LanguageContext";
 
 export default function Footer() {
+  const { t, lang } = useLanguage();
   const [clockText, setClockText] = useState("");
 
   // Live clock
@@ -18,12 +20,12 @@ export default function Footer() {
         minute: '2-digit', 
         second: '2-digit' 
       };
-      setClockText(now.toLocaleDateString('vi-VN', options));
+      setClockText(now.toLocaleDateString(lang === 'vi' ? 'vi-VN' : 'en-US', options));
     };
     updateClock();
     const clockTimer = setInterval(updateClock, 1000);
     return () => clearInterval(clockTimer);
-  }, []);
+  }, [lang]);
 
   return (
     <footer className="bg-slate-900 text-slate-350 pt-16 pb-8 z-10 relative">
@@ -31,17 +33,16 @@ export default function Footer() {
         
         {/* Contact US */}
         <div className="md:col-span-5 space-y-4">
-          <h5 className="text-sm font-bold uppercase tracking-wider text-red-500">Contact US</h5>
+          <h5 className="text-sm font-bold uppercase tracking-wider text-red-500">{t.footer.contactUs}</h5>
           <ul className="space-y-4 text-sm">
             <li className="flex items-start gap-3">
               <Users className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
               <div>
-                <strong className="text-slate-100">Nhóm phát triển:</strong>
+                <strong className="text-slate-100">{t.footer.devTeam}</strong>
                 <ul className="mt-1.5 space-y-1 text-slate-400 pl-4 list-disc">
-                  <li>Lê Thị Kiều Duyên</li>
-                  <li>Lưu Anh Thuận</li>
-                  <li>Phạm Tấn Tài</li>
-                  <li>Châu Quốc Lâm Phong</li>
+                  {t.footer.devs && t.footer.devs.map((dev, index) => (
+                    <li key={index}>{dev}</li>
+                  ))}
                 </ul>
               </div>
             </li>
@@ -62,18 +63,18 @@ export default function Footer() {
 
         {/* Our Services */}
         <div className="md:col-span-3 space-y-4">
-          <h5 className="text-sm font-bold uppercase tracking-wider text-red-500">Our Services</h5>
+          <h5 className="text-sm font-bold uppercase tracking-wider text-red-500">{t.footer.ourServices}</h5>
           <ul className="space-y-3 text-sm font-bold">
-            <li><Link to="/shop" className="text-slate-400 hover:text-white transition-colors">E-commerce Shop</Link></li>
-            <li><Link to="/food" className="text-slate-400 hover:text-white transition-colors">Food Delivery</Link></li>
-            <li><Link to="/dashboard" className="text-slate-400 hover:text-white transition-colors">Financial Reports</Link></li>
-            <li><a href="#" className="text-slate-400 hover:text-white transition-colors">QR Payment</a></li>
+            <li><Link to="/shop" className="text-slate-400 hover:text-white transition-colors">{t.footer.shop}</Link></li>
+            <li><Link to="/food" className="text-slate-400 hover:text-white transition-colors">{t.footer.food}</Link></li>
+            <li><Link to="/dashboard" className="text-slate-400 hover:text-white transition-colors">{t.footer.reports}</Link></li>
+            <li><a href="#" className="text-slate-400 hover:text-white transition-colors">{t.footer.qr}</a></li>
           </ul>
         </div>
 
         {/* Embedded Map */}
         <div className="md:col-span-4 space-y-4">
-          <h5 className="text-sm font-bold uppercase tracking-wider text-red-500">Bản đồ</h5>
+          <h5 className="text-sm font-bold uppercase tracking-wider text-red-500">{t.footer.map}</h5>
           <div className="aspect-[16/9] rounded-2xl overflow-hidden border border-slate-800 shadow-md">
             <iframe 
               src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3918.443661450942!2d106.6252445758832!3d10.8538210577626!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x317529de26c36777%3A0xc3f1737e89a544d0!2zRlBUIEFwdGVjaCBIQ00!5e0!3m2!1svi!2s!4v1715150000000!5m2!1svi!2s" 
@@ -92,7 +93,7 @@ export default function Footer() {
       {/* Footer bottom */}
       <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-sm">
         <div className="text-center md:text-left">
-          <p>© 2026 <strong className="text-slate-100 font-bold">SmartWallet Ecosystem</strong>. Dự án học thuật Node.js.</p>
+          <p>© 2026 <strong className="text-slate-100 font-bold">{t.footer.ecosystem}</strong>. {t.footer.academicProject}.</p>
           <p className="text-xs text-red-400 font-mono mt-1.5" id="clock">{clockText}</p>
         </div>
 

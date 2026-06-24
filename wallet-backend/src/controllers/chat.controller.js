@@ -5,12 +5,17 @@ const getFinancialAdvisorResponse = async (req, res) => {
     const userId = req.user.userId;
     const { message, history } = req.body;
 
+    console.log(`[AI Chat Debug] Received request from userId: ${userId}`);
+
     if (!message) {
       return res.status(400).json({ success: false, message: 'Message is required' });
     }
 
     const openaiApiKey = process.env.OPENAI_API_KEY;
+    console.log(`[AI Chat Debug] process.env.OPENAI_API_KEY is ${openaiApiKey ? 'DEFINED (starts with ' + openaiApiKey.substring(0, 8) + ')' : 'UNDEFINED'}`);
+
     if (!openaiApiKey || openaiApiKey === 'YOUR_OPENAI_API_KEY') {
+      console.log(`[AI Chat Debug] API key validation failed. Key is either empty or placeholder.`);
       return res.status(400).json({
         success: false,
         message: 'OPENAI_API_KEY is not configured in the backend .env file. Please add your key to continue.',

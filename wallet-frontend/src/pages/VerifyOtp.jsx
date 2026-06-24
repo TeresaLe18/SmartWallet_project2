@@ -159,7 +159,7 @@ export default function VerifyOtpPage() {
                       width: 52, height: 60, textAlign: "center", fontSize: 24, fontWeight: 700,
                       background: digit ? "rgba(37,99,235,0.1)" : "var(--bg-card2)",
                       border: `2px solid ${digit ? "#2563eb" : (error ? "#ef4444" : "var(--border)")}`,
-                      borderRadius: 12, color: "#000000", outline: "none", transition: "all 0.2s"
+                      borderRadius: 12, color: "var(--text-primary)", outline: "none", transition: "all 0.2s"
                     }}
                     onFocus={(e) => { e.target.style.borderColor = "#2563eb"; e.target.style.boxShadow = "0 0 0 3px rgba(37,99,235,0.15)"; }}
                     onBlur={(e) => { e.target.style.boxShadow = "none"; if (!digit) e.target.style.borderColor = error ? "#ef4444" : "var(--border)"; }}
@@ -178,7 +178,7 @@ export default function VerifyOtpPage() {
                 style={{
                   width: "100%",
                   background: loading ? "#3f3f46" : "linear-gradient(135deg, #2563eb, #1d4ed8)",
-                  color: "#000000", border: "none", borderRadius: 10,
+                  color: "#ffffff", border: "none", borderRadius: 10,
                   padding: "14px", fontWeight: 700, fontSize: 15,
                   cursor: loading ? "not-allowed" : "pointer",
                   display: "flex", alignItems: "center", justifyContent: "center", gap: 8,

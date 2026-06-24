@@ -27,6 +27,7 @@ import {
   Wallet,
 } from "lucide-react";
 import { newsAPI, walletAPI, formatVND } from "../../services/api";
+import { useLanguage } from "../../context/LanguageContext";
 
 const safeParse = (value) => {
   try {
@@ -41,7 +42,7 @@ const parseDate = (dateValue) => {
   return Number.isNaN(d.getTime()) ? new Date() : d;
 };
 
-const mapTx = (tx, currentEmail) => {
+const mapTx = (tx, currentEmail, t) => {
   const isSender = tx.sender_wallet?.user?.email === currentEmail;
   const isDeposit = tx.transaction_type === "DEPOSIT";
   const isWithdraw = tx.transaction_type === "WITHDRAW";
@@ -50,12 +51,12 @@ const mapTx = (tx, currentEmail) => {
   return {
     id: tx.reference_code || tx.id,
     name: isDeposit
-      ? "Wallet Deposit"
+      ? (t.wallets.depositAmount || "Wallet Deposit")
       : isWithdraw
-        ? "Bank Withdrawal"
+        ? (t.wallets.withdrawTitle || "Bank Withdrawal")
         : isSender
-          ? `Transfer to ${tx.receiver_wallet?.user?.email || "recipient"}`
-          : `Received from ${tx.sender_wallet?.user?.email || "sender"}`,
+          ? `${t.wallets.transferTitle || "Transfer to"} ${tx.receiver_wallet?.user?.email || "recipient"}`
+          : `${t.dashboard.receive || "Received from"} ${tx.sender_wallet?.user?.email || "sender"}`,
     type: isDeposit || (!isSender && !isWithdraw) ? "income" : "expense",
     amount: Number(tx.amount || 0),
     status: String(tx.status || "PENDING").toLowerCase(),
@@ -89,20 +90,6 @@ const buildCashFlow = (transactions) => {
   return rows;
 };
 
-const buildCategories = (transactions) => {
-  const income = transactions
-    .filter((tx) => tx.status === "success" && tx.type === "income")
-    .reduce((sum, tx) => sum + tx.amount, 0);
-  const expense = transactions
-    .filter((tx) => tx.status === "success" && tx.type === "expense")
-    .reduce((sum, tx) => sum + tx.amount, 0);
-
-  return [
-    { name: "Income", value: income, color: "#11c981" },
-    { name: "Expense", value: expense, color: "#f05278" },
-  ].filter((item) => item.value > 0);
-};
-
 const CustomTooltip = ({ active, payload, label }) => {
   if (!active || !payload?.length) return null;
   return (
@@ -118,6 +105,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 };
 
 export default function DashboardPage() {
+  const { t, lang } = useLanguage();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(() => safeParse(localStorage.getItem("bw_user")));
@@ -148,7 +136,7 @@ export default function DashboardPage() {
 
         if (txRes.status === "fulfilled" && txRes.value?.success) {
           const email = savedUser?.email || "";
-          setTransactions(txRes.value.transactions.map((tx) => mapTx(tx, email)));
+          setTransactions(txRes.value.transactions.map((tx) => mapTx(tx, email, t)));
         }
 
         if (newsRes.status === "fulfilled" && newsRes.value?.success) {
@@ -165,42 +153,56 @@ export default function DashboardPage() {
       mounted = false;
       window.removeEventListener("balance_updated", load);
     };
-  }, []);
+  }, [t]);
 
   const cashFlow = useMemo(() => buildCashFlow(transactions), [transactions]);
-  const categoryData = useMemo(() => buildCategories(transactions), [transactions]);
+  
+  const categoryData = useMemo(() => {
+    const income = transactions
+      .filter((tx) => tx.status === "success" && tx.type === "income")
+      .reduce((sum, tx) => sum + tx.amount, 0);
+    const expense = transactions
+      .filter((tx) => tx.status === "success" && tx.type === "expense")
+      .reduce((sum, tx) => sum + tx.amount, 0);
+
+    return [
+      { name: t.home.income, value: income, color: "#11c981" },
+      { name: t.home.expense, value: expense, color: "#f05278" },
+    ].filter((item) => item.value > 0);
+  }, [transactions, t]);
+
   const monthlyIncome = cashFlow.reduce((sum, row) => sum + row.income, 0);
   const monthlyExpense = cashFlow.reduce((sum, row) => sum + row.expense, 0);
   const successfulTx = transactions.filter((tx) => tx.status === "success");
 
   const stats = [
     {
-      label: "Wallet Balance",
+      label: t.home.walletBalance,
       value: formatVND(balance),
       icon: Wallet,
       tone: "teal",
-      footer: "Available balance",
+      footer: t.home.availableBalance,
     },
     {
-      label: "Total Income",
+      label: t.home.totalIncome,
       value: formatVND(monthlyIncome),
       icon: TrendingUp,
       tone: "green",
-      footer: "Last 7 days",
+      footer: t.home.last7Days,
     },
     {
-      label: "Total Expenses",
+      label: t.home.totalExpenses,
       value: formatVND(monthlyExpense),
       icon: TrendingDown,
       tone: "pink",
-      footer: "Last 7 days",
+      footer: t.home.last7Days,
     },
     {
-      label: "Transactions",
+      label: t.home.transactions,
       value: `${successfulTx.length}`,
       icon: BarChart3,
       tone: "blue",
-      footer: "Successful records",
+      footer: t.home.successfulRecords,
     },
   ];
 
@@ -210,16 +212,16 @@ export default function DashboardPage() {
 
       <section className="welcome-card">
         <div>
-          <span>SmartWallet Analytics</span>
-          <h2>Hello, {user?.name || "there"} 👋</h2>
-          <p>Monitor your wallet, transactions, cash flow and financial news in one clean workspace.</p>
+          <span>{t.home.analytics}</span>
+          <h2>{t.home.welcome.replace("{name}", user?.name || "there")}</h2>
+          <p>{t.home.lead}</p>
         </div>
         <div className="welcome-actions">
-          <button type="button">
-            <ArrowDownLeft size={17} /> Deposit
+          <button type="button" onClick={() => navigate("/dashboard/wallets?tab=deposit")}>
+            <ArrowDownLeft size={17} /> {t.home.deposit}
           </button>
-          <button type="button">
-            <Send size={17} /> Transfer
+          <button type="button" onClick={() => navigate("/dashboard/wallets?tab=transfer")}>
+            <Send size={17} /> {t.home.transfer}
           </button>
         </div>
       </section>
@@ -241,7 +243,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <div className="stat-bottom">
-                  <small>% change</small>
+                  <small>{t.home.change}</small>
                   <ArrowUpRight size={17} />
                 </div>
               </>
@@ -254,12 +256,12 @@ export default function DashboardPage() {
         <article className="panel large-panel">
           <div className="panel-head">
             <div>
-              <h3>Visitors</h3>
-              <p>Cash flow overview from your wallet activity.</p>
+              <h3>{t.home.visitors}</h3>
+              <p>{t.home.cashFlowOverview}</p>
             </div>
             <div className="chart-legend">
-              <span><i className="green" /> Income</span>
-              <span><i className="pink" /> Expense</span>
+              <span><i className="green" /> {t.home.income}</span>
+              <span><i className="pink" /> {t.home.expense}</span>
             </div>
           </div>
 
@@ -283,8 +285,8 @@ export default function DashboardPage() {
                   <XAxis dataKey="label" tick={{ fill: "#7a879a", fontSize: 12 }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fill: "#7a879a", fontSize: 12 }} axisLine={false} tickLine={false} />
                   <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="income" name="Income" stroke="#11c981" strokeWidth={3} fill="url(#incomeGradient)" />
-                  <Area type="monotone" dataKey="expense" name="Expense" stroke="#f05278" strokeWidth={3} fill="url(#expenseGradient)" />
+                  <Area type="monotone" dataKey="income" name={t.home.income} stroke="#11c981" strokeWidth={3} fill="url(#incomeGradient)" />
+                  <Area type="monotone" dataKey="expense" name={t.home.expense} stroke="#f05278" strokeWidth={3} fill="url(#expenseGradient)" />
                 </AreaChart>
               </ResponsiveContainer>
             )}
@@ -294,8 +296,8 @@ export default function DashboardPage() {
         <article className="panel green-panel">
           <div className="panel-head inverse">
             <div>
-              <h3>Completed</h3>
-              <p>Transaction summary</p>
+              <h3>{t.home.completed}</h3>
+              <p>{t.home.transactionSummary}</p>
             </div>
           </div>
 
@@ -309,8 +311,8 @@ export default function DashboardPage() {
           </ResponsiveContainer>
 
           <div className="green-panel-footer">
-            <strong>{successfulTx.length} transactions completed</strong>
-            <span>Total income {formatVND(monthlyIncome)}</span>
+            <strong>{successfulTx.length} {t.home.transactionsCompleted}</strong>
+            <span>{t.home.totalIncomeLabel} {formatVND(monthlyIncome)}</span>
           </div>
         </article>
       </section>
@@ -319,8 +321,8 @@ export default function DashboardPage() {
         <article className="panel">
           <div className="panel-head">
             <div>
-              <h3>Wallet Distribution</h3>
-              <p>Income vs Expense</p>
+              <h3>{t.home.walletDistribution}</h3>
+              <p>{t.home.incomeVsExpense}</p>
             </div>
             <CreditCard size={20} />
           </div>
@@ -328,7 +330,7 @@ export default function DashboardPage() {
           <div className="pie-row">
             <ResponsiveContainer width="46%" height={170}>
               <PieChart>
-                <Pie data={categoryData.length ? categoryData : [{ name: "No Data", value: 1, color: "#d8e0ec" }]} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" paddingAngle={4}>
+                <Pie data={categoryData.length ? categoryData : [{ name: t.home.noData, value: 1, color: "#d8e0ec" }]} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" paddingAngle={4}>
                   {(categoryData.length ? categoryData : [{ color: "#d8e0ec" }]).map((item, index) => (
                     <Cell key={index} fill={item.color} stroke="none" />
                   ))}
@@ -337,7 +339,7 @@ export default function DashboardPage() {
             </ResponsiveContainer>
 
             <div className="pie-list">
-              {(categoryData.length ? categoryData : [{ name: "No Data", value: 0, color: "#d8e0ec" }]).map((item) => (
+              {(categoryData.length ? categoryData : [{ name: t.home.noData, value: 0, color: "#d8e0ec" }]).map((item) => (
                 <div key={item.name}>
                   <span><i style={{ background: item.color }} /> {item.name}</span>
                   <strong>{formatVND(item.value)}</strong>
@@ -350,8 +352,8 @@ export default function DashboardPage() {
         <article className="panel">
           <div className="panel-head">
             <div>
-              <h3>Recent Transactions</h3>
-              <p>Latest wallet activity</p>
+              <h3>{t.home.recentTransactions}</h3>
+              <p>{t.home.latestActivity}</p>
             </div>
             <Wallet size={20} />
           </div>
@@ -371,7 +373,7 @@ export default function DashboardPage() {
                 </div>
               ))
             ) : (
-              <p className="empty-state">No recent transactions.</p>
+              <p className="empty-state">{t.home.noRecentTxs}</p>
             )}
           </div>
         </article>
@@ -379,8 +381,8 @@ export default function DashboardPage() {
         <article className="panel news-panel">
           <div className="panel-head">
             <div>
-              <h3>Financial News</h3>
-              <p>Admin updates</p>
+              <h3>{t.home.financialNews}</h3>
+              <p>{t.home.adminUpdates}</p>
             </div>
             <Newspaper size={20} />
           </div>
@@ -388,22 +390,22 @@ export default function DashboardPage() {
           <div className="news-list">
             {posts.slice(0, 4).map((post) => (
               <button key={post.id} type="button" onClick={() => post.link && window.open(post.link, "_blank") }>
-                <span>{post.tag || "News"}</span>
-                <strong>{post.title}</strong>
+                <span>{(lang === "en" && post.tag_en) ? post.tag_en : (post.tag || "News")}</span>
+                <strong>{(lang === "en" && post.title_en) ? post.title_en : post.title}</strong>
                 <small>{post.time || "Just now"}</small>
               </button>
             ))}
-            {!posts.length && <p className="empty-state">No news yet.</p>}
+            {!posts.length && <p className="empty-state">{t.home.noNews}</p>}
           </div>
         </article>
 
         <article className="panel ai-panel">
           <div>
             <Sparkles size={24} />
-            <h3>AI Financial Advisor</h3>
-            <p>Ask SmartWallet AI for spending tips, saving plans and better cash-flow decisions.</p>
+            <h3>{t.home.aiAdvisorTitle}</h3>
+            <p>{t.home.aiAdvisorDesc}</p>
           </div>
-          <button type="button" onClick={() => navigate("/dashboard/ai-chatbot")}>Open Advisor</button>
+          <button type="button" onClick={() => navigate("/dashboard/ai-chatbot")}>{t.home.openAdvisor}</button>
         </article>
       </section>
     </div>

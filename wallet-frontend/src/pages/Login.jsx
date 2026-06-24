@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import "./Login.css";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
+import { useLanguage } from "../context/LanguageContext";
 
 import {
   ArrowRight,
@@ -22,16 +23,11 @@ import { authAPI } from "../services/api";
 const EMPTY_OTP = Array(6).fill("");
 const EMAIL_REGEX = /\S+@\S+\.\S+/;
 
-const features = [
-  { icon: "🔒", text: "Multi-layer security with OTP authentication" },
-  { icon: "⚡", text: "Instant transfers, no limits" },
-  { icon: "🤖", text: "AI-powered spending analysis and advice" },
-];
-
 const fieldIconSize = 16;
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const { t, lang } = useLanguage();
   const forgotOtpRefs = useRef([]);
 
   const [email, setEmail] = useState("");
@@ -39,6 +35,12 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  const features = [
+    { icon: "🔒", text: t.login.featureSecure },
+    { icon: "⚡", text: t.login.featureInstant },
+    { icon: "🤖", text: t.login.featureAi },
+  ];
 
   const [showForgot, setShowForgot] = useState(false);
   const [forgotStep, setForgotStep] = useState(1);
@@ -105,8 +107,8 @@ export default function LoginPage() {
   };
 
   const validateForgotEmail = () => {
-    if (!forgotEmail) return "Please enter your email.";
-    if (!EMAIL_REGEX.test(forgotEmail)) return "Invalid email address.";
+    if (!forgotEmail) return t.login.enterEmail;
+    if (!EMAIL_REGEX.test(forgotEmail)) return t.login.invalidEmail;
     return "";
   };
 
@@ -124,7 +126,7 @@ export default function LoginPage() {
     try {
       const res = await authAPI.forgotPassword(forgotEmail);
       if (!res.success) {
-        setForgotError(res.message || "Unable to send OTP.");
+        setForgotError(res.message || (lang === "vi" ? "Không thể gửi OTP." : "Unable to send OTP."));
         return;
       }
 
@@ -135,7 +137,7 @@ export default function LoginPage() {
       setForgotNewPassword("");
       setForgotConfirmPassword("");
     } catch (err) {
-      setForgotError(err.response?.data?.message || "System error. Please try again.");
+      setForgotError(err.response?.data?.message || (lang === "vi" ? "Lỗi hệ thống. Vui lòng thử lại sau." : "System error. Please try again."));
     } finally {
       setForgotLoading(false);
     }
@@ -144,10 +146,10 @@ export default function LoginPage() {
   const validateResetPassword = () => {
     const enteredOtp = forgotOtp.join("");
 
-    if (enteredOtp.length < 6) return "Please enter the complete 6-digit OTP code.";
-    if (!forgotNewPassword) return "Please enter a new password.";
-    if (forgotNewPassword.length < 8) return "Password must be at least 8 characters.";
-    if (forgotNewPassword !== forgotConfirmPassword) return "Passwords do not match.";
+    if (enteredOtp.length < 6) return t.login.enterOtp;
+    if (!forgotNewPassword) return t.login.enterNewPass;
+    if (forgotNewPassword.length < 8) return t.login.passMinLength;
+    if (forgotNewPassword !== forgotConfirmPassword) return t.login.passNotMatch;
 
     return "";
   };
@@ -173,10 +175,10 @@ export default function LoginPage() {
       if (res.success) {
         setForgotStep(3);
       } else {
-        setForgotError(res.message || "Password reset failed.");
+        setForgotError(res.message || (lang === "vi" ? "Đặt lại mật khẩu thất bại." : "Password reset failed."));
       }
     } catch (err) {
-      setForgotError(err.response?.data?.message || "System error. Please try again.");
+      setForgotError(err.response?.data?.message || (lang === "vi" ? "Lỗi hệ thống. Vui lòng thử lại sau." : "System error. Please try again."));
     } finally {
       setForgotLoading(false);
     }
@@ -192,7 +194,7 @@ export default function LoginPage() {
       "bw_admin",
       JSON.stringify({
         email: data.user.email,
-        name: "Administrator",
+        name: lang === "vi" ? "Quản trị viên" : "Administrator",
         role: data.user.role.toLowerCase(),
       })
     );
@@ -225,7 +227,7 @@ export default function LoginPage() {
     setError("");
 
     if (!email || !password) {
-      setError("Please fill in all required fields.");
+      setError(t.login.fillRequired);
       return;
     }
 
@@ -235,7 +237,7 @@ export default function LoginPage() {
       const data = res.data;
 
       if (!res.success) {
-        setError(data.message || "Login failed.");
+        setError(data.message || t.login.loginFailed);
         return;
       }
 
@@ -249,8 +251,7 @@ export default function LoginPage() {
     } catch (err) {
       console.error("Login request error:", err);
       setError(
-        err.response?.data?.message ||
-          "Server connection failed. Please check your XAMPP/Node.js connection."
+        err.response?.data?.message || t.login.serverError
       );
     } finally {
       setLoading(false);
@@ -287,9 +288,9 @@ export default function LoginPage() {
             transition={{ delay: 0.3, duration: 0.6 }}
             className="login-title-main"
           >
-            Smarter financial
+            {t.login.brandTitle1}
             <br />
-            <span className="login-primary-text">management.</span>
+            <span className="login-primary-text">{t.login.brandTitle2}</span>
           </motion.h1>
           <motion.p
             initial={{ opacity: 0 }}
@@ -297,8 +298,7 @@ export default function LoginPage() {
             transition={{ delay: 0.5 }}
             className="login-brand-desc"
           >
-            SmartWallet helps you track spending, send money instantly,
-            and receive smart financial insights powered by AI.
+            {t.login.brandDesc}
           </motion.p>
 
           <div className="login-features">
@@ -318,7 +318,7 @@ export default function LoginPage() {
         </div>
 
         <div className="relative z-10 login-copyright">
-          © 2026 SmartWallet Wallet. All rights reserved.
+          {t.login.copyright}
         </div>
       </motion.div>
 
@@ -336,11 +336,11 @@ export default function LoginPage() {
             <span className="login-logo-text mobile">SmartWallet</span>
           </div>
 
-          <h2 className="login-heading">Sign In</h2>
+          <h2 className="login-heading">{t.login.title}</h2>
           <p className="login-subtitle">
-            Don&apos;t have an account?{" "}
+            {t.login.needAccount}{" "}
             <Link to="/register" className="login-link">
-              Sign up now
+              {t.login.registerNow}
             </Link>
           </p>
 
@@ -356,7 +356,7 @@ export default function LoginPage() {
 
           <form onSubmit={handleLogin} className="login-form">
             <div>
-              <label className="login-label">Email</label>
+              <label className="login-label">{t.login.emailLabel}</label>
               <div className="login-input-wrap">
                 <Mail size={fieldIconSize} className="login-input-icon" />
                 <input
@@ -370,7 +370,7 @@ export default function LoginPage() {
             </div>
 
             <div>
-              <label className="login-label">Password</label>
+              <label className="login-label">{t.login.passLabel}</label>
               <div className="login-input-wrap">
                 <Lock size={fieldIconSize} className="login-input-icon" />
                 <input
@@ -392,7 +392,7 @@ export default function LoginPage() {
 
             <div className="login-forgot-row">
               <a href="#" onClick={openForgotModal} className="login-forgot-link">
-                Forgot password?
+                {t.login.forgotPass}
               </a>
             </div>
 
@@ -401,7 +401,7 @@ export default function LoginPage() {
                 <div className="login-loader main" />
               ) : (
                 <>
-                  Sign In <ArrowRight size={16} />
+                  {t.login.loginBtn} <ArrowRight size={16} />
                 </>
               )}
             </button>
@@ -410,7 +410,7 @@ export default function LoginPage() {
           <div className="login-security-box">
             <Shield size={16} className="login-security-icon" />
             <p className="login-security-text">
-              Your data is encrypted and secured by 256-bit SSL/TLS banking-grade standards.
+              {t.login.securityDesc}
             </p>
           </div>
         </div>
@@ -439,16 +439,16 @@ export default function LoginPage() {
                   <div className="login-modal-icon-box">
                     <Mail size={24} className="login-modal-icon" />
                   </div>
-                  <h3 className="login-modal-title">Forgot Password?</h3>
+                  <h3 className="login-modal-title">{t.login.forgotModalTitle}</h3>
                   <p className="login-modal-desc">
-                    Enter your account email to receive an OTP verification code to reset your password.
+                    {t.login.forgotModalDesc}
                   </p>
 
                   {forgotError && <div className="login-error modal">{forgotError}</div>}
 
                   <form onSubmit={handleSendForgotOtp} className="login-modal-form">
                     <div>
-                      <label className="login-label small">Registered Email</label>
+                      <label className="login-label small">{t.login.emailLabel}</label>
                       <div className="login-input-wrap">
                         <Mail size={16} className="login-input-icon" />
                         <input
@@ -462,7 +462,7 @@ export default function LoginPage() {
                     </div>
 
                     <button type="submit" disabled={forgotLoading} className="login-btn login-modal-btn">
-                      {forgotLoading ? <div className="login-loader small" /> : "Send OTP"}
+                      {forgotLoading ? <div className="login-loader small" /> : t.login.sendOtp}
                     </button>
                   </form>
                 </div>
@@ -470,19 +470,19 @@ export default function LoginPage() {
 
               {forgotStep === 2 && (
                 <div>
-                  <h3 className="login-modal-title">Reset Password</h3>
+                  <h3 className="login-modal-title">{t.login.resetPassTitle}</h3>
                   <p className="login-modal-desc reset">
-                    An OTP code has been sent to:{" "}
+                    {lang === "vi" ? "Mã OTP đã được gửi tới:" : "An OTP code has been sent to:"}{" "}
                     <strong className="login-primary-text">{forgotEmail}</strong>
                     <br />
-                    <span style={{ fontSize: 12 }}>Please check your inbox (including Spam folder)</span>
+                    <span style={{ fontSize: 12 }}>{lang === "vi" ? "Kiểm tra hộp thư đến (bao gồm cả thư mục Spam)" : "Check your inbox (including Spam folder)"}</span>
                   </p>
 
                   {forgotError && <div className="login-error modal">{forgotError}</div>}
 
                   <form onSubmit={handleResetPassword} className="login-modal-form reset">
                     <div>
-                      <label className="login-label small">OTP Verification Code</label>
+                      <label className="login-label small">{lang === "vi" ? "Mã xác thực OTP" : "OTP Verification Code"}</label>
                       <div className="login-otp-row">
                         {forgotOtp.map((digit, index) => (
                           <input
@@ -503,13 +503,13 @@ export default function LoginPage() {
                     </div>
 
                     <div>
-                      <label className="login-label small">New Password</label>
+                      <label className="login-label small">{t.login.newPassLabel}</label>
                       <div className="login-input-wrap">
                         <Lock size={15} className="login-input-icon" />
                         <input
                           className="login-input small"
                           type={forgotShowPass ? "text" : "password"}
-                          placeholder="Minimum 8 characters"
+                          placeholder={lang === "vi" ? "Tối thiểu 8 ký tự" : "Minimum 8 characters"}
                           value={forgotNewPassword}
                           onChange={(e) => setForgotNewPassword(e.target.value)}
                         />
@@ -524,13 +524,13 @@ export default function LoginPage() {
                     </div>
 
                     <div>
-                      <label className="login-label small">Confirm New Password</label>
+                      <label className="login-label small">{t.login.confirmPassLabel}</label>
                       <div className="login-input-wrap">
                         <Lock size={15} className="login-input-icon" />
                         <input
                           className="login-input small"
                           type={forgotShowConfirmPass ? "text" : "password"}
-                          placeholder="Re-enter password"
+                          placeholder={lang === "vi" ? "Nhập lại mật khẩu" : "Re-enter password"}
                           value={forgotConfirmPassword}
                           onChange={(e) => setForgotConfirmPassword(e.target.value)}
                         />
@@ -547,15 +547,19 @@ export default function LoginPage() {
                     <div className="login-resend-row">
                       {forgotCanResend ? (
                         <button type="button" onClick={handleSendForgotOtp} className="login-resend-btn">
-                          <RefreshCw size={12} /> Resend code
+                          <RefreshCw size={12} /> {t.login.resendOtp}
                         </button>
                       ) : (
-                        <span>Resend code in {forgotCountdown}s</span>
+                        <span>
+                          {lang === "vi"
+                            ? `Gửi lại mã sau ${forgotCountdown} giây`
+                            : `Resend code in ${forgotCountdown}s`}
+                        </span>
                       )}
                     </div>
 
                     <button type="submit" disabled={forgotLoading} className="login-btn login-modal-btn">
-                      {forgotLoading ? <div className="login-loader small" /> : "Change Password"}
+                      {forgotLoading ? <div className="login-loader small" /> : t.login.resetBtn}
                     </button>
                   </form>
                 </div>
@@ -566,13 +570,15 @@ export default function LoginPage() {
                   <div className="login-success-icon-box">
                     <CheckCircle size={36} className="login-success-icon" />
                   </div>
-                  <h3 className="login-modal-title">Success!</h3>
+                  <h3 className="login-modal-title">{lang === "vi" ? "Thành công!" : "Success!"}</h3>
                   <p className="login-modal-desc">
-                    Your password has been changed successfully. You can now use your new password to sign in.
+                    {lang === "vi"
+                      ? "Mật khẩu của bạn đã được thay đổi thành công. Bạn có thể đăng nhập bằng mật khẩu mới."
+                      : "Your password has been changed successfully. You can now use your new password to sign in."}
                   </p>
 
                   <button className="login-btn login-modal-btn" onClick={() => setShowForgot(false)}>
-                    Sign In Now
+                    {t.login.loginNow}
                   </button>
                 </div>
               )}

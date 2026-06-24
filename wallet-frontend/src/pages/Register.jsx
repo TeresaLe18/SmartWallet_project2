@@ -14,25 +14,30 @@ import { motion } from "framer-motion";
 import { authAPI } from "../services/api";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
+import { useLanguage } from "../context/LanguageContext";
 import "./Register.css";
 
 const EMAIL_REGEX = /\S+@\S+\.\S+/;
-const strengthLabels = ["", "Weak", "Fair", "Good", "Very Strong"];
 const strengthClasses = ["", "weak", "fair", "good", "strong"];
-
-const features = [
-  { icon: "🔒", text: "Multi-layer security with OTP authentication" },
-  { icon: "⚡", text: "Instant transfers, no limits" },
-  { icon: "🤖", text: "AI-powered spending analysis and advice" },
-];
 
 export default function RegisterPage() {
   const navigate = useNavigate();
+  const { t, lang } = useLanguage();
   const [form, setForm] = useState({ email: "", password: "", confirmPassword: "" });
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+
+  const features = [
+    { icon: "🔒", text: t.login.featureSecure },
+    { icon: "⚡", text: t.login.featureInstant },
+    { icon: "🤖", text: t.login.featureAi },
+  ];
+
+  const strengthLabels = lang === "vi"
+    ? ["", "Yếu", "Trung bình", "Khá", "Rất mạnh"]
+    : ["", "Weak", "Fair", "Good", "Very Strong"];
 
   const updateForm = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
@@ -41,14 +46,20 @@ export default function RegisterPage() {
   const validate = () => {
     const errs = {};
 
-    if (!form.email) errs.email = "Email is required";
-    else if (!EMAIL_REGEX.test(form.email)) errs.email = "Invalid email address";
+    if (!form.email) {
+      errs.email = lang === "vi" ? "Vui lòng nhập Email" : "Email is required";
+    } else if (!EMAIL_REGEX.test(form.email)) {
+      errs.email = t.login.invalidEmail;
+    }
 
-    if (!form.password) errs.password = "Password is required";
-    else if (form.password.length < 8) errs.password = "Password must be at least 8 characters";
+    if (!form.password) {
+      errs.password = lang === "vi" ? "Vui lòng nhập Mật khẩu" : "Password is required";
+    } else if (form.password.length < 8) {
+      errs.password = t.login.passMinLength;
+    }
 
     if (form.password !== form.confirmPassword) {
-      errs.confirmPassword = "Passwords do not match";
+      errs.confirmPassword = t.login.passNotMatch;
     }
 
     return errs;
@@ -87,18 +98,20 @@ export default function RegisterPage() {
       if (data.success) {
         localStorage.setItem("bw_pending_email", form.email);
         alert(
-          `Account registered successfully! A verification OTP code has been sent to ${form.email}. Please check your Gmail inbox (including spam/junk folder).`
+          lang === "vi"
+            ? `Đăng ký tài khoản thành công! Mã OTP xác thực đã được gửi đến ${form.email}. Vui lòng kiểm tra hộp thư đến Gmail của bạn (bao gồm cả thư mục spam).`
+            : `Account registered successfully! A verification OTP code has been sent to ${form.email}. Please check your Gmail inbox (including spam/junk folder).`
         );
         navigate("/verify-otp");
       } else {
-        setErrors({ server: data.message || "Account registration failed." });
+        setErrors({ server: data.message || (lang === "vi" ? "Đăng ký tài khoản thất bại." : "Account registration failed.") });
       }
     } catch (err) {
       console.error("Register request error:", err);
       setErrors({
         server:
           err.response?.data?.message ||
-          "Server connection error. Please check your XAMPP/Node.js.",
+          (lang === "vi" ? "Lỗi kết nối máy chủ. Vui lòng kiểm tra kết nối Node.js/CSDL." : "Server connection error. Please check your database/Node.js connection."),
       });
     } finally {
       setLoading(false);
@@ -134,7 +147,7 @@ export default function RegisterPage() {
                 transition={{ delay: 0.3, duration: 0.6 }}
                 className="register-title-main"
               >
-                Create your
+                {lang === "vi" ? "Tạo tài khoản" : "Create your"}
                 <br />
                 <span>SmartWallet.</span>
               </motion.h1>
@@ -145,8 +158,7 @@ export default function RegisterPage() {
                 transition={{ delay: 0.5 }}
                 className="register-brand-desc"
               >
-                SmartWallet helps you track spending, send money instantly,
-                and receive smart financial insights powered by AI.
+                {t.login.brandDesc}
               </motion.p>
 
               <div className="register-features">
@@ -166,7 +178,7 @@ export default function RegisterPage() {
             </div>
 
             <div className="register-copyright">
-              © 2026 SmartWallet Wallet. All rights reserved.
+              {t.login.copyright}
             </div>
           </motion.div>
 
@@ -184,11 +196,11 @@ export default function RegisterPage() {
                 <span className="register-logo-text mobile">SmartWallet</span>
               </div>
 
-              <h2 className="register-heading">Create Account</h2>
+              <h2 className="register-heading">{t.login.registerTitle}</h2>
               <p className="register-subtitle">
-                Already have an account?{" "}
+                {t.login.haveAccount}{" "}
                 <Link to="/login" className="register-link">
-                  Sign In
+                  {t.login.loginNow}
                 </Link>
               </p>
 
@@ -196,7 +208,7 @@ export default function RegisterPage() {
 
               <form onSubmit={handleRegister} className="register-form">
                 <div>
-                  <label className="register-label">Email</label>
+                  <label className="register-label">{t.login.emailLabel}</label>
                   <div className="register-input-wrap">
                     <Mail size={16} className="register-input-icon" />
                     <input
@@ -211,13 +223,13 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <label className="register-label">Password</label>
+                  <label className="register-label">{t.login.passLabel}</label>
                   <div className="register-input-wrap">
                     <Lock size={16} className="register-input-icon" />
                     <input
                       className={`register-input password ${errors.password ? "invalid" : ""}`}
                       type={showPass ? "text" : "password"}
-                      placeholder="Minimum 8 characters"
+                      placeholder={lang === "vi" ? "Tối thiểu 8 ký tự" : "Minimum 8 characters"}
                       value={form.password}
                       onChange={(e) => updateForm("password", e.target.value)}
                     />
@@ -245,13 +257,13 @@ export default function RegisterPage() {
                 </div>
 
                 <div>
-                  <label className="register-label">Confirm Password</label>
+                  <label className="register-label">{t.login.confirmPassLabel}</label>
                   <div className="register-input-wrap">
                     <Lock size={16} className="register-input-icon" />
                     <input
                       className={`register-input password ${errors.confirmPassword ? "invalid" : ""}`}
                       type={showConfirm ? "text" : "password"}
-                      placeholder="Re-enter password"
+                      placeholder={lang === "vi" ? "Nhập lại mật khẩu" : "Re-enter password"}
                       value={form.confirmPassword}
                       onChange={(e) => updateForm("confirmPassword", e.target.value)}
                     />
@@ -276,7 +288,7 @@ export default function RegisterPage() {
                     <div className="register-loader" />
                   ) : (
                     <>
-                      Register & Verify Email <ArrowRight size={16} />
+                      {lang === "vi" ? "Đăng ký & Xác thực Email" : "Register & Verify Email"} <ArrowRight size={16} />
                     </>
                   )}
                 </button>
@@ -285,7 +297,9 @@ export default function RegisterPage() {
               <div className="register-security-box">
                 <Shield size={16} className="register-security-icon" />
                 <p>
-                  Your account is protected with OTP verification and banking-grade security.
+                  {lang === "vi"
+                    ? "Tài khoản của bạn được bảo vệ bằng xác thực OTP và bảo mật cấp ngân hàng."
+                    : "Your account is protected with OTP verification and banking-grade security."}
                 </p>
               </div>
             </div>

@@ -263,7 +263,7 @@ export default function AdminLayout() {
                 </button>
                 <button
                   onClick={handleLogout}
-                  style={{ flex:1, background:"linear-gradient(135deg,#dc2626,#991b1b)", border:"none", color: "#000000", borderRadius:10, padding:"11px", fontWeight:700, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}
+                  style={{ flex:1, background:"linear-gradient(135deg,#dc2626,#991b1b)", border:"none", color: "#ffffff", borderRadius:10, padding:"11px", fontWeight:700, fontSize:14, cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", gap:6 }}
                 >
                   <LogOut size={15} /> Log Out
                 </button>
