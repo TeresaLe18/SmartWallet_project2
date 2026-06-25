@@ -160,7 +160,13 @@ export default function Support() {
                     </div>
                     {/* Timestamp */}
                     <span style={{ fontSize: 10, color: "var(--text-muted)", alignSelf: isAdmin ? "flex-start" : "flex-end", paddingLeft: 4, paddingRight: 4 }}>
-                      {new Date(msg.created_at || msg.createdAt).toLocaleTimeString(lang === "vi" ? "vi-VN" : "en-US", { hour: "2-digit", minute: "2-digit" })}
+                      {(() => {
+                        const dateVal = msg.created_at || msg.createdAt;
+                        if (!dateVal) return "";
+                        const d = new Date(dateVal);
+                        if (isNaN(d.getTime())) return "";
+                        return d.toLocaleTimeString(lang === "vi" ? "vi-VN" : "en-US", { hour: "2-digit", minute: "2-digit" });
+                      })()}
                     </span>
                   </div>
                 </div>

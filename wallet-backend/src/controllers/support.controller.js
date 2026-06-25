@@ -167,6 +167,15 @@ const adminReply = async (req, res) => {
       },
     });
 
+    // Notify the user about the support message
+    await prisma.notification.create({
+      data: {
+        user_id: targetUserId,
+        title: 'Tin nhắn hỗ trợ mới 💬',
+        content: message || 'Bạn nhận được một ảnh đính kèm từ quản trị viên.',
+      },
+    });
+
     return res.status(201).json({ success: true, data: msg });
   } catch (err) {
     console.error('adminReply error:', err);

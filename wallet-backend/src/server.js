@@ -58,6 +58,22 @@ app.get('/api/categories', authMiddleware, categoryController.listCategories);
 app.get('/api/vouchers', voucherController.listActiveVouchers);
 app.post('/api/vouchers/check', authMiddleware, voucherController.checkVoucher);
 
+// Map /api/offers for homepage index.jsx
+app.get('/api/offers', async (req, res) => {
+  try {
+    const prisma = require('./config/prisma');
+    const now = new Date();
+    const all = await prisma.voucher.findMany({
+      where: { status: 'ACTIVE', expired_at: { gt: now } },
+      orderBy: { id: 'desc' },
+    });
+    const data = all.filter((v) => v.used_count < v.quantity);
+    return res.status(200).json({ success: true, offers: data });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, () => {

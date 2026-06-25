@@ -6,7 +6,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { adminAPI, getUploadUrl, formatVND } from "../../services/api";
 
-const kycBadge = { verified:{ bg:"rgba(34,197,94,0.12)", color:"#22c55e", text:"KYC Verified" }, pending:{ bg:"rgba(245,158,11,0.12)", color:"#f59e0b", text:"Pending Review" }, none:{ bg:"rgba(100,116,139,0.12)", color:"#94a3b8", text:"Not KYC'd" } };
+const kycBadge = { verified:{ bg:"rgba(34,197,94,0.12)", color:"#22c55e", text:"KYC Verified" }, pending:{ bg:"rgba(245,158,11,0.12)", color:"#f59e0b", text:"Pending Review" }, rejected:{ bg:"rgba(239,68,68,0.12)", color:"#ef4444", text:"KYC Rejected" }, none:{ bg:"rgba(100,116,139,0.12)", color:"#94a3b8", text:"Not KYC'd" } };
 const statusBadge = {
   active: { bg: "rgba(34,197,94,0.12)", color: "#22c55e", text: "Active" },
   locked: { bg: "rgba(239,68,68,0.12)", color: "#ef4444", text: "Locked" },

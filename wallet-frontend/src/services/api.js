@@ -428,6 +428,10 @@ export const newsAPI = {
     const res = await api.post(`/news/admin/${id}/toggle`);
     return res.data;
   },
+  generateAiPost: async (title) => {
+    const res = await api.post("/news/admin/generate-ai", { title });
+    return res.data;
+  },
 };
 
 // ─── Investment / Savings API ─────────────────────────────────────────────────

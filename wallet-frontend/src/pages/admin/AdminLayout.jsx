@@ -86,7 +86,7 @@ export default function AdminLayout() {
 
   const Sidebar = () => (
     <aside style={{ width:220, background: "var(--bg-dark)", borderRight:"1px solid var(--border)", display:"flex", flexDirection:"column", height:"100%", padding:"20px 12px" }}>
-      <div style={{ display:"flex", alignItems:"center", gap:10, marginBottom:32, paddingLeft:8 }}>
+      <Link to="/" style={{ display:"flex", alignItems:"center", gap:10, marginBottom:32, paddingLeft:8, textDecoration:"none", color:"inherit", cursor:"pointer" }}>
         <div style={{ width:32, height:32, borderRadius:8, background:"linear-gradient(135deg,#2563eb,#1d4ed8)", display:"flex", alignItems:"center", justifyContent:"center" }}>
           <Wallet size={16} color="white" />
         </div>
@@ -94,7 +94,7 @@ export default function AdminLayout() {
           <span style={{ fontSize:15, fontWeight:800 }}>SmartWallet</span>
           <p style={{ fontSize:10, color:"#2563eb", fontWeight:600 }}>ADMIN</p>
         </div>
-      </div>
+      </Link>
 
       <nav style={{ flex:1 }}>
         {adminNav.map(({ href, icon:Icon, label, badgeKey }) => {

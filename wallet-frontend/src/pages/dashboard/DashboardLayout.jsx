@@ -157,10 +157,19 @@ export default function DashboardLayout() {
         if (!data?.success || !data.user) return;
 
         const kycStatus = data.user.kyc_status || "none";
+        const emailPrefix = data.user.email?.split("@")[0] || "";
+        let finalName = data.user.full_name || savedUser?.name || emailPrefix || "User";
+        
+        if (savedUser?.name && savedUser.name !== emailPrefix) {
+          finalName = savedUser.name;
+        } else if (data.user.full_name) {
+          finalName = data.user.full_name;
+        }
+
         const nextUser = {
           id: data.user.id,
           email: data.user.email,
-          name: savedUser?.name || data.user.full_name || data.user.email?.split("@")[0] || "User",
+          name: finalName,
           phone: data.user.phone || undefined,
           avatar: getUploadUrl(data.user.avatar),
           status: data.user.status,

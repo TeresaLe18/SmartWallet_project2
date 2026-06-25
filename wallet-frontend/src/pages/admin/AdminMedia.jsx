@@ -7,13 +7,18 @@ export default function AdminMedia() {
   const [posts, setPosts] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
+  const [editorLanguageTab, setEditorLanguageTab] = useState("vi");
+  const [isGenerating, setIsGenerating] = useState(false);
   
-  // Expanded form state
+  // Expanded form state to support both VI and EN fields
   const [form, setForm] = useState({ 
     title: "", 
-    tag: "Economy", 
+    title_en: "",
+    tag: "Kinh tế", 
+    tag_en: "Economy",
     time: "Just now", 
     content: "", 
+    content_en: "",
     image: "", 
     link: "", 
     active: true 
@@ -36,11 +41,15 @@ export default function AdminMedia() {
 
   const openAdd = () => {
     setEditItem(null);
+    setEditorLanguageTab("vi");
     setForm({ 
       title: "", 
-      tag: "Economy", 
+      title_en: "",
+      tag: "Kinh tế", 
+      tag_en: "Economy",
       time: "Just now", 
       content: "", 
+      content_en: "",
       image: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=800&auto=format&fit=crop&q=60", 
       link: "", 
       active: true 
@@ -50,11 +59,15 @@ export default function AdminMedia() {
 
   const openEdit = (p) => {
     setEditItem(p);
+    setEditorLanguageTab("vi");
     setForm({ 
-      title: p.title, 
-      tag: p.tag, 
-      time: p.time, 
+      title: p.title || "", 
+      title_en: p.title_en || "", 
+      tag: p.tag || "Kinh tế", 
+      tag_en: p.tag_en || "Economy", 
+      time: p.time || "Just now", 
       content: p.content || "", 
+      content_en: p.content_en || "", 
       image: p.image || "", 
       link: p.link || "", 
       active: p.active 
@@ -70,6 +83,36 @@ export default function AdminMedia() {
         setForm(prev => ({ ...prev, image: reader.result }));
       };
       reader.readAsDataURL(file);
+    }
+  };
+
+  const handleAiGenerate = async () => {
+    const currentTitle = editorLanguageTab === "vi" ? form.title : form.title_en;
+    if (!currentTitle || !currentTitle.trim()) {
+      alert(editorLanguageTab === "vi" ? "Vui lòng nhập tiêu đề trước khi tự động tạo bài viết!" : "Please enter a title first!");
+      return;
+    }
+    setIsGenerating(true);
+    try {
+      const res = await newsAPI.generateAiPost(currentTitle.trim());
+      if (res.success && res.data) {
+        setForm(p => ({
+          ...p,
+          title: res.data.title_vi || p.title,
+          title_en: res.data.title_en || p.title_en,
+          content: res.data.content_vi || p.content,
+          content_en: res.data.content_en || p.content_en,
+          tag: res.data.tag_vi || p.tag,
+          tag_en: res.data.tag_en || p.tag_en
+        }));
+      } else {
+        alert(res.message || "Failed to generate article content.");
+      }
+    } catch (e) {
+      console.error("AI Generation error:", e);
+      alert(e.response?.data?.message || "An error occurred during AI article generation.");
+    } finally {
+      setIsGenerating(false);
     }
   };
 
@@ -193,34 +236,83 @@ export default function AdminMedia() {
               
               {/* Left Column: Form Editor */}
               <div style={{ borderRight: "1px solid var(--border)", paddingRight: 24 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 18, color: "var(--text-primary)" }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 14, color: "var(--text-primary)" }}>
                   {editItem ? "Edit Article" : "Write New Article"}
                 </h3>
                 
+                {/* Language Tabs Selector */}
+                <div style={{ display: "flex", gap: 8, borderBottom: "1px solid var(--border)", paddingBottom: 10, marginBottom: 14 }}>
+                  <button type="button" onClick={() => setEditorLanguageTab("vi")} style={{
+                    background: editorLanguageTab === "vi" ? "rgba(37,99,235,0.15)" : "transparent",
+                    border: `1px solid ${editorLanguageTab === "vi" ? "rgba(37,99,235,0.3)" : "transparent"}`,
+                    color: editorLanguageTab === "vi" ? "#2563eb" : "var(--text-secondary)",
+                    padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s"
+                  }}>Tiếng Việt</button>
+                  <button type="button" onClick={() => setEditorLanguageTab("en")} style={{
+                    background: editorLanguageTab === "en" ? "rgba(37,99,235,0.15)" : "transparent",
+                    border: `1px solid ${editorLanguageTab === "en" ? "rgba(37,99,235,0.3)" : "transparent"}`,
+                    color: editorLanguageTab === "en" ? "#2563eb" : "var(--text-secondary)",
+                    padding: "6px 12px", borderRadius: 6, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.2s"
+                  }}>English</button>
+                </div>
+
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  {/* Title & AI Generation */}
                   <div>
-                    <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Article Title</label>
-                    <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Enter article title..."
-                      style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }} />
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                        {editorLanguageTab === "vi" ? "Tiêu đề bài viết (VI)" : "Article Title (EN)"}
+                      </label>
+                      <button type="button" onClick={handleAiGenerate} disabled={isGenerating} style={{
+                        background: "linear-gradient(135deg, #a855f7, #6366f1)",
+                        color: "white", border: "none", borderRadius: 6, padding: "4px 10px",
+                        fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
+                        boxShadow: "0 2px 8px rgba(139, 92, 246, 0.3)", opacity: isGenerating ? 0.7 : 1, transition: "all 0.2s"
+                      }}>
+                        {isGenerating ? "Writing... ⏳" : "✨ AI Auto-Generate"}
+                      </button>
+                    </div>
+                    {editorLanguageTab === "vi" ? (
+                      <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Nhập tiêu đề bài viết..."
+                        style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }} />
+                    ) : (
+                      <input value={form.title_en} onChange={e => setForm(p => ({ ...p, title_en: e.target.value }))} placeholder="Enter English title..."
+                        style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }} />
+                    )}
                   </div>
 
+                  {/* Category & Timestamp */}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div>
-                      <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Category</label>
-                      <select value={form.tag} onChange={e => setForm(p => ({ ...p, tag: e.target.value }))}
-                        style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }}>
-                        {["Economy", "Fintech", "Technology", "Investment", "Markets"].map(tag => (
-                          <option key={tag} value={tag}>{tag}</option>
-                        ))}
-                      </select>
+                      <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
+                        {editorLanguageTab === "vi" ? "Danh mục" : "Category"}
+                      </label>
+                      {editorLanguageTab === "vi" ? (
+                        <select value={form.tag} onChange={e => setForm(p => ({ ...p, tag: e.target.value }))}
+                          style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }}>
+                          {["Kinh tế", "Fintech", "Công nghệ", "Đầu tư", "Thị trường"].map(tag => (
+                            <option key={tag} value={tag}>{tag}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <select value={form.tag_en} onChange={e => setForm(p => ({ ...p, tag_en: e.target.value }))}
+                          style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }}>
+                          {["Economy", "Fintech", "Technology", "Investment", "Markets"].map(tag => (
+                            <option key={tag} value={tag}>{tag}</option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                     <div>
-                      <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Display Timestamp</label>
+                      <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
+                        {editorLanguageTab === "vi" ? "Thời gian hiển thị" : "Display Timestamp"}
+                      </label>
                       <input value={form.time} onChange={e => setForm(p => ({ ...p, time: e.target.value }))} placeholder="e.g. Just now"
                         style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }} />
                     </div>
                   </div>
 
+                  {/* Image */}
                   <div>
                     <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Article Image</label>
                     <div style={{ display: "flex", gap: 10 }}>
@@ -233,16 +325,25 @@ export default function AdminMedia() {
                     </div>
                   </div>
 
+                  {/* Redirect Link */}
                   <div>
                     <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Redirect Link (Optional)</label>
                     <input value={form.link} onChange={e => setForm(p => ({ ...p, link: e.target.value }))} placeholder="e.g. https://example.com/... (clicking the card will open this link)"
                       style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }} />
                   </div>
 
+                  {/* Content Body */}
                   <div>
-                    <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Article Body</label>
-                    <textarea value={form.content} onChange={e => setForm(p => ({ ...p, content: e.target.value }))} placeholder="Write the full article content here..." rows={4}
-                      style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none", resize: "none", lineHeight: 1.5 }} />
+                    <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
+                      {editorLanguageTab === "vi" ? "Nội dung bài viết (VI)" : "Article Body (EN)"}
+                    </label>
+                    {editorLanguageTab === "vi" ? (
+                      <textarea value={form.content} onChange={e => setForm(p => ({ ...p, content: e.target.value }))} placeholder="Viết nội dung bài viết chi tiết tại đây..." rows={4}
+                        style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none", resize: "none", lineHeight: 1.5 }} />
+                    ) : (
+                      <textarea value={form.content_en} onChange={e => setForm(p => ({ ...p, content_en: e.target.value }))} placeholder="Write the full English article body here..." rows={4}
+                        style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none", resize: "none", lineHeight: 1.5 }} />
+                    )}
                   </div>
                 </div>
 
@@ -259,7 +360,7 @@ export default function AdminMedia() {
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 18 }}>
                     <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 8px #22c55e" }} />
-                    <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>ARTICLE PREVIEW (LIVE)</h3>
+                    <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>ARTICLE PREVIEW ({editorLanguageTab.toUpperCase()})</h3>
                   </div>
 
                   {/* Dynamic user news card simulation */}
@@ -274,7 +375,7 @@ export default function AdminMedia() {
                         </div>
                       )}
                       <span style={{ position: "absolute", top: 12, left: 12, fontSize: 10, background: "rgba(37,99,235,0.85)", backdropFilter: "blur(4px)", color: "#ffffff", padding: "3px 10px", borderRadius: 6, fontWeight: 700 }}>
-                        {form.tag}
+                        {editorLanguageTab === "vi" ? form.tag : form.tag_en}
                       </span>
                     </div>
 
@@ -282,7 +383,7 @@ export default function AdminMedia() {
                     <div style={{ padding: 18 }}>
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
                         <h4 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.4, margin: 0 }}>
-                          {form.title || "Sample article title will appear here"}
+                          {(editorLanguageTab === "vi" ? form.title : form.title_en) || "Sample article title will appear here"}
                         </h4>
                         <ChevronRight size={16} style={{ color: "var(--text-muted)", flexShrink: 0, marginTop: 2 }} />
                       </div>
@@ -290,7 +391,7 @@ export default function AdminMedia() {
                       
                       {/* Short simulated body copy */}
                       <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 10, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                        {form.content || "The full article body written by the admin will automatically appear in the user's detail view when they tap the article card..."}
+                        {(editorLanguageTab === "vi" ? form.content : form.content_en) || "The full article body written by the admin will automatically appear in the user's detail view when they tap the article card..."}
                       </p>
                     </div>
                   </div>

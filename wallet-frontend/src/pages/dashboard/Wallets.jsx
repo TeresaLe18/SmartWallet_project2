@@ -571,7 +571,10 @@ export default function WalletsPage() {
       const url = canvas.toDataURL("image/png");
       const link = document.createElement("a");
       link.href = url;
-      link.download = `smartwallet-qr-${depositForm.amount || "deposit"}.png`;
+      const bwUser = localStorage.getItem("bw_user");
+      const u = bwUser ? JSON.parse(bwUser) : null;
+      const namePart = u?.name ? u.name.toLowerCase().replace(/\s+/g, "") : "user";
+      link.download = `smartwallet-qr-${namePart}-${u?.id || "user"}.png`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -747,6 +750,11 @@ export default function WalletsPage() {
       showToast(t.wallets.scanningQr, "success");
       setTimeout(() => {
         const fileNameLower = file.name.toLowerCase();
+        
+        let parsedName = "";
+        let parsedAccount = "";
+        let parsedBank = "Vietcombank";
+
         const isRaj = fileNameLower.includes("rajpham") || 
                       fileNameLower.includes("raj") || 
                       fileNameLower.includes("-5") || 
@@ -761,43 +769,74 @@ export default function WalletsPage() {
                         fileNameLower.includes("qr-2") ||
                         fileNameLower === "2.png" || 
                         fileNameLower === "2.jpg";
+        const isDuyen = fileNameLower.includes("duyen") || 
+                        fileNameLower.includes("lethikieuduyen") || 
+                        fileNameLower.includes("-3") || 
+                        fileNameLower.includes("_3") || 
+                        fileNameLower.includes("qr-3") ||
+                        fileNameLower === "3.png" || 
+                        fileNameLower === "3.jpg";
+        const isPhong = fileNameLower.includes("phong") || 
+                        fileNameLower.includes("chauquoclamphong") || 
+                        fileNameLower.includes("-4") || 
+                        fileNameLower.includes("_4") || 
+                        fileNameLower.includes("qr-4") ||
+                        fileNameLower === "4.png" || 
+                        fileNameLower === "4.jpg";
+
         if (isRaj) {
-          setBankTransferForm({
-            bank: "Vietcombank",
-            account: "0967373148",
-            ownerName: "Raj Pham"
-          });
-          setTxForm(prev => ({
-            ...prev,
-            amount: "100000",
-            note: "Chuyển khoản QR Sandbox cho Raj Pham",
-            category: categories[0]?.id ? String(categories[0].id) : "1"
-          }));
+          parsedName = "Raj Pham";
+          parsedAccount = "0967373148";
         } else if (isThuan) {
-          setBankTransferForm({
-            bank: "Vietcombank",
-            account: "1234567890",
-            ownerName: "Nguyễn Văn Thuận"
-          });
-          setTxForm(prev => ({
-            ...prev,
-            amount: "100000",
-            note: "Chuyển khoản QR Sandbox cho Nguyễn Văn Thuận",
-            category: categories[0]?.id ? String(categories[0].id) : "1"
-          }));
+          parsedName = "Nguyễn Văn Thuận";
+          parsedAccount = "1234567890";
+        } else if (isDuyen) {
+          parsedName = "Lê Thị Kiều Duyên";
+          parsedAccount = "1112223334";
+        } else if (isPhong) {
+          parsedName = "Châu Quốc Lâm Phong";
+          parsedAccount = "4445556667";
         } else {
-          setBankTransferForm({
-            bank: "Vietcombank",
-            account: "9998887776",
-            ownerName: "NGUYEN VAN A"
-          });
-          setTxForm(prev => ({
-            ...prev,
-            amount: "50000",
-            note: t.wallets.qrTransferPayment,
-            category: categories[0]?.id ? String(categories[0].id) : "1"
-          }));
+          // Try to extract name and id from standard format smartwallet-qr-name-id.png
+          const match = fileNameLower.match(/smartwallet-qr-([a-z0-9]+)-(\d+)/);
+          if (match) {
+            const rawName = match[1];
+            const userId = match[2];
+            if (rawName.includes("duyen") || rawName.includes("kieuduyen")) {
+              parsedName = "Lê Thị Kiều Duyên";
+              parsedAccount = "1112223334";
+            } else if (rawName.includes("phong") || rawName.includes("lamphong")) {
+              parsedName = "Châu Quốc Lâm Phong";
+              parsedAccount = "4445556667";
+            } else if (rawName.includes("thuan")) {
+              parsedName = "Nguyễn Văn Thuận";
+              parsedAccount = "1234567890";
+            } else if (rawName.includes("raj")) {
+              parsedName = "Raj Pham";
+              parsedAccount = "0967373148";
+            } else {
+              parsedName = rawName.toUpperCase();
+              parsedAccount = "999888777" + userId;
+            }
+          } else {
+            parsedName = "NGUYEN VAN A";
+            parsedAccount = "9998887776";
+          }
         }
+
+        setBankTransferForm({
+          bank: parsedBank,
+          account: parsedAccount,
+          ownerName: parsedName
+        });
+
+        setTxForm(prev => ({
+          ...prev,
+          amount: isRaj || isThuan ? "100000" : (isDuyen || isPhong ? "150000" : "50000"),
+          note: `Chuyển khoản QR Sandbox cho ${parsedName}`,
+          category: categories[0]?.id ? String(categories[0].id) : "1"
+        }));
+
         showToast(t.wallets.qrScanSuccess, "success");
       }, 1000);
     };
@@ -1954,8 +1993,18 @@ export default function WalletsPage() {
                 <div className="my-qr-wrapper">
                   <h3 className="my-qr-title">📱 {t.myQr.title}</h3>
                   <p className="modal-subtitle">{t.myQr.subtitle}</p>
-                  <div className="my-qr-container">
-                    <QRCode value={`smartwallet://user/${userEmail || "demo_user"}`} size={180} level="H" />
+                  <div className="my-qr-container" ref={qrCanvasRef}>
+                    <QRCode value={(() => {
+                      const bwUser = localStorage.getItem("bw_user");
+                      const u = bwUser ? JSON.parse(bwUser) : null;
+                      return JSON.stringify({
+                        type: "SMARTWALLET_USER_QR",
+                        userId: u?.id,
+                        name: u?.name,
+                        email: u?.email || userEmail,
+                        wallet: "SMARTWALLET",
+                      });
+                    })()} size={180} level="H" />
                   </div>
                   <p className="my-qr-label-id">{t.myQr.userId}: <strong className="text-primary">{userEmail || "SW-DEMO-123"}</strong></p>
                   <button onClick={handleDownloadQR} className="btn-my-qr-action">

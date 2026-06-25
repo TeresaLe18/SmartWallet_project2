@@ -64,28 +64,90 @@ const mapTx = (tx, currentEmail, t) => {
   };
 };
 
-const buildCashFlow = (transactions) => {
-  const now = new Date();
+const buildCashFlow = (transactions, filterType = "7days", lang = "vi") => {
   const rows = [];
+  const successfulTx = transactions.filter((tx) => tx.status === "success");
 
-  for (let i = 6; i >= 0; i -= 1) {
-    const d = new Date(now);
-    d.setDate(now.getDate() - i);
-    rows.push({
-      key: d.toLocaleDateString("vi-VN"),
-      label: d.toLocaleDateString("en-US", { weekday: "short" }),
-      income: 0,
-      expense: 0,
+  if (filterType === "7days") {
+    const now = new Date();
+    for (let i = 6; i >= 0; i -= 1) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      rows.push({
+        key: d.toLocaleDateString("vi-VN"),
+        label: d.toLocaleDateString(lang === "vi" ? "vi-VN" : "en-US", { weekday: "short" }),
+        income: 0,
+        expense: 0,
+      });
+    }
+    successfulTx.forEach((tx) => {
+      const key = tx.date.toLocaleDateString("vi-VN");
+      const row = rows.find((item) => item.key === key);
+      if (row) row[tx.type] += tx.amount;
+    });
+  } else if (filterType === "30days") {
+    const now = new Date();
+    for (let i = 29; i >= 0; i -= 1) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      rows.push({
+        key: d.toLocaleDateString("vi-VN"),
+        label: `${d.getDate()}/${d.getMonth() + 1}`,
+        income: 0,
+        expense: 0,
+      });
+    }
+    successfulTx.forEach((tx) => {
+      const key = tx.date.toLocaleDateString("vi-VN");
+      const row = rows.find((item) => item.key === key);
+      if (row) row[tx.type] += tx.amount;
+    });
+  } else if (filterType === "1year") {
+    const now = new Date();
+    for (let i = 11; i >= 0; i -= 1) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const monthNum = d.getMonth() + 1;
+      const yearNum = d.getFullYear();
+      rows.push({
+        key: `${monthNum}/${yearNum}`,
+        label: lang === "vi" ? `Th ${monthNum}` : d.toLocaleString("en-US", { month: "short" }),
+        income: 0,
+        expense: 0,
+      });
+    }
+    successfulTx.forEach((tx) => {
+      const key = `${tx.date.getMonth() + 1}/${tx.date.getFullYear()}`;
+      const row = rows.find((item) => item.key === key);
+      if (row) row[tx.type] += tx.amount;
+    });
+  } else if (filterType === "all") {
+    const years = [];
+    if (successfulTx.length === 0) {
+      const currentYear = new Date().getFullYear();
+      years.push(currentYear);
+    } else {
+      successfulTx.forEach((tx) => {
+        const y = tx.date.getFullYear();
+        if (!years.includes(y)) years.push(y);
+      });
+      years.sort((a, b) => a - b);
+    }
+    const minYear = years[0];
+    const maxYear = years[years.length - 1];
+    for (let y = minYear; y <= maxYear; y++) {
+      rows.push({
+        key: String(y),
+        label: String(y),
+        income: 0,
+        expense: 0,
+      });
+    }
+    successfulTx.forEach((tx) => {
+      const key = String(tx.date.getFullYear());
+      const row = rows.find((item) => item.key === key);
+      if (row) row[tx.type] += tx.amount;
     });
   }
-
-  transactions.forEach((tx) => {
-    if (tx.status !== "success") return;
-    const key = tx.date.toLocaleDateString("vi-VN");
-    const row = rows.find((item) => item.key === key);
-    if (!row) return;
-    row[tx.type] += tx.amount;
-  });
 
   return rows;
 };
@@ -112,6 +174,7 @@ export default function DashboardPage() {
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState([]);
   const [posts, setPosts] = useState([]);
+  const [filterType, setFilterType] = useState("7days");
 
   useEffect(() => {
     let mounted = true;
@@ -155,7 +218,7 @@ export default function DashboardPage() {
     };
   }, [t]);
 
-  const cashFlow = useMemo(() => buildCashFlow(transactions), [transactions]);
+  const cashFlow = useMemo(() => buildCashFlow(transactions, filterType, lang), [transactions, filterType, lang]);
   
   const categoryData = useMemo(() => {
     const income = transactions
@@ -175,6 +238,13 @@ export default function DashboardPage() {
   const monthlyExpense = cashFlow.reduce((sum, row) => sum + row.expense, 0);
   const successfulTx = transactions.filter((tx) => tx.status === "success");
 
+  const getPeriodLabel = () => {
+    if (filterType === "7days") return t.home.last7Days;
+    if (filterType === "30days") return lang === "vi" ? "30 ngày qua" : "Last 30 Days";
+    if (filterType === "1year") return lang === "vi" ? "1 năm qua" : "Last 1 Year";
+    return lang === "vi" ? "Tất cả lịch sử" : "All-time History";
+  };
+
   const stats = [
     {
       label: t.home.walletBalance,
@@ -188,14 +258,14 @@ export default function DashboardPage() {
       value: formatVND(monthlyIncome),
       icon: TrendingUp,
       tone: "green",
-      footer: t.home.last7Days,
+      footer: getPeriodLabel(),
     },
     {
       label: t.home.totalExpenses,
       value: formatVND(monthlyExpense),
       icon: TrendingDown,
       tone: "pink",
-      footer: t.home.last7Days,
+      footer: getPeriodLabel(),
     },
     {
       label: t.home.transactions,
@@ -243,7 +313,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <div className="stat-bottom">
-                  <small>{t.home.change}</small>
+                  <small>{stat.footer}</small>
                   <ArrowUpRight size={17} />
                 </div>
               </>
@@ -254,14 +324,48 @@ export default function DashboardPage() {
 
       <section className="dashboard-grid-main">
         <article className="panel large-panel">
-          <div className="panel-head">
+          <div className="panel-head" style={{ flexWrap: "wrap", gap: "12px" }}>
             <div>
               <h3>{t.home.visitors}</h3>
               <p>{t.home.cashFlowOverview}</p>
             </div>
-            <div className="chart-legend">
-              <span><i className="green" /> {t.home.income}</span>
-              <span><i className="pink" /> {t.home.expense}</span>
+            
+            <div style={{ display: "flex", gap: "16px", alignItems: "center", flexWrap: "wrap" }}>
+              <div className="chart-filter-controls" style={{ display: "flex", gap: "6px", background: "var(--bg-card2)", padding: "4px", borderRadius: "20px", border: "1px solid var(--border)" }}>
+                {[
+                  { id: "7days", labelVi: "7 Ngày", labelEn: "7 Days" },
+                  { id: "30days", labelVi: "30 Ngày", labelEn: "30 Days" },
+                  { id: "1year", labelVi: "1 Năm", labelEn: "1 Year" },
+                  { id: "all", labelVi: "Tổng quan", labelEn: "All-Time" }
+                ].map((btn) => {
+                  const isActive = filterType === btn.id;
+                  return (
+                    <button
+                      key={btn.id}
+                      type="button"
+                      onClick={() => setFilterType(btn.id)}
+                      style={{
+                        padding: "4px 12px",
+                        borderRadius: "16px",
+                        border: "none",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        background: isActive ? "var(--primary)" : "transparent",
+                        color: isActive ? "white" : "var(--text-secondary)",
+                        transition: "all 0.2s"
+                      }}
+                    >
+                      {lang === "vi" ? btn.labelVi : btn.labelEn}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="chart-legend" style={{ margin: 0 }}>
+                <span><i className="green" /> {t.home.income}</span>
+                <span><i className="pink" /> {t.home.expense}</span>
+              </div>
             </div>
           </div>
 

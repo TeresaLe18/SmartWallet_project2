@@ -7,3 +7,4 @@ Quản lý hồ sơ cá nhân và hiển thị số dư ví trực quan trên th
 - [x] Add wallet balance display on Navbar (`Navbar.jsx`).
 - [x] Ensure profile updating flows (phone, email, password) work smoothly.
 - [x] Implement automatic balance/profile updates via custom events.
+- [x] Đồng bộ hiển thị tên người dùng sau khi KYC thành công, ưu tiên lấy họ tên thật từ KYC (`DashboardLayout.jsx`, `Profile.jsx`).

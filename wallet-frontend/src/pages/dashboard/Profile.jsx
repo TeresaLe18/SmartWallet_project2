@@ -25,9 +25,18 @@ export default function ProfilePage() {
         const res = await authAPI.getProfile();
         const data = res.data || res.user || {};
         const local = JSON.parse(localStorage.getItem("bw_user") || "{}");
+        const emailPrefix = data.email?.split("@")[0] || "";
+        let finalName = data.full_name || local.name || emailPrefix || "User";
+        
+        if (local.name && local.name !== emailPrefix) {
+          finalName = local.name;
+        } else if (data.full_name) {
+          finalName = data.full_name;
+        }
+
         setUser({
           ...data,
-          name: local.name || data.full_name || data.email?.split("@")[0] || "User",
+          name: finalName,
           avatar: getUploadUrl(data.avatar),
         });
       } catch (err) {
