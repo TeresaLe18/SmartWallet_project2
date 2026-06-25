@@ -9,6 +9,7 @@ const walletMiddleware = require('../middlewares/wallet.middleware');
 const pinMiddleware = require('../middlewares/pin.middleware');
 
 router.get('/stats', authMiddleware, accountMiddleware, walletController.getStats);
+router.get('/fees', authMiddleware, accountMiddleware, walletController.getFees);
 router.get('/transactions', authMiddleware, accountMiddleware, walletController.getTransactions);
 
 router.post(

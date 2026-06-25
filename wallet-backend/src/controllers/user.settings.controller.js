@@ -1,6 +1,7 @@
 const prisma = require('../config/prisma');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
+const { clearRefreshTokenCookie } = require('../utils/authCookie');
 
 const otpStore = {};
 
@@ -27,6 +28,7 @@ const getMe = async (req, res) => {
                 role: true,
                 status: true,
                 pin_hash: true,
+                pin_locked_until: true,
                 kyc: { select: { status: true, full_name: true, national_id: true } },
                 wallet: { select: { status: true } },
             },
@@ -46,6 +48,7 @@ const getMe = async (req, res) => {
                 role: user.role,
                 status: user.status,
                 has_pin: !!user.pin_hash,
+                pin_locked_until: user.pin_locked_until,
                 kyc_status: user.kyc?.status || null,
                 full_name: user.kyc?.full_name || null,
                 wallet_status: user.wallet?.status || 'ACTIVE',
@@ -269,12 +272,17 @@ const changePassword = async (req, res) => {
 
         await prisma.user.update({
             where: { id: userId },
-            data: { password: hashed },
+            data: {
+                password: hashed,
+                refreshTokenHash: null,
+            },
         });
+
+        clearRefreshTokenCookie(res);
 
         return res.status(200).json({
             success: true,
-            message: 'Password changed successfully',
+            message: 'Password changed successfully. Please sign in again.',
         });
     } catch (error) {
         return res.status(500).json({

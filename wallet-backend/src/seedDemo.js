@@ -29,6 +29,7 @@ async function main() {
   const fees = [
     { transaction_type: 'TRANSFER', fee_value: 0 },
     { transaction_type: 'WITHDRAW', fee_value: 5000 },
+    { transaction_type: 'PAYMENT', fee_value: 3000 },
   ];
   for (const f of fees) {
     await prisma.transactionFeeRule.upsert({ where: { transaction_type: f.transaction_type }, update: { fee_value: f.fee_value }, create: f });

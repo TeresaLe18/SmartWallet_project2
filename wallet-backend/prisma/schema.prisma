@@ -104,7 +104,8 @@ model User {
   pin_hash String? 
   pin_failed_attempts Int @default(0)
   pin_locked_until DateTime?
-  refreshToken String? @db.Text
+  pin_changed_at DateTime?
+  refreshTokenHash String? @map("refreshToken") @db.Text
 
   wallet Wallet?
   kyc    UserKyc?

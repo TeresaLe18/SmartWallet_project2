@@ -19,11 +19,27 @@ const voucherController = require('./controllers/voucher.controller');
 
 const express = require('express');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 
 //khoi tao app
 const app = express();
 
-app.use(cors());
+const allowedOrigins = (process.env.FRONTEND_URL || 'http://localhost:3000')
+  .split(',')
+  .map((o) => o.trim());
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+}));
+
+app.use(cookieParser());
 
 //middle ware de parse du lieu tu form
 app.use(express.urlencoded({ extended: true, limit: '25mb' }));

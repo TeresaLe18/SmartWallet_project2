@@ -9,6 +9,23 @@ const calculatePercentChange = (current, previous) => {
   return Number((((current - previous) / previous) * 100).toFixed(1));
 };
 
+// ─── GET /wallet/fees ─────────────────────────────────────────────────────────
+
+const getFees = async (req, res) => {
+  try {
+    const rules = await prisma.transactionFeeRule.findMany({
+      select: { transaction_type: true, fee_value: true },
+    });
+    const fees = {};
+    for (const rule of rules) {
+      fees[rule.transaction_type] = Number(rule.fee_value);
+    }
+    return res.status(200).json({ success: true, fees });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // ─── GET /wallet/stats ───────────────────────────────────────────────────────
 
 const getStats = async (req, res) => {
@@ -1074,5 +1091,5 @@ const confirmQrDeposit = async (req, res) => {
   }
 };
 
-module.exports = { getStats, getTransactions, deposit, withdraw, transfer, payment, createQrDeposit,
+module.exports = { getStats, getFees, getTransactions, deposit, withdraw, transfer, payment, createQrDeposit,
   confirmQrDeposit,};
