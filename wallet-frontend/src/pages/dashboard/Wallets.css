@@ -1350,6 +1350,53 @@
   color: #22c55e;
 }
 
+.fee-summary-box {
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.fee-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.fee-summary-row span:last-child {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.fee-summary-row.fee-discount span:last-child {
+  color: #22c55e;
+}
+
+.fee-summary-row.fee-total {
+  padding-top: 8px;
+  border-top: 1px dashed var(--border);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.fee-summary-row.fee-total span:last-child {
+  color: #2563eb;
+  font-size: 14px;
+}
+
+.fee-hint-text {
+  margin: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
 /* Voucher Selector Overlay */
 .voucher-selector-overlay {
   position: absolute;

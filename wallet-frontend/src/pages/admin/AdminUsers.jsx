@@ -6,7 +6,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { adminAPI, getUploadUrl, formatVND } from "../../services/api";
 
-const kycBadge = { verified:{ bg:"rgba(34,197,94,0.12)", color:"#22c55e", text:"KYC Verified" }, pending:{ bg:"rgba(245,158,11,0.12)", color:"#f59e0b", text:"Pending Review" }, rejected:{ bg:"rgba(239,68,68,0.12)", color:"#ef4444", text:"KYC Rejected" }, none:{ bg:"rgba(100,116,139,0.12)", color:"#94a3b8", text:"Not KYC'd" } };
+const kycBadge = { verified:{ bg:"rgba(34,197,94,0.12)", color:"#22c55e", text:"KYC Verified" }, pending:{ bg:"rgba(245,158,11,0.12)", color:"#f59e0b", text:"Pending Review" }, rejected:{ bg:"rgba(239,68,68,0.12)", color:"#ef4444", text:"KYC Rejected" }, none:{ bg:"rgba(100,116,139,0.12)", color:"#94a3b8", text:"KYC Not Provided" } };
 const statusBadge = {
   active: { bg: "rgba(34,197,94,0.12)", color: "#22c55e", text: "Active" },
   locked: { bg: "rgba(239,68,68,0.12)", color: "#ef4444", text: "Locked" },
@@ -207,7 +207,7 @@ export default function AdminUsersPage() {
             style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:8, padding:"9px 12px 9px 34px", color: "var(--text-primary)", fontSize:13, outline:"none" }} />
         </div>
         <div style={{ display:"flex", gap:6 }}>
-          {[{v:"all",l:"All"},{v:"verified",l:"KYC Verified"},{v:"pending",l:"Pending Review"},{v:"none",l:"Not KYC'd"}].map(f => (
+          {[{v:"all",l:"All"},{v:"verified",l:"KYC Verified"},{v:"pending",l:"Pending Review"},{v:"none",l:"KYC Not Provided"}].map(f => (
             <button key={f.v} onClick={() => setKycFilter(f.v)} style={{
               padding:"8px 12px", borderRadius:8, fontSize:12, fontWeight:500,
               background: kycFilter===f.v ? "rgba(37,99,235,0.15)" : "var(--bg-card)",

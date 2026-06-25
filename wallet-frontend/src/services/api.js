@@ -1,11 +1,41 @@
 import axios from "axios";
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
 
 const api = axios.create({
   baseURL: API_BASE_URL,
+  withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });
+
+// Ensure only one refresh runs at a time (avoids token rotation races)
+let refreshPromise = null;
+
+const refreshAccessToken = () => {
+  if (!refreshPromise) {
+    refreshPromise = axios
+      .post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })
+      .then((res) => {
+        const accessToken = res.data?.data?.accessToken;
+        if (!accessToken) throw new Error("No access token in refresh response");
+
+        const storageKey = localStorage.getItem("bw_admin_token") && !localStorage.getItem("bw_token")
+          ? "bw_admin_token"
+          : "bw_token";
+        localStorage.setItem(storageKey, accessToken);
+        return accessToken;
+      })
+      .finally(() => {
+        refreshPromise = null;
+      });
+  }
+  return refreshPromise;
+};
+
+const isAuthRefreshRequest = (config) => {
+  const url = config?.url || "";
+  return url.includes("/auth/refresh") || url.includes("/auth/logout");
+};
 
 // ─── Request interceptor — attach JWT ────────────────────────────────────────
 api.interceptors.request.use(
@@ -25,31 +55,31 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = localStorage.getItem("bw_refresh_token");
-        if (!refreshToken) throw new Error("No refresh token");
-
-        const res = await axios.post(`${API_BASE_URL}/auth/refresh`, { refreshToken });
-
-        const { accessToken, refreshToken: newRefreshToken } = res.data.data;
-
-        localStorage.setItem("bw_token", accessToken);
-        if (newRefreshToken) localStorage.setItem("bw_refresh_token", newRefreshToken);
-
-        originalRequest.headers.Authorization = `Bearer ${accessToken}`;
-        return api(originalRequest);
-      } catch (_) {
-        localStorage.removeItem("bw_token");
-        localStorage.removeItem("bw_refresh_token");
-        localStorage.removeItem("bw_user");
-        window.location.href = "/login";
-      }
+    if (
+      !originalRequest ||
+      originalRequest._retry ||
+      isAuthRefreshRequest(originalRequest) ||
+      error.response?.status !== 401
+    ) {
+      return Promise.reject(error);
     }
 
-    return Promise.reject(error);
+    originalRequest._retry = true;
+
+    try {
+      const accessToken = await refreshAccessToken();
+      originalRequest.headers.Authorization = `Bearer ${accessToken}`;
+      return api(originalRequest);
+    } catch (refreshError) {
+      localStorage.removeItem("bw_token");
+      localStorage.removeItem("bw_user");
+      localStorage.removeItem("bw_admin_token");
+      localStorage.removeItem("bw_admin");
+      if (!window.location.pathname.startsWith("/login")) {
+        window.location.href = "/login";
+      }
+      return Promise.reject(refreshError);
+    }
   },
 );
 
@@ -148,12 +178,34 @@ export const authAPI = {
     const res = await api.post("/auth/set-pin", { pin });
     return res.data;
   },
+  changePin: async (currentPin, newPin) => {
+    const res = await api.post("/auth/change-pin", {
+      current_pin: currentPin,
+      new_pin: newPin,
+    });
+    return res.data;
+  },
+  requestForgotPinOtp: async () => {
+    const res = await api.post("/auth/forgot-pin/send-otp");
+    return res.data;
+  },
+  resetPinWithOtp: async (otp, newPin) => {
+    const res = await api.post("/auth/forgot-pin/reset", { otp, new_pin: newPin });
+    return res.data;
+  },
+  requestCreatePinOtp: async () => {
+    const res = await api.post("/auth/create-pin/send-otp");
+    return res.data;
+  },
+  createPinWithOtp: async (otp, newPin) => {
+    const res = await api.post("/auth/create-pin/confirm", { otp, new_pin: newPin });
+    return res.data;
+  },
   logout: async () => {
     try {
       await api.post("/auth/logout");
     } catch (_) { /* always clear local state */ }
     localStorage.removeItem("bw_token");
-    localStorage.removeItem("bw_refresh_token");
     localStorage.removeItem("bw_user");
   },
   disableAccount: async () => {
@@ -256,6 +308,10 @@ export const walletAPI = {
   },
   getStats: async () => {
     const res = await api.get("/wallet/stats");
+    return res.data;
+  },
+  getFees: async () => {
+    const res = await api.get("/wallet/fees");
     return res.data;
   },
   freezeWallet: async () => {

@@ -5,6 +5,27 @@ import { authAPI, kycAPI, getUploadUrl } from "../../services/api";
 import { useLanguage } from "../../context/LanguageContext";
 import "./Kyc.css";
 
+const GENDER_VALUES = ["Male", "Female", "Other"];
+
+const normalizeGender = (value) => {
+  if (!value) return "Male";
+  const s = String(value).trim().toLowerCase();
+  if (["male", "nam", "m"].includes(s)) return "Male";
+  if (["female", "nữ", "nu", "f"].includes(s)) return "Female";
+  if (["other", "khác", "khac"].includes(s)) return "Other";
+  return "Male";
+};
+
+const genderLabel = (value, lang) => {
+  const labels = {
+    Male: { vi: "Nam", en: "Male" },
+    Female: { vi: "Nữ", en: "Female" },
+    Other: { vi: "Khác", en: "Other" },
+  };
+  const key = normalizeGender(value);
+  return labels[key]?.[lang === "vi" ? "vi" : "en"] ?? key;
+};
+
 export default function KycPage() {
   const { t, lang } = useLanguage();
   const steps = [
@@ -21,6 +42,10 @@ export default function KycPage() {
   const [savedKyc, setSavedKyc] = useState(null);
 
   useEffect(() => {
+    if (savedKyc?.message && (savedKyc.status === "REJECTED" || user?.kycStatus === "rejected")) {
+      setRejectReason(savedKyc.message);
+      return;
+    }
     if (user && (user.kycStatus === "rejected" || user.kyc === "rejected")) {
       authAPI.getNotifications()
         .then(res => {
@@ -36,7 +61,7 @@ export default function KycPage() {
     } else {
       setRejectReason("");
     }
-  }, [user]);
+  }, [user, savedKyc]);
 
   useEffect(() => {
     const loadUser = () => {
@@ -56,21 +81,23 @@ export default function KycPage() {
   useEffect(() => {
     if (!user) return;
     const hasKyc = user.kyc === true || user.kyc === "verified" || user.kycStatus === "verified"
-      || user.kycStatus === "pending" || user.kycStatus === "rejected";
+      || user.kyc === "pending" || user.kycStatus === "pending"
+      || user.kyc === "rejected" || user.kycStatus === "rejected";
     if (!hasKyc) return;
 
     kycAPI.getMyKyc()
       .then(kyc => {
-        if (kyc && !kyc.message) {
+        // Rejected records include a `message` field (rejection reason) — must not treat that as an error response
+        if (kyc?.id) {
           setSavedKyc(kyc);
           // Pre-fill text fields for rejected/edit flow
           setForm(f => ({
             ...f,
-            fullname: f.fullname || kyc.full_name || "",
-            cccd: f.cccd || kyc.national_id || "",
-            dob: f.dob || (kyc.date_of_birth ? kyc.date_of_birth.split("T")[0] : ""),
-            gender: f.gender || kyc.gender || "Male",
-            address: f.address || kyc.address || "",
+            fullname: kyc.full_name || "",
+            cccd: kyc.national_id || "",
+            dob: kyc.date_of_birth ? kyc.date_of_birth.split("T")[0] : "",
+            gender: normalizeGender(kyc.gender),
+            address: kyc.address || "",
           }));
         }
       })
@@ -133,7 +160,8 @@ export default function KycPage() {
 
     // Images are only mandatory for a brand-new submission (no existing KYC record).
     // On an update the user can leave any unchanged — the backend keeps the old files.
-    const isUpdate = !!savedKyc;
+    const isUpdate = !!savedKyc
+      || user?.kycStatus === "rejected" || user?.kyc === "rejected";
 
     if (!isUpdate) {
       if (!form.frontImg) {
@@ -156,7 +184,7 @@ export default function KycPage() {
         national_id: form.cccd,
         full_name: form.fullname,
         date_of_birth: form.dob,
-        gender: form.gender || "Male",
+        gender: form.gender,
         address: form.address || "",
         ...(form.frontImg  && { front_image:  form.frontImg }),
         ...(form.backImg   && { back_image:   form.backImg }),
@@ -221,7 +249,7 @@ export default function KycPage() {
               { label: t.kyc.fullName,         value: savedKyc?.full_name || "Not provided" },
               { label: t.kyc.nationalId,       value: savedKyc?.national_id || "Not provided" },
               { label: t.kyc.dob,     value: savedKyc?.date_of_birth ? new Date(savedKyc.date_of_birth).toLocaleDateString("en-GB") : "Not provided" },
-              { label: t.kyc.gender,            value: savedKyc?.gender || "Not provided" },
+              { label: t.kyc.gender,            value: savedKyc?.gender ? genderLabel(savedKyc.gender, lang) : "Not provided" },
               { label: t.kyc.address, value: savedKyc?.address || "Not provided" },
             ].map((item, idx) => (
               <div key={idx} className="kyc-info-row">
@@ -261,7 +289,7 @@ export default function KycPage() {
                 fullname: savedKyc?.full_name || "",
                 cccd: savedKyc?.national_id || "",
                 dob: savedKyc?.date_of_birth ? savedKyc.date_of_birth.split("T")[0] : "",
-                gender: savedKyc?.gender || "Male",
+                gender: normalizeGender(savedKyc?.gender),
                 address: savedKyc?.address || "",
                 frontImg: null,
                 backImg: null,
@@ -373,20 +401,20 @@ export default function KycPage() {
           <div style={{ marginBottom:16 }}>
             <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>{t.kyc.gender}</label>
             <div style={{ display:"flex", gap:10 }}>
-              {[(lang === "vi" ? "Nam" : "Male"), (lang === "vi" ? "Nữ" : "Female"), (lang === "vi" ? "Khác" : "Other")].map(g => (
+              {GENDER_VALUES.map(value => (
                 <button
-                  key={g}
+                  key={value}
                   type="button"
-                  onClick={() => setForm(p => ({...p, gender: g}))}
+                  onClick={() => setForm(p => ({...p, gender: value}))}
                   style={{
                     flex:1, padding:"10px", borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer",
-                    background: form.gender === g ? "rgba(37,99,235,0.12)" : "var(--bg-card2)",
-                    border: `2px solid ${form.gender === g ? "#2563eb" : "var(--border)"}`,
-                    color: form.gender === g ? "#2563eb" : "var(--text-secondary)",
+                    background: form.gender === value ? "rgba(37,99,235,0.12)" : "var(--bg-card2)",
+                    border: `2px solid ${form.gender === value ? "#2563eb" : "var(--border)"}`,
+                    color: form.gender === value ? "#2563eb" : "var(--text-secondary)",
                     transition:"all 0.15s"
                   }}
                 >
-                  {g}
+                  {genderLabel(value, lang)}
                 </button>
               ))}
             </div>

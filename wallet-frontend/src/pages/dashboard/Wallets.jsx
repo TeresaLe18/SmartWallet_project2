@@ -80,6 +80,8 @@ const mapBackendTx = (tx, currentEmail) => {
     type,
     name,
     amount: Number(tx.amount),
+    fee: Number(tx.fee_amount || 0),
+    finalAmount: Number(tx.final_amount ?? tx.amount),
     time: timeStr,
     status: tx.status.toLowerCase(),
     note: tx.message || "",
@@ -290,6 +292,70 @@ export default function WalletsPage() {
   const [showPromoSelector, setShowPromoSelector] = useState(false);
   const [activePromoTab, setActivePromoTab] = useState("All");
   const [voucherList, setVoucherList] = useState([]);
+  const [feeRules, setFeeRules] = useState({});
+
+  const getTxnFee = (type) => {
+    const v = feeRules[type];
+    if (v == null) return 0;
+    return Number(v) || 0;
+  };
+
+  const loadFeeRules = async () => {
+    try {
+      const feesData = await walletAPI.getFees();
+      if (feesData?.success) setFeeRules(feesData.fees || {});
+    } catch (err) {
+      console.error("Failed to load transaction fees:", err);
+    }
+  };
+
+  const calcChargeSummary = (amount, feeType, discount = 0) => {
+    const amt = Number(amount) || 0;
+    const unitFee = getTxnFee(feeType);
+    const fee = amt > 0 ? unitFee : 0;
+    const disc = Number(discount) || 0;
+    return { amount: amt, fee, discount: disc, total: Math.max(0, amt + fee - disc), unitFee };
+  };
+
+  const renderFeeSummary = (summary, feeType) => {
+    const configuredFee = feeType ? getTxnFee(feeType) : summary.fee;
+
+    if (summary.amount <= 0) {
+      if (configuredFee <= 0) return null;
+      return (
+        <div className="fee-summary-box">
+          <div className="fee-summary-row">
+            <span>{t.wallets.serviceFee}</span>
+            <span>{fmtCurrency(configuredFee)}</span>
+          </div>
+          <p className="fee-hint-text">{t.wallets.feePerTxnHint}</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="fee-summary-box">
+        <div className="fee-summary-row">
+          <span>{t.wallets.txDetailAmount}</span>
+          <span>{fmtCurrency(summary.amount)}</span>
+        </div>
+        <div className="fee-summary-row">
+          <span>{t.wallets.serviceFee}</span>
+          <span>{summary.fee > 0 ? fmtCurrency(summary.fee) : t.wallets.noFee}</span>
+        </div>
+        {summary.discount > 0 && (
+          <div className="fee-summary-row fee-discount">
+            <span>{t.wallets.discount}</span>
+            <span>-{fmtCurrency(summary.discount)}</span>
+          </div>
+        )}
+        <div className="fee-summary-row fee-total">
+          <span>{t.wallets.totalDeduction}</span>
+          <span>{fmtCurrency(summary.total)}</span>
+        </div>
+      </div>
+    );
+  };
 
   const loadVouchers = async () => {
     try { const res = await voucherAPI.publicList(); if (res.success) setVoucherList(res.data); }
@@ -372,6 +438,7 @@ export default function WalletsPage() {
     const bwUser = localStorage.getItem("bw_user");
     const currentEmail = bwUser ? JSON.parse(bwUser).email : null;
     if (!currentEmail) return;
+    loadFeeRules();
     try {
       const [statsData, txsData, profileData] = await Promise.all([
         walletAPI.getStats(),
@@ -437,6 +504,12 @@ export default function WalletsPage() {
   useEffect(() => {
     categoryAPI.list().then(r => { if (r?.success) setCategories(r.data); }).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (modal === "withdraw" || modal === "transfer" || modal === "qr_scan") {
+      loadFeeRules();
+    }
+  }, [modal]);
 
   useEffect(() => {
     loadVouchers();
@@ -694,12 +767,17 @@ export default function WalletsPage() {
       const res = await walletAPI.withdraw(payload);
       
       if (res.success) {
+        const summary = calcChargeSummary(amount, "WITHDRAW");
         if (res.transaction) {
           const newTx = mapBackendTx(res.transaction, userEmail);
           setTxList(prev => [newTx, ...prev]);
         }
         if (res.wallet?.balance !== undefined) setBalance(Number(res.wallet.balance));
-        showToast("Withdrawal successful!");
+        showToast(
+          summary.fee > 0
+            ? `Withdrawal successful! Total deducted: ${fmtCurrency(summary.total)} (fee: ${fmtCurrency(summary.fee)})`
+            : "Withdrawal successful!",
+        );
         closeModal();
         await fetchWalletData();
       }
@@ -1455,6 +1533,8 @@ export default function WalletsPage() {
                         {t.wallets.withdrawPinDesc}
                       </p>
 
+                      {renderFeeSummary(calcChargeSummary(depositForm.amount, "WITHDRAW"), "WITHDRAW")}
+
                       <div className="pin-grid">
                         {pinTransactionInputs.map((digit, i) => (
                           <input
@@ -1552,8 +1632,16 @@ export default function WalletsPage() {
                             </div>
                           </div>
 
+                          {renderFeeSummary(calcChargeSummary(depositForm.amount, "WITHDRAW"), "WITHDRAW")}
+
                           <button onClick={handleConfirmWithdraw} className="btn-submit btn-warning-gradient">
-                            {t.wallets.confirmWithdrawBtn} {depositForm.amount ? fmtCurrency(Number(depositForm.amount)) : ""}
+                            {(() => {
+                              const summary = calcChargeSummary(depositForm.amount, "WITHDRAW");
+                              const label = summary.fee > 0
+                                ? `${t.wallets.confirmWithdrawBtn} ${fmtCurrency(summary.total)}`
+                                : `${t.wallets.confirmWithdrawBtn} ${depositForm.amount ? fmtCurrency(summary.amount) : ""}`;
+                              return label;
+                            })()}
                           </button>
                         </>
                       )}
@@ -1571,6 +1659,15 @@ export default function WalletsPage() {
                       <p className="modal-subtitle">
                         {t.wallets.enterPinTransferDesc}
                       </p>
+
+                      {renderFeeSummary(
+                        calcChargeSummary(
+                          txForm.amount,
+                          transferMethod === "bank" ? "PAYMENT" : "TRANSFER",
+                          appliedVoucher?.discountAmount || 0,
+                        ),
+                        transferMethod === "bank" ? "PAYMENT" : "TRANSFER",
+                      )}
 
                       <div className="pin-grid">
                         {pinTransactionInputs.map((digit, i) => (
@@ -1790,17 +1887,32 @@ export default function WalletsPage() {
                         <span className="balance-display-value">{fmtCurrency(balance)}</span>
                       </div>
 
+                      {renderFeeSummary(
+                        calcChargeSummary(
+                          txForm.amount,
+                          transferMethod === "bank" ? "PAYMENT" : "TRANSFER",
+                          appliedVoucher?.discountAmount || 0,
+                        ),
+                        transferMethod === "bank" ? "PAYMENT" : "TRANSFER",
+                      )}
+
                       {appliedVoucher ? (() => {
-                        const discount = appliedVoucher.discountAmount || 0;
-                        const finalAmt = Math.max(0, (Number(txForm.amount) || 0) - discount);
+                        const summary = calcChargeSummary(txForm.amount, "TRANSFER", appliedVoucher.discountAmount || 0);
                         return (
                           <button onClick={handleConfirmTransfer} className="btn-submit">
-                            💸 {t.wallets.confirmTransferDiscountedBtn} {fmtCurrency(finalAmt)}
+                            💸 {t.wallets.confirmTransferDiscountedBtn} {fmtCurrency(summary.total)}
                           </button>
                         );
                       })() : (
                         <button onClick={handleConfirmTransfer} className="btn-submit">
-                          💸 {t.wallets.confirmTransferBtn} {txForm.amount ? fmtCurrency(Number(txForm.amount)) : ""}
+                          {(() => {
+                            const feeType = transferMethod === "bank" ? "PAYMENT" : "TRANSFER";
+                            const summary = calcChargeSummary(txForm.amount, feeType);
+                            const totalLabel = summary.fee > 0
+                              ? fmtCurrency(summary.total)
+                              : (txForm.amount ? fmtCurrency(summary.amount) : "");
+                            return <>💸 {t.wallets.confirmTransferBtn} {totalLabel}</>;
+                          })()}
                         </button>
                       )}
                     </div>
@@ -1873,6 +1985,8 @@ export default function WalletsPage() {
                       <p className="modal-subtitle">
                         {t.wallets.enterPinTransferDesc}
                       </p>
+
+                      {renderFeeSummary(calcChargeSummary(txForm.amount, "PAYMENT"), "PAYMENT")}
 
                       <div className="pin-grid">
                         {pinTransactionInputs.map((digit, i) => (
@@ -1978,8 +2092,16 @@ export default function WalletsPage() {
                             <span className="balance-display-value" style={{ fontWeight: 800, color: "var(--text-primary)" }}>{fmtCurrency(balance)}</span>
                           </div>
 
+                          {renderFeeSummary(calcChargeSummary(txForm.amount, "PAYMENT"), "PAYMENT")}
+
                           <button onClick={handleConfirmTransfer} className="btn-submit" style={{ background: "linear-gradient(135deg, #11c981 0%, #0b784a 100%)", boxShadow: "0 4px 12px rgba(17, 201, 129, 0.25)" }}>
-                            💸 {t.wallets.confirmTransferBtn} {txForm.amount ? fmtCurrency(Number(txForm.amount)) : ""}
+                            {(() => {
+                              const summary = calcChargeSummary(txForm.amount, "TRANSFER");
+                              const totalLabel = summary.fee > 0
+                                ? fmtCurrency(summary.total)
+                                : (txForm.amount ? fmtCurrency(summary.amount) : "");
+                              return <>💸 {t.wallets.confirmTransferBtn} {totalLabel}</>;
+                            })()}
                           </button>
                         </div>
                       )}
@@ -2177,6 +2299,10 @@ export default function WalletsPage() {
                     ...(selectedTx.category ? [{ label: t.wallets.txDetailCategory, value: selectedTx.category }] : []),
                     { label: selectedTx.type==="receive" ? t.wallets.txDetailSender : t.wallets.txDetailRecipient, value:selectedTx.name },
                     { label: t.wallets.txDetailDate, value:selectedTx.time },
+                    ...(selectedTx.type === "send" && selectedTx.fee > 0 ? [
+                      { label: t.wallets.txDetailFee, value: fmtCurrency(selectedTx.fee) },
+                      { label: t.wallets.txDetailTotal, value: fmtCurrency(selectedTx.finalAmount) },
+                    ] : []),
                     { label: t.wallets.txDetailNote, value:selectedTx.note || "—" },
                   ].map(r => (
                     <div key={r.label} className="admin-detail-row">

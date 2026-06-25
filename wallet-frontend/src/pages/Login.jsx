@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./Login.css";
 import Footer from "../components/Footer";
 import Navbar from "../components/Navbar";
@@ -27,6 +27,7 @@ const fieldIconSize = 16;
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { t, lang } = useLanguage();
   const forgotOtpRefs = useRef([]);
 
@@ -35,6 +36,14 @@ export default function LoginPage() {
   const [showPass, setShowPass] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
+
+  useEffect(() => {
+    if (location.state?.message) {
+      setInfoMessage(location.state.message);
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location, navigate]);
 
   const features = [
     { icon: "🔒", text: t.login.featureSecure },
@@ -186,10 +195,8 @@ export default function LoginPage() {
 
   const saveAdminSession = (data) => {
     localStorage.removeItem("bw_token");
-    localStorage.removeItem("bw_refresh_token");
     localStorage.removeItem("bw_user");
     localStorage.setItem("bw_admin_token", data.accessToken);
-    localStorage.setItem("bw_refresh_token", data.refreshToken);
     localStorage.setItem(
       "bw_admin",
       JSON.stringify({
@@ -206,7 +213,6 @@ export default function LoginPage() {
     localStorage.removeItem("bw_admin_token");
     localStorage.removeItem("bw_admin");
     localStorage.setItem("bw_token", data.accessToken);
-    localStorage.setItem("bw_refresh_token", data.refreshToken);
     localStorage.setItem(
       "bw_user",
       JSON.stringify({
@@ -343,6 +349,24 @@ export default function LoginPage() {
               {t.login.registerNow}
             </Link>
           </p>
+
+          {infoMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{
+                background: "rgba(34,197,94,0.08)",
+                border: "1px solid rgba(34,197,94,0.2)",
+                borderRadius: 10,
+                padding: "10px 14px",
+                marginBottom: 16,
+                color: "#22c55e",
+                fontSize: 13,
+              }}
+            >
+              {infoMessage}
+            </motion.div>
+          )}
 
           {error && (
             <motion.div
