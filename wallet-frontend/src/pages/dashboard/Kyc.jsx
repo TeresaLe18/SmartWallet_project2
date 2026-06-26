@@ -69,6 +69,24 @@ export default function KycPage() {
       if (u) setUser(JSON.parse(u));
     };
     loadUser();
+
+    authAPI.getProfile()
+      .then((data) => {
+        if (!data?.success || !data.user) return;
+        const kycStatus = data.user.kyc_status || "none";
+        const stored = localStorage.getItem("bw_user");
+        const parsed = stored ? JSON.parse(stored) : {};
+        const nextUser = {
+          ...parsed,
+          kyc: kycStatus === "VERIFIED",
+          kycStatus: kycStatus.toLowerCase(),
+        };
+        localStorage.setItem("bw_user", JSON.stringify(nextUser));
+        setUser(nextUser);
+        window.dispatchEvent(new Event("kyc_updated"));
+      })
+      .catch(() => {});
+
     window.addEventListener("storage", loadUser);
     window.addEventListener("kyc_updated", loadUser);
     return () => {

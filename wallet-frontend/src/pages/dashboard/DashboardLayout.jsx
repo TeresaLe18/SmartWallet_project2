@@ -20,7 +20,7 @@ import {
   PiggyBank,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { authAPI, getUploadUrl, supportAPI } from "../../services/api";
+import { authAPI, ensureValidAccessToken, getUploadUrl, supportAPI } from "../../services/api";
 
 import { QrCode } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
@@ -114,6 +114,46 @@ export default function DashboardLayout() {
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
+  const applyProfileToUser = (profile) => {
+    if (!profile?.id) return;
+
+    const kycStatus = profile.kyc_status || "none";
+    let finalName = profile.email;
+    if (kycStatus === "VERIFIED" && profile.full_name) {
+      finalName = profile.full_name;
+    }
+
+    const nextUser = {
+      id: profile.id,
+      email: profile.email,
+      name: finalName,
+      phone: profile.phone || undefined,
+      avatar: getUploadUrl(profile.avatar),
+      status: profile.status,
+      kyc: kycStatus === "VERIFIED",
+      kycStatus: kycStatus.toLowerCase(),
+      has_pin: !!profile.has_pin,
+    };
+
+    localStorage.setItem("bw_user", JSON.stringify(nextUser));
+    setUser(nextUser);
+    window.dispatchEvent(new Event("kyc_updated"));
+  };
+
+  const refreshUserProfile = () => {
+    const token = localStorage.getItem("bw_token");
+    if (!token) return;
+
+    authAPI
+      .getProfile()
+      .then((data) => {
+        if (data?.success && data.user) {
+          applyProfileToUser(data.user);
+        }
+      })
+      .catch(() => { });
+  };
+
   const fetchDbNotifications = () => {
     const token = localStorage.getItem("bw_token");
     if (!token) return;
@@ -129,64 +169,65 @@ export default function DashboardLayout() {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem("bw_token");
-    const adminToken = localStorage.getItem("bw_admin_token");
+    let cancelled = false;
 
-    if (!token && adminToken) {
-      navigate("/admin", { replace: true });
-      return;
-    }
+    const bootstrap = async () => {
+      const token = localStorage.getItem("bw_token");
+      const adminToken = localStorage.getItem("bw_admin_token");
 
-    if (!token) {
-      navigate("/login", { replace: true });
-      return;
-    }
+      if (!token && adminToken) {
+        navigate("/admin", { replace: true });
+        return;
+      }
 
-    const savedUser = safeParse(localStorage.getItem("bw_user"));
-    if (savedUser) setUser(savedUser);
+      if (!token) {
+        navigate("/login", { replace: true });
+        return;
+      }
 
-    authAPI
-      .getProfile()
-      .then((data) => {
-        if (!data?.success || !data.user) return;
-
-        const kycStatus = data.user.kyc_status || "none";
-        
-        let finalName = data.user.email;
-        if (data.user.display_name) {
-          finalName = data.user.display_name;
-        } else if (kycStatus === "VERIFIED" && data.user.full_name) {
-          finalName = data.user.full_name;
+      try {
+        await ensureValidAccessToken("bw_token");
+      } catch {
+        if (!cancelled) {
+          localStorage.removeItem("bw_token");
+          localStorage.removeItem("bw_user");
+          navigate("/login", { replace: true });
         }
+        return;
+      }
 
-        const nextUser = {
-          id: data.user.id,
-          email: data.user.email,
-          name: finalName,
-          displayName: data.user.display_name || null,
-          phone: data.user.phone || undefined,
-          avatar: getUploadUrl(data.user.avatar),
-          status: data.user.status,
-          kyc: kycStatus === "VERIFIED",
-          kycStatus: kycStatus.toLowerCase(),
-          has_pin: !!data.user.has_pin,
-        };
+      if (cancelled) return;
 
-        localStorage.setItem("bw_user", JSON.stringify(nextUser));
-        setUser(nextUser);
-      })
-      .catch(() => { });
+      const savedUser = safeParse(localStorage.getItem("bw_user"));
+      if (savedUser) setUser(savedUser);
+
+      authAPI
+        .getProfile()
+        .then((data) => {
+          if (data?.success && data.user) {
+            applyProfileToUser(data.user);
+          }
+        })
+        .catch(() => { });
+    };
+
+    bootstrap();
+    return () => { cancelled = true; };
   }, [navigate]);
 
   useEffect(() => {
     const handleKycUpdated = () => {
       const savedUser = safeParse(localStorage.getItem("bw_user"));
-      if (savedUser) {
-        setUser(savedUser);
-      }
+      if (savedUser) setUser(savedUser);
     };
+    const handleFocus = () => refreshUserProfile();
+
     window.addEventListener("kyc_updated", handleKycUpdated);
-    return () => window.removeEventListener("kyc_updated", handleKycUpdated);
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      window.removeEventListener("kyc_updated", handleKycUpdated);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, []);
 
   useEffect(() => {
@@ -265,27 +306,6 @@ export default function DashboardLayout() {
         })}
       </nav>
 
-      <div className="dash-side-card">
-        <div className="dash-side-card-icon">
-          <Shield size={18} />
-        </div>
-        <div>
-          <strong>Secure Wallet</strong>
-          <p>Protected payments, alerts and KYC verification.</p>
-        </div>
-      </div>
-
-      {user && (
-        <div className="dash-side-user">
-          <div className="dash-avatar">
-            {user.avatar ? <img src={user.avatar} alt="" /> : <User size={18} />}
-          </div>
-          <div>
-            <strong>{user.name || "User"}</strong>
-            <span>{user.email}</span>
-          </div>
-        </div>
-      )}
     </aside>
   );
 

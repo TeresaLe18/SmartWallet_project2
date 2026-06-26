@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useLocation, Link, Outlet } from "react-router-dom";
 import { Users, Settings, Newspaper, LayoutGrid, LogOut, Wallet, Menu, Shield, ArrowRightLeft, AlertTriangle, MessageSquare, TrendingUp } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { adminAPI, supportAPI } from "../../services/api";
+import { adminAPI, authAPI, ensureValidAccessToken, isRefreshRejected, supportAPI } from "../../services/api";
 import { useLanguage } from "../../context/LanguageContext";
 
 const adminNav = [
@@ -47,6 +47,18 @@ export default function AdminLayout() {
   const fetchCounts = async () => {
     const token = localStorage.getItem("bw_admin_token");
     if (!token) return;
+
+    try {
+      await ensureValidAccessToken("bw_admin_token");
+    } catch (err) {
+      if (isRefreshRejected(err)) {
+        localStorage.removeItem("bw_admin_token");
+        localStorage.removeItem("bw_admin");
+        navigate("/login", { replace: true });
+      }
+      return;
+    }
+
     try {
       const kycRes = await adminAPI.getKycSubmissions();
       if (kycRes.success && kycRes.submissions) {
@@ -81,21 +93,63 @@ export default function AdminLayout() {
   };
 
   useEffect(() => {
-    if (!localStorage.getItem("bw_admin_token")) {
-      navigate("/login", { replace: true });
-      return;
-    }
-    const saved = localStorage.getItem("bw_admin");
-    if (saved) setAdminUser(JSON.parse(saved));
+    let cancelled = false;
 
-    fetchCounts();
+    const bootstrap = async () => {
+      if (!localStorage.getItem("bw_admin_token")) {
+        navigate("/login", { replace: true });
+        return;
+      }
+
+      try {
+        await ensureValidAccessToken("bw_admin_token");
+      } catch (err) {
+        if (!cancelled && isRefreshRejected(err)) {
+          localStorage.removeItem("bw_admin_token");
+          localStorage.removeItem("bw_admin");
+          navigate("/login", { replace: true });
+        }
+        return;
+      }
+
+      if (cancelled) return;
+
+      const saved = localStorage.getItem("bw_admin");
+      if (saved) setAdminUser(JSON.parse(saved));
+
+      fetchCounts();
+    };
+
+    bootstrap();
+
+    const refreshInterval = setInterval(() => {
+      ensureValidAccessToken("bw_admin_token").catch((err) => {
+        if (isRefreshRejected(err)) {
+          localStorage.removeItem("bw_admin_token");
+          localStorage.removeItem("bw_admin");
+          navigate("/login", { replace: true });
+        }
+      });
+    }, 5 * 60 * 1000);
+
+    const handleFocus = () => {
+      ensureValidAccessToken("bw_admin_token").catch(() => {});
+    };
+    window.addEventListener("focus", handleFocus);
+
     const interval = setInterval(fetchCounts, 6000);
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      clearInterval(refreshInterval);
+      window.removeEventListener("focus", handleFocus);
+    };
   }, [navigate]);
 
-  const handleLogout = () => {
-    localStorage.removeItem("bw_admin_token");
-    localStorage.removeItem("bw_admin");
+  const handleLogout = async () => {
+    try {
+      await authAPI.adminLogout();
+    } catch { /* clear local state regardless */ }
     navigate("/login");
   };
 

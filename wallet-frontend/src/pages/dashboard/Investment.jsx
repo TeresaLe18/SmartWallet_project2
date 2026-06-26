@@ -101,8 +101,10 @@ export default function Investment() {
       if (res.success) {
         showToast(lang === "vi" ? `Đã mở tài khoản tiết kiệm: ${formatVND(amount)} kỳ hạn ${selectedTerm === 0 ? "không kỳ hạn" : selectedTerm + " tháng"} — thành công!` : `Savings account opened: ${formatVND(amount)} for ${selectedTerm === 0 ? "flexible term" : selectedTerm + " months"} — success!`);
         setDepositAmount("1000000");
-        
-        // Sync layout and reload
+        if (res.wallet) {
+          const available = Number(res.wallet.balance) - Number(res.wallet.locked_balance || 0);
+          setWalletBalance(available);
+        }
         window.dispatchEvent(new CustomEvent("balance_updated"));
         loadData();
       } else {
@@ -134,8 +136,10 @@ export default function Investment() {
         showToast(lang === "vi" ? `Rút tiền tích lũy thành công! ${formatVND(res.payout)} đã được cộng lại vào ví chính của bạn.` : `Withdrawal successful! ${formatVND(res.payout)} returned to your main wallet.`);
         setShowEarlyModal(false);
         setSelectedInv(null);
-        
-        // Sync layouts and refresh
+        if (res.wallet) {
+          const available = Number(res.wallet.balance) - Number(res.wallet.locked_balance || 0);
+          setWalletBalance(available);
+        }
         window.dispatchEvent(new CustomEvent("balance_updated"));
         loadData();
       } else {
@@ -211,6 +215,8 @@ export default function Investment() {
 
   const activeStats = getActiveVaultStats();
   const estReturns = calculateEstimatedReturns();
+  const depositAmt = Number(depositAmount) || 0;
+  const remainingBalance = Math.max(0, walletBalance - depositAmt);
 
   const containerVariants = {
     hidden: { opacity: 0, y: 15 },
@@ -295,6 +301,11 @@ export default function Investment() {
               <Wallet size={20} color="rgba(255,255,255,0.8)" />
             </div>
             <h2 style={{ fontSize: 26, fontWeight: 800 }}>{formatVND(walletBalance)}</h2>
+            {depositAmt > 0 && (
+              <p style={{ fontSize: 12, color: "rgba(255,255,255,0.85)", marginTop: 10, fontWeight: 600 }}>
+                {t.investment.remainingBalance}: {formatVND(remainingBalance)}
+              </p>
+            )}
           </div>
           <p style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 20 }}>
             {lang === "vi" ? "Số dư khả dụng để chuyển vào tài khoản tích lũy lãi suất cao" : "Cash available to transfer into high-yield savings"}

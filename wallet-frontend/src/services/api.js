@@ -2,34 +2,82 @@ import axios from "axios";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || "/api";
 
+const apiUrl = (path) => {
+  const base = API_BASE_URL.replace(/\/$/, "");
+  return `${base}${path.startsWith("/") ? path : `/${path}`}`;
+};
+
+const decodeJwtExp = (token) => {
+  try {
+    const payload = JSON.parse(atob(token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    return payload.exp ? payload.exp * 1000 : 0;
+  } catch {
+    return 0;
+  }
+};
+
+const isTokenExpiringSoon = (token, skewMs = 60_000) => {
+  const exp = decodeJwtExp(token);
+  if (!exp) return true;
+  return Date.now() >= exp - skewMs;
+};
+
+const isAdminPath = () =>
+  typeof window !== "undefined" && window.location.pathname.startsWith("/admin");
+
+/** Which localStorage token slot to use (admin vs user sessions are separate). */
+const getAuthContext = (explicitKey) => {
+  if (explicitKey) {
+    return { storageKey: explicitKey, token: localStorage.getItem(explicitKey) };
+  }
+  if (isAdminPath()) {
+    return { storageKey: "bw_admin_token", token: localStorage.getItem("bw_admin_token") };
+  }
+  const userToken = localStorage.getItem("bw_token");
+  if (userToken) {
+    return { storageKey: "bw_token", token: userToken };
+  }
+  return { storageKey: "bw_admin_token", token: localStorage.getItem("bw_admin_token") };
+};
+
 const api = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true,
   headers: { "Content-Type": "application/json" },
 });
 
-// Ensure only one refresh runs at a time (avoids token rotation races)
-let refreshPromise = null;
+// Ensure only one refresh runs at a time per session slot
+const refreshPromises = new Map();
 
-const refreshAccessToken = () => {
-  if (!refreshPromise) {
-    refreshPromise = axios
-      .post(`${API_BASE_URL}/auth/refresh`, {}, { withCredentials: true })
+const refreshAccessToken = (storageKey) => {
+  const key = storageKey || getAuthContext().storageKey;
+
+  if (!refreshPromises.has(key)) {
+    const promise = axios
+      .post(apiUrl("/auth/refresh"), {}, { withCredentials: true })
       .then((res) => {
         const accessToken = res.data?.data?.accessToken;
         if (!accessToken) throw new Error("No access token in refresh response");
-
-        const storageKey = localStorage.getItem("bw_admin_token") && !localStorage.getItem("bw_token")
-          ? "bw_admin_token"
-          : "bw_token";
-        localStorage.setItem(storageKey, accessToken);
         return accessToken;
       })
       .finally(() => {
-        refreshPromise = null;
+        refreshPromises.delete(key);
       });
+
+    refreshPromises.set(key, promise);
   }
-  return refreshPromise;
+
+  return refreshPromises.get(key).then((accessToken) => {
+    localStorage.setItem(key, accessToken);
+    return accessToken;
+  });
+};
+
+/** Refresh access token if missing/expired/expiring soon. Pass storageKey for explicit session. */
+export const ensureValidAccessToken = async (storageKey) => {
+  const { storageKey: key, token } = getAuthContext(storageKey);
+  if (token && !isTokenExpiringSoon(token)) return token;
+  return refreshAccessToken(key);
 };
 
 const isAuthRefreshRequest = (config) => {
@@ -37,12 +85,42 @@ const isAuthRefreshRequest = (config) => {
   return url.includes("/auth/refresh") || url.includes("/auth/logout");
 };
 
-// ─── Request interceptor — attach JWT ────────────────────────────────────────
+export const isRefreshRejected = (error) => error?.response?.status === 401;
+
+const clearSessionAndRedirect = (storageKey) => {
+  const key = storageKey || getAuthContext().storageKey;
+
+  if (key === "bw_admin_token") {
+    localStorage.removeItem("bw_admin_token");
+    localStorage.removeItem("bw_admin");
+  } else {
+    localStorage.removeItem("bw_token");
+    localStorage.removeItem("bw_user");
+  }
+
+  if (!window.location.pathname.startsWith("/login")) {
+    window.location.href = "/login";
+  }
+};
+
+// ─── Request interceptor — attach JWT; refresh proactively before expiry ─────
 api.interceptors.request.use(
-  (config) => {
-    const userToken = localStorage.getItem("bw_token");
-    const adminToken = localStorage.getItem("bw_admin_token");
-    const token = userToken || adminToken;
+  async (config) => {
+    if (isAuthRefreshRequest(config)) return config;
+
+    const { storageKey, token } = getAuthContext();
+    config._authStorageKey = storageKey;
+
+    if (token && isTokenExpiringSoon(token)) {
+      try {
+        const newToken = await refreshAccessToken(storageKey);
+        config.headers.Authorization = `Bearer ${newToken}`;
+        return config;
+      } catch {
+        // Fall through — response interceptor will retry or redirect on 401
+      }
+    }
+
     if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
@@ -65,18 +143,15 @@ api.interceptors.response.use(
     }
 
     originalRequest._retry = true;
+    const storageKey = originalRequest._authStorageKey || getAuthContext().storageKey;
 
     try {
-      const accessToken = await refreshAccessToken();
+      const accessToken = await refreshAccessToken(storageKey);
       originalRequest.headers.Authorization = `Bearer ${accessToken}`;
       return api(originalRequest);
     } catch (refreshError) {
-      localStorage.removeItem("bw_token");
-      localStorage.removeItem("bw_user");
-      localStorage.removeItem("bw_admin_token");
-      localStorage.removeItem("bw_admin");
-      if (!window.location.pathname.startsWith("/login")) {
-        window.location.href = "/login";
+      if (isRefreshRejected(refreshError)) {
+        clearSessionAndRedirect(storageKey);
       }
       return Promise.reject(refreshError);
     }
@@ -207,6 +282,13 @@ export const authAPI = {
     } catch (_) { /* always clear local state */ }
     localStorage.removeItem("bw_token");
     localStorage.removeItem("bw_user");
+  },
+  adminLogout: async () => {
+    try {
+      await api.post("/auth/logout");
+    } catch (_) { /* always clear local state */ }
+    localStorage.removeItem("bw_admin_token");
+    localStorage.removeItem("bw_admin");
   },
   disableAccount: async () => {
     const res = await api.patch("/users/account/disable");

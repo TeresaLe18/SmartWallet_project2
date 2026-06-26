@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { 
   TrendingUp, Wallet, Calculator, AlertTriangle, PlusCircle, 
-  ArrowUpRight, ArrowDownLeft, Send, Sparkles, PiggyBank, Target, Trash2
+  ArrowUpRight, ArrowDownLeft, Send, Sparkles, PiggyBank, Target, Trash2, ArrowUp
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { savingsVaultAPI, walletAPI, formatVND } from "../../services/api";
@@ -44,9 +44,16 @@ export default function SavingsVaults() {
   ]);
   const chatBottomRef = useRef(null);
 
+  const getScrollContainer = () => document.querySelector(".dash-content");
+
+  const scrollToTop = (behavior = "smooth") => {
+    getScrollContainer()?.scrollTo({ top: 0, behavior });
+  };
+
   // Toasts
   const [toast, setToast] = useState(null);
   const toastTimeoutRef = useRef(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
 
   const showToast = (message, type = "success") => {
     if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
@@ -76,6 +83,7 @@ export default function SavingsVaults() {
 
   useEffect(() => {
     loadData();
+    scrollToTop("auto");
     const handleUpdate = () => {
       walletAPI.getStats().then(statsRes => {
         if (statsRes.success) {
@@ -87,6 +95,17 @@ export default function SavingsVaults() {
     return () => {
       window.removeEventListener("balance_updated", handleUpdate);
     };
+  }, []);
+
+  useEffect(() => {
+    const scrollEl = getScrollContainer();
+    if (!scrollEl) return;
+
+    const onScroll = () => setShowScrollTop(scrollEl.scrollTop > 320);
+    scrollEl.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+
+    return () => scrollEl.removeEventListener("scroll", onScroll);
   }, []);
 
   useEffect(() => {
@@ -158,6 +177,9 @@ export default function SavingsVaults() {
         setShowActionModal(false);
         setActionAmount("");
         setSelectedVault(null);
+        if (res.wallet) {
+          setWalletBalance(Number(res.wallet.balance) - Number(res.wallet.locked_balance || 0));
+        }
         window.dispatchEvent(new CustomEvent("balance_updated"));
         loadData();
       } else {
@@ -346,6 +368,33 @@ export default function SavingsVaults() {
           background: var(--bg-card2);
           color: var(--text-secondary);
         }
+        .savings-scroll-top {
+          position: fixed;
+          right: 28px;
+          bottom: 28px;
+          z-index: 60;
+          width: 44px;
+          height: 44px;
+          border-radius: 14px;
+          border: 1px solid var(--border);
+          background: var(--bg-card);
+          color: var(--primary);
+          display: grid;
+          place-items: center;
+          cursor: pointer;
+          box-shadow: 0 12px 28px rgba(15, 23, 42, 0.12);
+          transition: transform 0.2s, box-shadow 0.2s, opacity 0.2s;
+        }
+        .savings-scroll-top:hover {
+          transform: translateY(-2px);
+          box-shadow: 0 16px 32px rgba(15, 23, 42, 0.16);
+        }
+        @media (max-width: 1024px) {
+          .savings-scroll-top {
+            right: 18px;
+            bottom: 18px;
+          }
+        }
       `}</style>
 
       {/* Toast Notification */}
@@ -365,6 +414,23 @@ export default function SavingsVaults() {
           >
             <span>{toast.message}</span>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showScrollTop && (
+          <motion.button
+            type="button"
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 12 }}
+            transition={{ duration: 0.2 }}
+            className="savings-scroll-top"
+            onClick={() => scrollToTop("smooth")}
+            aria-label={lang === "vi" ? "Cuộn lên đầu trang" : "Scroll to top"}
+          >
+            <ArrowUp size={20} />
+          </motion.button>
         )}
       </AnimatePresence>
 
@@ -659,6 +725,12 @@ export default function SavingsVaults() {
                     <span style={{ color: "var(--text-secondary)" }}>{lang === "vi" ? "Số dư Ví chính:" : "Main Wallet Balance:"}</span>
                     <strong>{formatVND(walletBalance)}</strong>
                   </div>
+                  {modalType === "deposit" && Number(actionAmount) > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ color: "var(--text-secondary)" }}>{lang === "vi" ? "Còn lại sau khi nạp:" : "Remaining after deposit:"}</span>
+                      <strong style={{ color: "var(--primary)" }}>{formatVND(Math.max(0, walletBalance - Number(actionAmount)))}</strong>
+                    </div>
+                  )}
                   <div style={{ display: "flex", justifyContent: "space-between" }}>
                     <span style={{ color: "var(--text-secondary)" }}>{lang === "vi" ? "Đã tiết kiệm trong hũ:" : "Savings Vault Balance:"}</span>
                     <strong>{formatVND(Number(selectedVault.current_amount || 0))}</strong>

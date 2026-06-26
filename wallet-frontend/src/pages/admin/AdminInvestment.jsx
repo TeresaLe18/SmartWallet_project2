@@ -16,10 +16,14 @@ export default function AdminInvestment() {
     try {
       const res = await investmentAPI.getAdminAll();
       if (res.success) {
-        setInvestments(res.investments);
+        setInvestments(res.investments || []);
+      } else {
+        console.error("Admin investments API error:", res.message);
+        setInvestments([]);
       }
     } catch (error) {
       console.error("Failed to load admin investments data:", error);
+      setInvestments([]);
     } finally {
       setLoading(false);
     }

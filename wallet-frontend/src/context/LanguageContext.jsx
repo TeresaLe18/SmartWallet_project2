@@ -501,6 +501,7 @@ export const translations = {
     investment: {
       title: "Tích lũy & Đầu tư",
       walletBalance: "Số dư ví thanh toán",
+      remainingBalance: "Số dư còn lại sau khi gửi",
       activeSavings: "Số dư tích lũy hiện tại",
       projectedInterest: "Lãi suất dự kiến nhận",
       openAccount: "Mở tài khoản tiết kiệm",
@@ -1208,6 +1209,7 @@ export const translations = {
     investment: {
       title: "Investments & Savings",
       walletBalance: "Payment Wallet Balance",
+      remainingBalance: "Remaining after deposit",
       activeSavings: "Active Savings",
       projectedInterest: "Projected Interest (Accrued)",
       openAccount: "Open a Savings Account",

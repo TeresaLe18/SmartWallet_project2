@@ -3,6 +3,7 @@ import { Sparkles, Send, Bot, User, ArrowRight, AlertCircle, RefreshCw, Landmark
 import { motion, AnimatePresence } from "framer-motion";
 import { chatAPI } from "../../services/api";
 import { useLanguage } from "../../context/LanguageContext";
+import "./ChatLayout.css";
 
 export default function AiChatbot() {
   const { t, lang } = useLanguage();
@@ -69,7 +70,7 @@ export default function AiChatbot() {
   const quickPrompts = t.aiChatbot.prompts;
 
   return (
-    <div className="ai-advisor-container">
+    <div className="chat-page-shell ai-advisor-container">
       <style>{chatbotStyles}</style>
 
       {/* HEADER SECTION */}
@@ -82,7 +83,7 @@ export default function AiChatbot() {
           <p>{t.aiChatbot.subtitle}</p>
         </div>
         <div className="advisor-hero-icon">
-          <Bot size={44} />
+          <Bot size={32} />
         </div>
       </section>
 
@@ -223,18 +224,19 @@ const chatbotStyles = `
 .ai-advisor-container {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
   max-width: 1480px;
   margin: 0 auto;
+  overflow: hidden;
 }
 
 .advisor-hero {
   display: flex;
   justify-content: space-between;
-  gap: 20px;
+  gap: 16px;
   align-items: center;
-  border-radius: 28px;
-  padding: 28px;
+  border-radius: 20px;
+  padding: 20px 24px;
   color: #fff;
   background:
     radial-gradient(circle at 8% 20%, rgba(255,255,255,.2), transparent 22%),
@@ -242,6 +244,7 @@ const chatbotStyles = `
   box-shadow: 0 24px 70px rgba(37, 99, 235, .15);
   overflow: hidden;
   position: relative;
+  flex-shrink: 0;
 }
 
 .advisor-hero-text {
@@ -278,9 +281,9 @@ const chatbotStyles = `
 }
 
 .advisor-hero-icon {
-  width: 72px;
-  height: 72px;
-  border-radius: 24px;
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
   background: rgba(255, 255, 255, 0.16);
   display: grid;
   place-items: center;
@@ -290,9 +293,12 @@ const chatbotStyles = `
 }
 
 .advisor-workspace {
+  flex: 1;
+  min-height: 0;
   display: grid;
   grid-template-columns: minmax(0, 2fr) minmax(280px, 0.95fr);
-  gap: 24px;
+  gap: 20px;
+  align-items: stretch;
 }
 
 .chatbox-panel {
@@ -302,14 +308,16 @@ const chatbotStyles = `
   box-shadow: 0 18px 44px rgba(29, 45, 70, .06);
   display: flex;
   flex-direction: column;
-  height: 600px;
+  min-height: 0;
+  height: 100%;
   overflow: hidden;
 }
 
 .chatbox-header {
-  padding: 18px 24px;
+  padding: 14px 20px;
   border-bottom: 1px solid #e7edf5;
   background: #fbfdff;
+  flex-shrink: 0;
 }
 
 .advisor-avatar-status {
@@ -344,11 +352,12 @@ const chatbotStyles = `
 
 .chat-messages-scroll {
   flex: 1;
-  padding: 24px;
+  min-height: 0;
+  padding: 16px 20px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 18px;
+  gap: 14px;
   background: #fafbfc;
 }
 
@@ -443,16 +452,18 @@ const chatbotStyles = `
 }
 
 .chat-input-area {
-  padding: 16px 24px;
+  padding: 12px 16px;
   border-top: 1px solid #e7edf5;
   background: #ffffff;
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .chat-input-area textarea {
   flex: 1;
+  min-width: 0;
   border: 1px solid #e2e8f0;
   border-radius: 12px;
   padding: 12px 16px;
@@ -518,15 +529,19 @@ const chatbotStyles = `
 .quick-panel {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
+  min-height: 0;
+  min-width: 0;
+  overflow-y: auto;
 }
 
 .panel-section {
   background: #ffffff;
   border: 1px solid #e7edf5;
   border-radius: 20px;
-  padding: 24px;
+  padding: 18px 20px;
   box-shadow: 0 18px 44px rgba(29, 45, 70, .06);
+  flex-shrink: 0;
 }
 
 .panel-section h3 {
@@ -609,9 +624,86 @@ const chatbotStyles = `
   margin: 0;
 }
 
-@media(max-width: 980px) {
+@media (max-width: 1200px) {
+  .advisor-workspace {
+    grid-template-columns: minmax(0, 1.6fr) minmax(220px, 0.9fr);
+    gap: 14px;
+  }
+
+  .panel-section {
+    padding: 14px 16px;
+  }
+
+  .panel-section h3 {
+    font-size: 15px;
+  }
+
+  .prompt-card {
+    font-size: 12px;
+    padding: 10px 12px;
+  }
+}
+
+@media (max-width: 980px) {
   .advisor-workspace {
     grid-template-columns: 1fr;
+    overflow-y: auto;
+  }
+
+  .chatbox-panel {
+    min-height: 340px;
+    max-height: min(52vh, 480px);
+  }
+}
+
+@media (max-width: 720px) {
+  .advisor-hero {
+    padding: 16px 18px;
+    border-radius: 16px;
+  }
+
+  .advisor-hero-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .advisor-hero p {
+    font-size: 13px;
+  }
+
+  .chatbox-panel {
+    min-height: 300px;
+    max-height: min(48vh, 420px);
+  }
+
+  .message-row {
+    max-width: 92%;
+  }
+}
+
+@media (max-height: 800px) {
+  .advisor-hero {
+    padding: 14px 18px;
+    gap: 12px;
+  }
+
+  .badge-ai {
+    margin-bottom: 8px;
+    padding: 4px 10px;
+  }
+
+  .advisor-hero h1 {
+    font-size: clamp(20px, 3vw, 28px);
+    margin-bottom: 4px;
+  }
+
+  .advisor-hero-icon {
+    width: 48px;
+    height: 48px;
+  }
+
+  .ai-advisor-container {
+    gap: 12px;
   }
 }
 
