@@ -108,7 +108,7 @@ export default function Navbar() {
 
       <nav className="site-nav">
         <Link to="/">{t.nav.home}</Link>
-        <a href="#about">{t.nav.about}</a>
+        <Link to="/about">{t.nav.about}</Link>
         <Link to="/dashboard/offers">{t.nav.offers}</Link>
         <Link to="/transfer">{t.nav.transfer}</Link>
         <Link to="/contact">{t.nav.contact}</Link>
