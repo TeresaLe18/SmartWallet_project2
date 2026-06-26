@@ -16,6 +16,12 @@ router.get(
 );
 // update profile
 router.patch(
+  '/profile',
+  authMiddleware,
+  accountMiddleware,
+  userController.updateProfile,
+);
+router.patch(
   '/avatar',
   authMiddleware,
   accountMiddleware,

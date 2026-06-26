@@ -99,6 +99,7 @@ model User {
   phone     String?    @unique
   password  String
   avatar    String?
+  display_name String?
   status    UserStatus @default(ACTIVE)
 
   pin_hash String? 
@@ -117,6 +118,8 @@ model User {
   fraud_logs           FraudLog[]
   notifications        Notification[]
   support_messages     SupportMessage[]   @relation("user_support_messages")
+  investments          Investment[]
+  savings_vaults       SavingsVault[]
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -472,3 +475,39 @@ model SupportMessage {
 
   @@map("support_messages")
 }
+
+// ===================== INVESTMENTS =====================
+model Investment {
+  id                   Int       @id @default(autoincrement())
+  user_id              Int
+  amount               Decimal   @db.Decimal(19, 2)
+  term_months          Int       // 0 for flexible, 1, 3, 6, 12, 24 for fixed term
+  interest_rate        Decimal   @db.Decimal(5, 2)
+  start_date           DateTime  @default(now())
+  end_date             DateTime? // null for flexible
+  status               String    @default("ACTIVE") // ACTIVE, WITHDRAWN
+  accumulated_interest Decimal   @default(0) @db.Decimal(19, 2)
+  withdrawn_at         DateTime?
+  payout_amount        Decimal?  @db.Decimal(19, 2)
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("investments")
+}
+
+// ===================== SAVINGS VAULTS =====================
+model SavingsVault {
+  id             Int      @id @default(autoincrement())
+  user_id        Int
+  name           String   // e.g. "Ví tiết kiệm Nimo"
+  target_amount  Decimal? @db.Decimal(19, 2)
+  current_amount Decimal  @default(0) @db.Decimal(19, 2)
+  category       String?  // e.g. "Trà sữa", "Di chuyển"
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("savings_vaults")
+}
+

@@ -1,14 +1,36 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Newspaper, Tag, Calendar, Eye, EyeOff, Link as LinkIcon, Upload, ChevronRight } from "lucide-react";
+import { Plus, Pencil, Trash2, Newspaper, Tag, Calendar, Eye, EyeOff, Link as LinkIcon, Upload, ChevronRight, Check, AlertTriangle, ShieldAlert, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { newsAPI } from "../../services/api";
+import { useLanguage } from "../../context/LanguageContext";
+
+const VI_TAG_PRESETS = ["Kinh tế", "Fintech", "Công nghệ", "Đầu tư", "Thị trường"];
+const EN_TAG_PRESETS = ["Economy", "Fintech", "Technology", "Investment", "Markets"];
+
+const getFormattedTime = () => {
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, "0");
+  return `${pad(now.getHours())}:${pad(now.getMinutes())} ${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()}`;
+};
 
 export default function AdminMedia() {
+  const { lang, t } = useLanguage();
   const [posts, setPosts] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [editorLanguageTab, setEditorLanguageTab] = useState("vi");
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const [customConfirm, setCustomConfirm] = useState(null); // { message, onConfirm, onCancel, danger }
+  const [customAlert, setCustomAlert] = useState(null); // { message, type }
+
+  const showAlert = (message, type = "info") => {
+    setCustomAlert({ message, type });
+  };
+
+  const showConfirm = (message, onConfirm, onCancel = null, danger = false) => {
+    setCustomConfirm({ message, onConfirm, onCancel, danger });
+  };
   
   // Expanded form state to support both VI and EN fields
   const [form, setForm] = useState({ 
@@ -16,7 +38,7 @@ export default function AdminMedia() {
     title_en: "",
     tag: "Kinh tế", 
     tag_en: "Economy",
-    time: "Just now", 
+    time: getFormattedTime(), 
     content: "", 
     content_en: "",
     image: "", 
@@ -47,7 +69,7 @@ export default function AdminMedia() {
       title_en: "",
       tag: "Kinh tế", 
       tag_en: "Economy",
-      time: "Just now", 
+      time: getFormattedTime(), 
       content: "", 
       content_en: "",
       image: "https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?w=800&auto=format&fit=crop&q=60", 
@@ -65,7 +87,7 @@ export default function AdminMedia() {
       title_en: p.title_en || "", 
       tag: p.tag || "Kinh tế", 
       tag_en: p.tag_en || "Economy", 
-      time: p.time || "Just now", 
+      time: p.time || getFormattedTime(), 
       content: p.content || "", 
       content_en: p.content_en || "", 
       image: p.image || "", 
@@ -89,7 +111,7 @@ export default function AdminMedia() {
   const handleAiGenerate = async () => {
     const currentTitle = editorLanguageTab === "vi" ? form.title : form.title_en;
     if (!currentTitle || !currentTitle.trim()) {
-      alert(editorLanguageTab === "vi" ? "Vui lòng nhập tiêu đề trước khi tự động tạo bài viết!" : "Please enter a title first!");
+      showAlert(editorLanguageTab === "vi" ? "Vui lòng nhập tiêu đề trước khi tự động tạo bài viết!" : "Please enter a title first!", "error");
       return;
     }
     setIsGenerating(true);
@@ -106,11 +128,11 @@ export default function AdminMedia() {
           tag_en: res.data.tag_en || p.tag_en
         }));
       } else {
-        alert(res.message || "Failed to generate article content.");
+        showAlert(res.message || (lang === "vi" ? "Không thể tạo nội dung bài viết bằng AI." : "Failed to generate article content."), "error");
       }
     } catch (e) {
       console.error("AI Generation error:", e);
-      alert(e.response?.data?.message || "An error occurred during AI article generation.");
+      showAlert(e.response?.data?.message || (lang === "vi" ? "Lỗi hệ thống khi tạo bài viết bằng AI." : "An error occurred during AI article generation."), "error");
     } finally {
       setIsGenerating(false);
     }
@@ -131,21 +153,22 @@ export default function AdminMedia() {
       }
     } catch (error) {
       console.error("Failed to save post:", error);
-      alert(error.response?.data?.message || "Unable to save article. Please try again.");
+      showAlert(error.response?.data?.message || (lang === "vi" ? "Không thể lưu bài viết. Vui lòng thử lại." : "Unable to save article. Please try again."), "error");
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm("Are you sure you want to delete this article?")) return;
-    try {
-      const res = await newsAPI.deletePost(id);
-      if (res.success) {
-        fetchPosts();
+  const handleDelete = (id) => {
+    showConfirm(t.adminMedia.confirmDelete, async () => {
+      try {
+        const res = await newsAPI.deletePost(id);
+        if (res.success) {
+          fetchPosts();
+        }
+      } catch (error) {
+        console.error("Failed to delete post:", error);
+        showAlert(error.response?.data?.message || (lang === "vi" ? "Không thể xóa bài viết. Vui lòng thử lại." : "Unable to delete article. Please try again."), "error");
       }
-    } catch (error) {
-      console.error("Failed to delete post:", error);
-      alert(error.response?.data?.message || "Unable to delete article. Please try again.");
-    }
+    }, null, true);
   };
 
   const toggleActive = async (id) => {
@@ -156,7 +179,7 @@ export default function AdminMedia() {
       }
     } catch (error) {
       console.error("Failed to toggle active status:", error);
-      alert(error.response?.data?.message || "Unable to toggle article visibility. Please try again.");
+      showAlert(error.response?.data?.message || (lang === "vi" ? "Không thể chuyển đổi trạng thái hiển thị. Vui lòng thử lại." : "Unable to toggle article visibility. Please try again."), "error");
     }
   };
 
@@ -164,23 +187,23 @@ export default function AdminMedia() {
     <div style={{ maxWidth: 1000 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 20, flexWrap: "wrap", gap: 12 }}>
         <div>
-          <h1 style={{ fontSize: 18, fontWeight: 800, marginBottom: 2 }}>Article Management</h1>
-          <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>{posts.length} financial news articles active</p>
+          <h1 style={{ fontSize: 18, fontWeight: 800, marginBottom: 2 }}>{t.adminMedia.title}</h1>
+          <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>{t.adminMedia.activeCount.replace("{count}", posts.length)}</p>
         </div>
         <button onClick={openAdd} style={{ display: "flex", alignItems: "center", gap: 6, background: "linear-gradient(135deg,#2563eb,#1d4ed8)", color: "white", border: "none", borderRadius: 8, padding: "9px 16px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>
-          <Plus size={14} /> New Article
+          <Plus size={14} /> {t.adminMedia.newArticle}
         </button>
       </div>
 
       <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 14, overflow: "hidden" }}>
         <div style={{ display: "grid", gridTemplateColumns: "80px 1.5fr 130px 110px 100px 90px", padding: "12px 18px", borderBottom: "1px solid var(--border)", background: "var(--bg-dark)", alignItems: "center" }}>
-          {["Cover Image", "Article Title", "Category", "Timestamp", "Visibility", ""].map(h => (
+          {[t.adminMedia.coverImage, t.adminMedia.articleTitle, t.adminMedia.category, t.adminMedia.timestamp, t.adminMedia.visibility, ""].map(h => (
             <span key={h} style={{ fontSize: 11, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase" }}>{h}</span>
           ))}
         </div>
 
         {posts.length === 0 ? (
-          <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>No articles found</div>
+          <div style={{ textAlign: "center", padding: 40, color: "var(--text-muted)" }}>{lang === "vi" ? "Không tìm thấy bài viết nào" : "No articles found"}</div>
         ) : (
           posts.map((p, i) => (
             <motion.div key={p.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: i * 0.04 }}
@@ -198,7 +221,7 @@ export default function AdminMedia() {
                 <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{p.title}</span>
                 {p.link && (
                   <span style={{ fontSize: 10, color: "#2563eb", display: "flex", alignItems: "center", gap: 3 }}>
-                    <LinkIcon size={8} /> Redirect: {p.link}
+                    <LinkIcon size={8} /> {lang === "vi" ? "Chuyển hướng:" : "Redirect:"} {p.link}
                   </span>
                 )}
               </div>
@@ -211,7 +234,7 @@ export default function AdminMedia() {
                 background: p.active ? "rgba(34,197,94,0.12)" : "rgba(100,116,139,0.12)",
                 color: p.active ? "#22c55e" : "#94a3b8"
               }}>
-                {p.active ? "Visible" : "Hidden"}
+                {p.active ? t.adminMedia.visible : t.adminMedia.hidden}
               </button>
               <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
                 <button onClick={() => openEdit(p)} style={{ background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 6, width: 28, height: 28, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--text-secondary)" }}>
@@ -237,7 +260,7 @@ export default function AdminMedia() {
               {/* Left Column: Form Editor */}
               <div style={{ borderRight: "1px solid var(--border)", paddingRight: 24 }}>
                 <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 14, color: "var(--text-primary)" }}>
-                  {editItem ? "Edit Article" : "Write New Article"}
+                  {editItem ? t.adminMedia.editArticle : t.adminMedia.writeNewArticle}
                 </h3>
                 
                 {/* Language Tabs Selector */}
@@ -261,7 +284,7 @@ export default function AdminMedia() {
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                       <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>
-                        {editorLanguageTab === "vi" ? "Tiêu đề bài viết (VI)" : "Article Title (EN)"}
+                        {editorLanguageTab === "vi" ? t.adminMedia.titleVi : t.adminMedia.titleEn}
                       </label>
                       <button type="button" onClick={handleAiGenerate} disabled={isGenerating} style={{
                         background: "linear-gradient(135deg, #a855f7, #6366f1)",
@@ -269,14 +292,14 @@ export default function AdminMedia() {
                         fontSize: 11, fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
                         boxShadow: "0 2px 8px rgba(139, 92, 246, 0.3)", opacity: isGenerating ? 0.7 : 1, transition: "all 0.2s"
                       }}>
-                        {isGenerating ? "Writing... ⏳" : "✨ AI Auto-Generate"}
+                        {isGenerating ? (lang === "vi" ? "Đang viết... ⏳" : "Writing... ⏳") : t.adminMedia.aiGenerate}
                       </button>
                     </div>
                     {editorLanguageTab === "vi" ? (
-                      <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder="Nhập tiêu đề bài viết..."
+                      <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} placeholder={lang === "vi" ? "Nhập tiêu đề bài viết..." : "Enter article title..."}
                         style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }} />
                     ) : (
-                      <input value={form.title_en} onChange={e => setForm(p => ({ ...p, title_en: e.target.value }))} placeholder="Enter English title..."
+                      <input value={form.title_en} onChange={e => setForm(p => ({ ...p, title_en: e.target.value }))} placeholder={lang === "vi" ? "Nhập tiêu đề bài viết (EN)..." : "Enter English title..."}
                         style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }} />
                     )}
                   </div>
@@ -285,27 +308,69 @@ export default function AdminMedia() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div>
                       <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
-                        {editorLanguageTab === "vi" ? "Danh mục" : "Category"}
+                        {t.adminMedia.category}
                       </label>
                       {editorLanguageTab === "vi" ? (
-                        <select value={form.tag} onChange={e => setForm(p => ({ ...p, tag: e.target.value }))}
-                          style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }}>
-                          {["Kinh tế", "Fintech", "Công nghệ", "Đầu tư", "Thị trường"].map(tag => (
-                            <option key={tag} value={tag}>{tag}</option>
-                          ))}
-                        </select>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <select 
+                            value={VI_TAG_PRESETS.includes(form.tag) ? form.tag : (lang === "vi" ? "Khác..." : "Other...")} 
+                            onChange={e => {
+                              const val = e.target.value;
+                              if (val === "Khác..." || val === "Other...") {
+                                setForm(p => ({ ...p, tag: "" }));
+                              } else {
+                                setForm(p => ({ ...p, tag: val }));
+                              }
+                            }}
+                            style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }}
+                          >
+                            {VI_TAG_PRESETS.map(tag => (
+                              <option key={tag} value={tag}>{tag}</option>
+                            ))}
+                            <option value={lang === "vi" ? "Khác..." : "Other..."}>{lang === "vi" ? "Khác..." : "Other..."}</option>
+                          </select>
+                          {!VI_TAG_PRESETS.includes(form.tag) && (
+                            <input 
+                              value={form.tag} 
+                              onChange={e => setForm(p => ({ ...p, tag: e.target.value }))} 
+                              placeholder={lang === "vi" ? "Nhập danh mục khác..." : "Enter custom category..."}
+                              style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }}
+                            />
+                          )}
+                        </div>
                       ) : (
-                        <select value={form.tag_en} onChange={e => setForm(p => ({ ...p, tag_en: e.target.value }))}
-                          style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }}>
-                          {["Economy", "Fintech", "Technology", "Investment", "Markets"].map(tag => (
-                            <option key={tag} value={tag}>{tag}</option>
-                          ))}
-                        </select>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <select 
+                            value={EN_TAG_PRESETS.includes(form.tag_en) ? form.tag_en : (lang === "vi" ? "Khác..." : "Other...")} 
+                            onChange={e => {
+                              const val = e.target.value;
+                              if (val === "Khác..." || val === "Other...") {
+                                setForm(p => ({ ...p, tag_en: "" }));
+                              } else {
+                                setForm(p => ({ ...p, tag_en: val }));
+                              }
+                            }}
+                            style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }}
+                          >
+                            {EN_TAG_PRESETS.map(tag => (
+                              <option key={tag} value={tag}>{tag}</option>
+                            ))}
+                            <option value={lang === "vi" ? "Khác..." : "Other..."}>{lang === "vi" ? "Khác..." : "Other..."}</option>
+                          </select>
+                          {!EN_TAG_PRESETS.includes(form.tag_en) && (
+                            <input 
+                              value={form.tag_en} 
+                              onChange={e => setForm(p => ({ ...p, tag_en: e.target.value }))} 
+                              placeholder={lang === "vi" ? "Nhập danh mục khác..." : "Enter custom category..."}
+                              style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }}
+                            />
+                          )}
+                        </div>
                       )}
                     </div>
                     <div>
                       <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
-                        {editorLanguageTab === "vi" ? "Thời gian hiển thị" : "Display Timestamp"}
+                        {t.adminMedia.timestamp}
                       </label>
                       <input value={form.time} onChange={e => setForm(p => ({ ...p, time: e.target.value }))} placeholder="e.g. Just now"
                         style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }} />
@@ -314,12 +379,12 @@ export default function AdminMedia() {
 
                   {/* Image */}
                   <div>
-                    <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Article Image</label>
+                    <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>{t.adminMedia.image}</label>
                     <div style={{ display: "flex", gap: 10 }}>
-                      <input value={form.image} onChange={e => setForm(p => ({ ...p, image: e.target.value }))} placeholder="Image URL (picsum, unsplash...)"
+                      <input value={form.image} onChange={e => setForm(p => ({ ...p, image: e.target.value }))} placeholder={lang === "vi" ? "Đường dẫn ảnh (picsum, unsplash...)" : "Image URL (picsum, unsplash...)"}
                         style={{ flex: 1, background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }} />
                       <label style={{ background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 14px", color: "var(--text-secondary)", cursor: "pointer", fontSize: 13, display: "flex", alignItems: "center", gap: 6 }}>
-                        <Upload size={14} /> Upload
+                        <Upload size={14} /> {t.adminMedia.upload}
                         <input type="file" accept="image/*" style={{ display: "none" }} onChange={handleImageUpload} />
                       </label>
                     </div>
@@ -327,30 +392,30 @@ export default function AdminMedia() {
 
                   {/* Redirect Link */}
                   <div>
-                    <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>Redirect Link (Optional)</label>
-                    <input value={form.link} onChange={e => setForm(p => ({ ...p, link: e.target.value }))} placeholder="e.g. https://example.com/... (clicking the card will open this link)"
+                    <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>{t.adminMedia.redirectLink}</label>
+                    <input value={form.link} onChange={e => setForm(p => ({ ...p, link: e.target.value }))} placeholder={t.adminMedia.redirectDesc}
                       style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none" }} />
                   </div>
 
                   {/* Content Body */}
                   <div>
                     <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 6 }}>
-                      {editorLanguageTab === "vi" ? "Nội dung bài viết (VI)" : "Article Body (EN)"}
+                      {editorLanguageTab === "vi" ? t.adminMedia.contentVi : t.adminMedia.contentEn}
                     </label>
                     {editorLanguageTab === "vi" ? (
-                      <textarea value={form.content} onChange={e => setForm(p => ({ ...p, content: e.target.value }))} placeholder="Viết nội dung bài viết chi tiết tại đây..." rows={4}
+                      <textarea value={form.content} onChange={e => setForm(p => ({ ...p, content: e.target.value }))} placeholder={t.adminMedia.writeViPlaceholder} rows={4}
                         style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none", resize: "none", lineHeight: 1.5 }} />
                     ) : (
-                      <textarea value={form.content_en} onChange={e => setForm(p => ({ ...p, content_en: e.target.value }))} placeholder="Write the full English article body here..." rows={4}
+                      <textarea value={form.content_en} onChange={e => setForm(p => ({ ...p, content_en: e.target.value }))} placeholder={t.adminMedia.writeEnPlaceholder} rows={4}
                         style={{ width: "100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius: 8, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none", resize: "none", lineHeight: 1.5 }} />
                     )}
                   </div>
                 </div>
 
                 <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-                  <button onClick={() => setShowModal(false)} style={{ flex: 1, background: "var(--bg-card2)", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius: 8, padding: "11px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>Cancel</button>
+                  <button onClick={() => setShowModal(false)} style={{ flex: 1, background: "var(--bg-card2)", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius: 8, padding: "11px", fontWeight: 600, fontSize: 13, cursor: "pointer" }}>{t.adminMedia.cancel}</button>
                   <button onClick={handleSave} style={{ flex: 2, background: "linear-gradient(135deg,#2563eb,#1d4ed8)", color: "white", border: "none", borderRadius: 8, padding: "11px", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                    {editItem ? "Update" : "Publish Article"}
+                    {editItem ? t.adminMedia.update : t.adminMedia.publish}
                   </button>
                 </div>
               </div>
@@ -360,7 +425,7 @@ export default function AdminMedia() {
                 <div>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 18 }}>
                     <div style={{ width: 8, height: 8, borderRadius: "50%", background: "#22c55e", boxShadow: "0 0 8px #22c55e" }} />
-                    <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>ARTICLE PREVIEW ({editorLanguageTab.toUpperCase()})</h3>
+                    <h3 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{t.adminMedia.previewTitle} ({editorLanguageTab.toUpperCase()})</h3>
                   </div>
 
                   {/* Dynamic user news card simulation */}
@@ -383,7 +448,7 @@ export default function AdminMedia() {
                     <div style={{ padding: 18 }}>
                       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 10 }}>
                         <h4 style={{ fontSize: 14, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.4, margin: 0 }}>
-                          {(editorLanguageTab === "vi" ? form.title : form.title_en) || "Sample article title will appear here"}
+                          {(editorLanguageTab === "vi" ? form.title : form.title_en) || (lang === "vi" ? "Tiêu đề bài viết mẫu sẽ xuất hiện ở đây" : "Sample article title will appear here")}
                         </h4>
                         <ChevronRight size={16} style={{ color: "var(--text-muted)", flexShrink: 0, marginTop: 2 }} />
                       </div>
@@ -391,7 +456,7 @@ export default function AdminMedia() {
                       
                       {/* Short simulated body copy */}
                       <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 10, lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
-                        {(editorLanguageTab === "vi" ? form.content : form.content_en) || "The full article body written by the admin will automatically appear in the user's detail view when they tap the article card..."}
+                        {(editorLanguageTab === "vi" ? form.content : form.content_en) || t.adminMedia.previewPlaceholder}
                       </p>
                     </div>
                   </div>
@@ -399,13 +464,114 @@ export default function AdminMedia() {
 
                 <div style={{ background: "rgba(255,255,255,0.02)", border: "1px dashed rgba(255,255,255,0.08)", borderRadius: 10, padding: 14 }}>
                   <p style={{ fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.5 }}>
-                    📝 <strong style={{ color: "var(--text-secondary)" }}>Tip:</strong> Double-check the title and content displayed above. For articles with a redirect link, clicking the news card will open a new page instead of showing the article body.
+                    📝 <strong style={{ color: "var(--text-secondary)" }}>{lang === "vi" ? "Mẹo:" : "Tip:"}</strong> {lang === "vi" ? "Kiểm tra kỹ tiêu đề và nội dung hiển thị ở trên. Đối với bài viết có đường dẫn chuyển hướng, click vào thẻ tin tức sẽ mở trang mới thay vì hiển thị nội dung bài viết." : "Double-check the title and content displayed above. For articles with a redirect link, clicking the news card will open a new page instead of showing the article body."}
                   </p>
                 </div>
               </div>
 
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* CUSTOM CONFIRMATION & ALERT MODAL */}
+      <AnimatePresence>
+        {customConfirm && (
+          <div style={{
+            position: "fixed", inset: 0, zIndex: 10000,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20, background: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(4px)"
+          }}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              style={{
+                background: "var(--bg-card)", border: "1px solid var(--border)",
+                borderRadius: 20, padding: 24, maxWidth: 400, width: "100%",
+                boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", position: "relative",
+                color: "var(--text-primary)"
+              }}
+            >
+              <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                <AlertTriangle size={20} style={{ color: "#ef4444" }} />
+                {lang === "vi" ? "Xác nhận xóa" : "Confirm Delete"}
+              </h3>
+              <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text-secondary)", marginBottom: 20, whiteSpace: "pre-line" }}>
+                {customConfirm.message}
+              </p>
+              <div style={{ display: "flex", gap: 12 }}>
+                <button
+                  onClick={() => {
+                    customConfirm.onCancel?.();
+                    setCustomConfirm(null);
+                  }}
+                  style={{
+                    flex: 1, padding: 10, borderRadius: 10, fontSize: 12,
+                    background: "var(--bg-card2)", border: "1px solid var(--border)",
+                    color: "var(--text-secondary)", cursor: "pointer"
+                  }}
+                >
+                  {lang === "vi" ? "Hủy" : "Cancel"}
+                </button>
+                <button
+                  onClick={() => {
+                    customConfirm.onConfirm();
+                    setCustomConfirm(null);
+                  }}
+                  style={{
+                    flex: 1, padding: 10, borderRadius: 10, fontSize: 12, border: "none",
+                    background: "#ef4444", color: "white", cursor: "pointer", fontWeight: 700
+                  }}
+                >
+                  {lang === "vi" ? "Xóa" : "Delete"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {customAlert && (
+          <div style={{
+            position: "fixed", inset: 0, zIndex: 10000,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20, background: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(4px)"
+          }}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              style={{
+                background: "var(--bg-card)", border: "1px solid var(--border)",
+                borderRadius: 20, padding: 24, maxWidth: 400, width: "100%",
+                boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", position: "relative",
+                color: "var(--text-primary)"
+              }}
+            >
+              <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                {customAlert.type === "error" ? (
+                  <X size={20} style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)", borderRadius: "50%", padding: 2 }} />
+                ) : customAlert.type === "success" ? (
+                  <Check size={20} style={{ color: "#22c55e", background: "rgba(34,197,94,0.1)", borderRadius: "50%", padding: 2 }} />
+                ) : (
+                  <ShieldAlert size={20} style={{ color: "var(--primary)" }} />
+                )}
+                {customAlert.type === "error" ? (lang === "vi" ? "Thông báo lỗi" : "Error Alert") : (lang === "vi" ? "Thông báo" : "Notification")}
+              </h3>
+              <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text-secondary)", marginBottom: 20 }}>
+                {customAlert.message}
+              </p>
+              <button
+                onClick={() => setCustomAlert(null)}
+                style={{
+                  width: "100%", padding: 10, borderRadius: 10, fontSize: 12, border: "none",
+                  background: "var(--primary)", color: "white", cursor: "pointer", fontWeight: 700
+                }}
+              >
+                {lang === "vi" ? "Đóng" : "Close"}
+              </button>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

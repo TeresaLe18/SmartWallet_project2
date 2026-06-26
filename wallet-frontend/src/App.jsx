@@ -14,6 +14,7 @@ import Offers from "./pages/dashboard/Offers";
 import Profile from "./pages/dashboard/Profile";
 import Support from "./pages/dashboard/Support";
 import Investment from "./pages/dashboard/Investment";
+import SavingsVaults from "./pages/dashboard/SavingsVaults";
 
 import AdminLayout from "./pages/admin/AdminLayout";
 import AdminHome from "./pages/admin/AdminHome";
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="offers" element={<Offers />} />
           <Route path="support" element={<Support />} />
           <Route path="investment" element={<Investment />} />
+          <Route path="savings-vaults" element={<SavingsVaults />} />
           <Route path="notifications" element={<Notifications />} />
           <Route path="ai-chatbot" element={<AiChatbot />} />
         </Route>

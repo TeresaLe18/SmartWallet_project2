@@ -963,3 +963,333 @@ h1 span{
     height: 190px;
   }
 }
+
+/* SAVINGS VAULT PREMIUM SECTION */
+.savings-vault-section {
+  background: linear-gradient(180deg, #ffffff 0%, #f4f7fb 100%);
+  padding: 100px 0;
+  overflow: hidden;
+  position: relative;
+}
+
+.savings-vault-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+.savings-vault-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 60px;
+  align-items: center;
+  margin-bottom: 70px;
+}
+
+.savings-vault-text-content {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.savings-badge-wrapper {
+  margin-bottom: 20px;
+}
+
+.savings-interest-badge {
+  background: rgba(17, 201, 129, 0.1);
+  color: #11c981;
+  padding: 8px 16px;
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 700;
+  border: 1px solid rgba(17, 201, 129, 0.2);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.savings-vault-text-content h2 {
+  font-size: clamp(2.2rem, 5vw, 3.2rem);
+  color: #07172f;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-bottom: 12px;
+}
+
+.savings-subtitle-text {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #2563eb;
+  margin-bottom: 20px;
+  line-height: 1.4;
+}
+
+.savings-desc-text {
+  font-size: 1.05rem;
+  color: #667085;
+  line-height: 1.7;
+  margin-bottom: 30px;
+}
+
+.btn-glow {
+  position: relative;
+  box-shadow: 0 8px 30px rgba(37, 99, 235, 0.35);
+  transition: all 0.3s;
+}
+
+.btn-glow:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 35px rgba(37, 99, 235, 0.5);
+}
+
+.savings-vault-visual {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.vault-card-3d {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  border-radius: 24px;
+  padding: 30px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 30px 60px rgba(7, 23, 47, 0.1);
+  position: relative;
+  z-index: 2;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.vault-card-3d:hover {
+  transform: translateY(-8px) rotate(1deg);
+  box-shadow: 0 40px 80px rgba(7, 23, 47, 0.15);
+}
+
+.vault-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 24px;
+}
+
+.vault-icon {
+  font-size: 32px;
+  background: rgba(37, 99, 235, 0.08);
+  width: 56px;
+  height: 56px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+}
+
+.vault-header h4 {
+  margin: 0;
+  color: #07172f;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.vault-header p {
+  margin: 0;
+  color: #667085;
+  font-size: 13px;
+}
+
+.vault-rate-tag {
+  margin-left: auto;
+  background: #11c981;
+  color: white;
+  padding: 5px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.vault-balance-show {
+  margin-bottom: 24px;
+  background: linear-gradient(135deg, #07172f 0%, #0f274a 100%);
+  padding: 20px;
+  border-radius: 18px;
+  color: white;
+}
+
+.vault-balance-label {
+  margin: 0 0 6px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.vault-balance-show h3 {
+  margin: 0;
+  font-size: 26px;
+  font-weight: 800;
+}
+
+.vault-progress-section {
+  margin-bottom: 24px;
+}
+
+.progress-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  color: #07172f;
+  margin-bottom: 8px;
+}
+
+.progress-bar-container {
+  height: 8px;
+  background: rgba(7, 23, 47, 0.06);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb, #11c981);
+  border-radius: 10px;
+  transition: width 1s ease-in-out;
+}
+
+.vault-features-mini {
+  display: flex;
+  gap: 16px;
+}
+
+.mini-feat {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #667085;
+}
+
+.mini-feat .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.mini-feat .dot.blue { background: #2563eb; }
+.mini-feat .dot.green { background: #11c981; }
+
+.vault-bg-glow {
+  position: absolute;
+  width: 320px;
+  height: 320px;
+  background: radial-gradient(circle, rgba(37, 99, 235, 0.15) 0%, rgba(17, 201, 129, 0.05) 50%, rgba(255, 255, 255, 0) 70%);
+  filter: blur(30px);
+  z-index: 1;
+}
+
+.savings-features-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 30px;
+}
+
+.savings-feature-card {
+  background: #ffffff;
+  padding: 30px;
+  border-radius: 20px;
+  border: 1px solid rgba(7, 23, 47, 0.04);
+  box-shadow: 0 10px 30px rgba(7, 23, 47, 0.02);
+  transition: all 0.3s ease;
+}
+
+.savings-feature-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 15px 40px rgba(7, 23, 47, 0.05);
+  border-color: rgba(37, 99, 235, 0.1);
+}
+
+.sf-icon {
+  font-size: 24px;
+  width: 48px;
+  height: 48px;
+  background: rgba(37, 99, 235, 0.06);
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  margin-bottom: 20px;
+}
+
+.savings-feature-card h4 {
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 700;
+  color: #07172f;
+}
+
+.savings-feature-card p {
+  margin: 0;
+  font-size: 13.5px;
+  color: #667085;
+  line-height: 1.6;
+}
+
+/* Dark mode tweaks for savings vault */
+[data-theme='dark'] .savings-vault-section {
+  background: linear-gradient(180deg, #0f172a 0%, #020617 100%);
+}
+
+[data-theme='dark'] .savings-vault-text-content h2 {
+  color: #f8fafc;
+}
+
+[data-theme='dark'] .savings-desc-text {
+  color: #94a3b8;
+}
+
+[data-theme='dark'] .vault-card-3d {
+  background: rgba(30, 41, 59, 0.8);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='dark'] .vault-header h4 {
+  color: #f8fafc;
+}
+
+[data-theme='dark'] .progress-labels {
+  color: #f8fafc;
+}
+
+[data-theme='dark'] .savings-feature-card {
+  background: #1e293b;
+  border-color: rgba(255, 255, 255, 0.04);
+}
+
+[data-theme='dark'] .savings-feature-card h4 {
+  color: #f8fafc;
+}
+
+[data-theme='dark'] .savings-feature-card p {
+  color: #94a3b8;
+}
+
+@media (max-width: 980px) {
+  .savings-vault-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+    text-align: center;
+  }
+  
+  .savings-vault-text-content {
+    align-items: center;
+  }
+  
+  .savings-features-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}

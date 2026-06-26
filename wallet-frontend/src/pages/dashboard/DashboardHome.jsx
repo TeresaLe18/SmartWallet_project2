@@ -25,6 +25,7 @@ import {
   TrendingDown,
   TrendingUp,
   Wallet,
+  Search,
 } from "lucide-react";
 import { newsAPI, walletAPI, formatVND } from "../../services/api";
 import { useLanguage } from "../../context/LanguageContext";
@@ -176,6 +177,10 @@ export default function DashboardPage() {
   const [posts, setPosts] = useState([]);
   const [filterType, setFilterType] = useState("7days");
 
+  // Search & Filter states for Transaction History
+  const [txSearch, setTxSearch] = useState("");
+  const [txTab, setTxTab] = useState("all"); // 'all' | 'income' | 'expense'
+
   useEffect(() => {
     let mounted = true;
 
@@ -229,10 +234,21 @@ export default function DashboardPage() {
       .reduce((sum, tx) => sum + tx.amount, 0);
 
     return [
-      { name: t.home.income, value: income, color: "#11c981" },
-      { name: t.home.expense, value: expense, color: "#f05278" },
+      { name: t.home.income || "Income", value: income, color: "#11c981" },
+      { name: t.home.expense || "Expense", value: expense, color: "#ef4444" },
     ].filter((item) => item.value > 0);
   }, [transactions, t]);
+
+  const filteredTxs = useMemo(() => {
+    return transactions.filter((tx) => {
+      const matchesTab = txTab === "all" || tx.type === txTab;
+      const matchesSearch =
+        txSearch === "" ||
+        tx.name.toLowerCase().includes(txSearch.toLowerCase()) ||
+        tx.id.toLowerCase().includes(txSearch.toLowerCase());
+      return matchesTab && matchesSearch;
+    });
+  }, [transactions, txTab, txSearch]);
 
   const monthlyIncome = cashFlow.reduce((sum, row) => sum + row.income, 0);
   const monthlyExpense = cashFlow.reduce((sum, row) => sum + row.expense, 0);
@@ -431,8 +447,8 @@ export default function DashboardPage() {
             <CreditCard size={20} />
           </div>
 
-          <div className="pie-row">
-            <ResponsiveContainer width="46%" height={170}>
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center" }}>
+            <ResponsiveContainer width="100%" height={160}>
               <PieChart>
                 <Pie data={categoryData.length ? categoryData : [{ name: t.home.noData, value: 1, color: "#d8e0ec" }]} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" paddingAngle={4}>
                   {(categoryData.length ? categoryData : [{ color: "#d8e0ec" }]).map((item, index) => (
@@ -442,10 +458,10 @@ export default function DashboardPage() {
               </PieChart>
             </ResponsiveContainer>
 
-            <div className="pie-list">
+            <div className="pie-list" style={{ display: "flex", justifyContent: "center", gap: "20px", marginTop: "10px", flexWrap: "wrap", width: "100%" }}>
               {(categoryData.length ? categoryData : [{ name: t.home.noData, value: 0, color: "#d8e0ec" }]).map((item) => (
-                <div key={item.name}>
-                  <span><i style={{ background: item.color }} /> {item.name}</span>
+                <div key={item.name} style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ display: "flex", alignItems: "center", gap: "6px" }}><i style={{ background: item.color, display: "inline-block", width: "10px", height: "10px", borderRadius: "50%" }} /> {item.name}</span>
                   <strong>{formatVND(item.value)}</strong>
                 </div>
               ))}
@@ -454,20 +470,59 @@ export default function DashboardPage() {
         </article>
 
         <article className="panel">
-          <div className="panel-head">
+          <div className="panel-head" style={{ marginBottom: "15px" }}>
             <div>
-              <h3>{t.home.recentTransactions}</h3>
+              <h3>{t.dashboard.transactionHistory || "Transaction History"}</h3>
               <p>{t.home.latestActivity}</p>
             </div>
             <Wallet size={20} />
           </div>
 
-          <div className="tx-list">
+          {/* Filters & Search */}
+          <div className="tx-filters" style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "15px" }}>
+            <div className="tx-search-wrap" style={{ display: "flex", alignItems: "center", gap: "8px", border: "1px solid var(--border)", padding: "6px 12px", borderRadius: "12px", background: "var(--bg-card2)" }}>
+              <Search size={14} style={{ color: "var(--text-muted)" }} />
+              <input
+                value={txSearch}
+                onChange={(e) => setTxSearch(e.target.value)}
+                placeholder={t.dashboard.searchTransactions || "Search transactions..."}
+                style={{ border: "none", background: "transparent", outline: "none", width: "100%", fontSize: "13px", color: "var(--text-primary)" }}
+              />
+            </div>
+            <div className="tx-tab-group" style={{ display: "flex", gap: "4px", background: "var(--bg-card2)", padding: "3px", borderRadius: "10px", border: "1px solid var(--border)", width: "fit-content" }}>
+              {[
+                { v: "all", l: t.dashboard.all || "All" },
+                { v: "income", l: t.dashboard.receive || "Receive" },
+                { v: "expense", l: t.dashboard.send || "Send" }
+              ].map(tb => (
+                <button
+                  key={tb.v}
+                  type="button"
+                  onClick={() => setTxTab(tb.v)}
+                  style={{
+                    padding: "3px 10px",
+                    borderRadius: "7px",
+                    border: "none",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    background: txTab === tb.v ? "var(--primary)" : "transparent",
+                    color: txTab === tb.v ? "white" : "var(--text-secondary)",
+                    transition: "all 0.15s"
+                  }}
+                >
+                  {tb.l}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="tx-list" style={{ maxHeight: "250px", overflowY: "auto" }}>
             {loading ? (
               <div className="skeleton-block tall" />
-            ) : successfulTx.slice(0, 5).length ? (
-              successfulTx.slice(0, 5).map((tx) => (
-                <div className="tx-item" key={tx.id}>
+            ) : filteredTxs.slice(0, 8).length ? (
+              filteredTxs.slice(0, 8).map((tx) => (
+                <div className="tx-item" key={tx.id} style={{ padding: "8px 0" }}>
                   <span className={tx.type}>{tx.type === "income" ? <ArrowDownLeft size={17} /> : <ArrowUpRight size={17} />}</span>
                   <div>
                     <strong>{tx.name}</strong>
@@ -477,7 +532,7 @@ export default function DashboardPage() {
                 </div>
               ))
             ) : (
-              <p className="empty-state">{t.home.noRecentTxs}</p>
+              <p className="empty-state">{t.dashboard.noTransactions || "No transactions found"}</p>
             )}
           </div>
         </article>

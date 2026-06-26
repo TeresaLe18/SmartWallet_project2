@@ -198,28 +198,39 @@ export default function ProfilePage() {
     }
   };
 
-  const handleSaveName = () => {
+  const handleSaveName = async () => {
     if (!editNameVal.trim()) {
       alert(t.profile.nameCannotBeEmpty);
       return;
     }
-    const updatedUser = {
-      ...user,
-      name: editNameVal.trim(),
-    };
-    setUser(updatedUser);
-
-    // Save to localStorage
-    const local = localStorage.getItem("bw_user");
-    if (local) {
-      const parsed = JSON.parse(local);
-      parsed.name = editNameVal.trim();
-      localStorage.setItem("bw_user", JSON.stringify(parsed));
+    try {
+      const res = await authAPI.updateProfile(editNameVal.trim());
+      if (res.success) {
+        const updatedUser = {
+          ...user,
+          name: editNameVal.trim(),
+        };
+        setUser(updatedUser);
+        
+        // Save to localStorage
+        const local = localStorage.getItem("bw_user");
+        if (local) {
+          const parsed = JSON.parse(local);
+          parsed.name = editNameVal.trim();
+          parsed.displayName = editNameVal.trim();
+          localStorage.setItem("bw_user", JSON.stringify(parsed));
+        }
+        
+        // Dispatch event to sync with other components
+        window.dispatchEvent(new Event("kyc_updated"));
+        setIsEditingName(false);
+      } else {
+        alert(res.message || "Failed to update profile name.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.response?.data?.message || "Error updating name on server.");
     }
-
-    // Dispatch event to sync with other components
-    window.dispatchEvent(new Event("kyc_updated"));
-    setIsEditingName(false);
   };
   //-------------------------------------
 

@@ -25,6 +25,7 @@ const getMe = async (req, res) => {
                 email: true,
                 phone: true,
                 avatar: true,
+                display_name: true,
                 role: true,
                 status: true,
                 pin_hash: true,
@@ -45,6 +46,7 @@ const getMe = async (req, res) => {
                 email: user.email,
                 phone: user.phone || null,
                 avatar: user.avatar || null,
+                display_name: user.display_name || null,
                 role: user.role,
                 status: user.status,
                 has_pin: !!user.pin_hash,
@@ -393,6 +395,30 @@ const freezeWallet = async (req, res) => {
     }
 };
 
+const updateProfile = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { displayName } = req.body;
+
+        const updated = await prisma.user.update({
+            where: { id: userId },
+            data: {
+                display_name: displayName !== undefined ? displayName.trim() : null,
+            },
+        });
+
+        return res.status(200).json({
+            success: true,
+            message: 'Profile updated successfully',
+            data: {
+                display_name: updated.display_name,
+            },
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     getMe,
     getProfile,
@@ -402,4 +428,5 @@ module.exports = {
     changePassword,
     disableAccount,
     freezeWallet,
+    updateProfile,
 };

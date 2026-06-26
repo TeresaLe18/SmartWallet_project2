@@ -212,6 +212,10 @@ export const authAPI = {
     const res = await api.patch("/users/account/disable");
     return res.data;
   },
+  updateProfile: async (displayName) => {
+    const res = await api.patch("/users/profile", { displayName });
+    return res.data;
+  },
 };
 
 // ─── KYC API ──────────────────────────────────────────────────────────────────
@@ -432,6 +436,10 @@ export const adminAPI = {
     const res = await api.post(`/admin/fraud-logs/${id}/resolve`);
     return res.data;
   },
+  getStatistics: async (period) => {
+    const res = await api.get(`/admin/statistics?period=${period}`);
+    return res.data;
+  },
 };
 
 // ─── Support Chat API ─────────────────────────────────────────────────────────
@@ -442,6 +450,10 @@ export const supportAPI = {
   },
   sendMessage: async (message, image_url) => {
     const res = await api.post("/support/messages", { message, image_url });
+    return res.data;
+  },
+  getUnreadCount: async () => {
+    const res = await api.get("/support/unread");
     return res.data;
   },
   getAdminConversations: async () => {
@@ -506,6 +518,26 @@ export const investmentAPI = {
   },
   getAdminAll: async () => {
     const res = await api.get("/investments/admin");
+    return res.data;
+  },
+};
+
+// ─── Savings Vaults API ───────────────────────────────────────────────────────
+export const savingsVaultAPI = {
+  getAll: async () => {
+    const res = await api.get("/savings-vaults");
+    return res.data;
+  },
+  create: async (name, target_amount, category) => {
+    const res = await api.post("/savings-vaults", { name, target_amount, category });
+    return res.data;
+  },
+  deposit: async (id, amount) => {
+    const res = await api.post(`/savings-vaults/${id}/deposit`, { amount });
+    return res.data;
+  },
+  withdraw: async (id, amount) => {
+    const res = await api.post(`/savings-vaults/${id}/withdraw`, { amount });
     return res.data;
   },
 };

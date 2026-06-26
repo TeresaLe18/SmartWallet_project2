@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { AlertTriangle, ShieldAlert, Eye, UserMinus, Check, X, UserCheck } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminAPI } from "../../services/api";
+import { useLanguage } from "../../context/LanguageContext";
 
 const initialSuspiciousItems = [
   {
@@ -51,10 +52,34 @@ const initialSuspiciousItems = [
 ];
 
 export default function AdminSuspiciousPage() {
+  const { lang, t } = useLanguage();
   const [items, setItems] = useState([]);
   const [users, setUsers] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const [customConfirm, setCustomConfirm] = useState(null); // { message, onConfirm, onCancel, danger }
+  const [customAlert, setCustomAlert] = useState(null); // { message, type }
+
+  const showAlert = (message, type = "info") => {
+    setCustomAlert({ message, type });
+  };
+
+  const showConfirm = (message, onConfirm, onCancel = null, danger = false) => {
+    setCustomConfirm({ message, onConfirm, onCancel, danger });
+  };
+
+  const getSeverityText = (sev) => {
+    if (sev === "critical" || sev === "high") return lang === "vi" ? "Nghiêm trọng" : "Critical";
+    if (sev === "medium") return lang === "vi" ? "Trung bình" : "Medium";
+    return lang === "vi" ? "Thấp" : "Low";
+  };
+
+  const getTitleText = (title) => {
+    if (title === "Critical Alert") return lang === "vi" ? "Cảnh báo khẩn cấp" : "Critical Alert";
+    if (title === "Security Alert") return lang === "vi" ? "Cảnh báo bảo mật" : "Security Alert";
+    return title;
+  };
 
   const loadData = async () => {
     try {
@@ -107,74 +132,78 @@ export default function AdminSuspiciousPage() {
   const handleToggleLockUser = async (email) => {
     const matchedUser = users.find(x => x.email === email);
     if (!matchedUser) {
-      alert("User account information not found.");
+      showAlert(lang === "vi" ? "Không tìm thấy thông tin tài khoản người dùng." : "User account information not found.", "error");
       return;
     }
     const currentStatus = matchedUser.status.toLowerCase();
     if (currentStatus === "disabled") {
-      alert("Disabled accounts must be reactivated from the Users page.");
+      showAlert(lang === "vi" ? "Tài khoản bị vô hiệu hóa phải được kích hoạt lại từ trang Người dùng." : "Disabled accounts must be reactivated from the Users page.", "error");
       return;
     }
 
     const isLocking = currentStatus === "active";
     const label = matchedUser.email;
-    const confirmed = window.confirm(
+    showConfirm(
       isLocking
-        ? `Lock account for ${label}?\n\nThe user will not be able to sign in or use wallet features until unlocked.`
-        : `Unlock account for ${label}?\n\nThe user will regain access to their account and wallet.`
+        ? t.adminSuspicious.confirmLock.replace("{email}", label)
+        : t.adminSuspicious.confirmUnlock.replace("{email}", label),
+      async () => {
+        try {
+          if (isLocking) {
+            await adminAPI.lockUser(matchedUser.id);
+            showAlert(t.adminSuspicious.lockSuccess, "success");
+          } else {
+            await adminAPI.unlockUser(matchedUser.id);
+            showAlert(t.adminSuspicious.unlockSuccess, "success");
+          }
+          await loadData();
+        } catch (error) {
+          console.error("Failed to update user status:", error);
+          showAlert(error.response?.data?.message || (lang === "vi" ? "Lỗi hệ thống khi cập nhật trạng thái tài khoản." : "System error while updating account status."), "error");
+        }
+      },
+      null,
+      isLocking
     );
-    if (!confirmed) return;
-
-    try {
-      if (isLocking) {
-        await adminAPI.lockUser(matchedUser.id);
-        alert("🔒 Account locked successfully.");
-      } else {
-        await adminAPI.unlockUser(matchedUser.id);
-        alert("🔓 Account unlocked successfully.");
-      }
-      await loadData();
-    } catch (error) {
-      console.error("Failed to update user status:", error);
-      alert(error.response?.data?.message || "System error while updating account status.");
-    }
   };
 
   const handleToggleFreezeWallet = async (email) => {
     const matchedUser = users.find(x => x.email === email);
     if (!matchedUser) {
-      alert("User account information not found.");
+      showAlert(lang === "vi" ? "Không tìm thấy thông tin tài khoản người dùng." : "User account information not found.", "error");
       return;
     }
     const walletStatus = matchedUser.wallet ? matchedUser.wallet.status.toLowerCase() : "active";
     const isFreezing = walletStatus !== "frozen";
     const label = matchedUser.email;
-    const confirmed = window.confirm(
+    showConfirm(
       isFreezing
-        ? `Freeze wallet for ${label}?\n\nAll deposits, withdrawals, and transfers will be blocked until unfrozen.`
-        : `Unfreeze wallet for ${label}?\n\nThe user will be able to use wallet features again.`
+        ? t.adminSuspicious.confirmFreeze.replace("{email}", label)
+        : t.adminSuspicious.confirmUnfreeze.replace("{email}", label),
+      async () => {
+        const nextStatus = isFreezing ? "FROZEN" : "ACTIVE";
+        try {
+          await adminAPI.updateWalletStatus(matchedUser.id, nextStatus);
+          await loadData();
+          showAlert(nextStatus === "FROZEN" ? t.adminSuspicious.freezeSuccess : t.adminSuspicious.unfreezeSuccess, "success");
+        } catch (error) {
+          console.error("Failed to update wallet status:", error);
+          showAlert(error.response?.data?.message || (lang === "vi" ? "Lỗi hệ thống khi cập nhật trạng thái ví." : "System error while updating wallet status."), "error");
+        }
+      },
+      null,
+      isFreezing
     );
-    if (!confirmed) return;
-
-    const nextStatus = isFreezing ? "FROZEN" : "ACTIVE";
-    try {
-      await adminAPI.updateWalletStatus(matchedUser.id, nextStatus);
-      await loadData();
-      alert(`${nextStatus === "FROZEN" ? "❄️ Wallet frozen" : "🔓 Wallet unfrozen"} successfully!`);
-    } catch (error) {
-      console.error("Failed to update wallet status:", error);
-      alert(error.response?.data?.message || "System error while updating wallet status.");
-    }
   };
 
   const handleResolveAlert = async (id) => {
     try {
       await adminAPI.resolveFraudLog(id);
       await loadData();
-      alert("✅ Risk alert resolved successfully.");
+      showAlert(t.adminSuspicious.resolveSuccess, "success");
     } catch (error) {
       console.error("Failed to resolve fraud warning:", error);
-      alert(error.response?.data?.message || "System error while processing alert.");
+      showAlert(error.response?.data?.message || (lang === "vi" ? "Lỗi hệ thống khi xử lý cảnh báo." : "System error while processing alert."), "error");
     }
   };
 
@@ -192,25 +221,25 @@ export default function AdminSuspiciousPage() {
     <div style={{ maxWidth: 1000, display: "flex", flexDirection: "column", gap: 20 }}>
       <div>
         <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
-          <ShieldAlert size={22} style={{ color: "#ef4444" }} /> Suspicious Transactions & Accounts
+          <ShieldAlert size={22} style={{ color: "#ef4444" }} /> {t.adminSuspicious.title}
         </h1>
         <p style={{ color: "var(--text-secondary)", fontSize: 14 }}>
-          Accounts and transactions flagged by the system as showing signs of risk, fraud, or system anomalies.
+          {t.adminSuspicious.subtitle}
         </p>
       </div>
 
       {/* Overview Cards */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16 }}>
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 14, padding: 16 }}>
-          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Total Alerts</p>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t.adminSuspicious.totalAlerts}</p>
           <p style={{ fontSize: 24, fontWeight: 800, marginTop: 4, color: "#ef4444" }}>{items.length}</p>
         </div>
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 14, padding: 16 }}>
-          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Pending Review</p>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t.adminSuspicious.pendingReview}</p>
           <p style={{ fontSize: 24, fontWeight: 800, marginTop: 4, color: "#f59e0b" }}>{items.filter(x => x.status === "pending").length}</p>
         </div>
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 14, padding: 16 }}>
-          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Resolved</p>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t.adminSuspicious.resolved}</p>
           <p style={{ fontSize: 24, fontWeight: 800, marginTop: 4, color: "#22c55e" }}>{items.filter(x => x.status === "resolved").length}</p>
         </div>
       </div>
@@ -218,8 +247,8 @@ export default function AdminSuspiciousPage() {
       {/* Main List */}
       <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
         <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <h3 style={{ fontSize: 14, fontWeight: 700 }}>Detected Alerts</h3>
-          <span style={{ fontSize: 11, background: "rgba(239,68,68,0.1)", color: "#ef4444", padding: "2px 8px", borderRadius: 20, fontWeight: 600 }}>Auto-monitoring: Real-time</span>
+          <h3 style={{ fontSize: 14, fontWeight: 700 }}>{t.adminSuspicious.detectedAlerts}</h3>
+          <span style={{ fontSize: 11, background: "rgba(239,68,68,0.1)", color: "#ef4444", padding: "2px 8px", borderRadius: 20, fontWeight: 600 }}>{t.adminSuspicious.autoMonitoring}</span>
         </div>
 
         <div style={{ display: "flex", flexDirection: "column" }}>
@@ -242,19 +271,19 @@ export default function AdminSuspiciousPage() {
                   <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                     <span style={{
                       fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 4, textTransform: "uppercase",
-                      background: item.severity === "high" ? "rgba(239,68,68,0.12)" : item.severity === "medium" ? "rgba(245,158,11,0.12)" : "rgba(59,130,246,0.12)",
-                      color: item.severity === "high" ? "#ef4444" : item.severity === "medium" ? "#f59e0b" : "#3b82f6"
+                      background: item.severity === "high" || item.severity === "critical" ? "rgba(239,68,68,0.12)" : item.severity === "medium" ? "rgba(245,158,11,0.12)" : "rgba(59,130,246,0.12)",
+                      color: item.severity === "high" || item.severity === "critical" ? "#ef4444" : item.severity === "medium" ? "#f59e0b" : "#3b82f6"
                     }}>
-                      {item.severity === "high" ? "Critical" : item.severity === "medium" ? "Medium" : "Low"}
+                      {getSeverityText(item.severity)}
                     </span>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{item.title}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{getTitleText(item.title)}</span>
                     {item.status === "resolved" && (
-                      <span style={{ fontSize: 10, background: "rgba(34,197,94,0.1)", color: "#22c55e", padding: "1px 6px", borderRadius: 4, fontWeight: 600 }}>Resolved</span>
+                      <span style={{ fontSize: 10, background: "rgba(34,197,94,0.1)", color: "#22c55e", padding: "1px 6px", borderRadius: 4, fontWeight: 600 }}>{t.adminSuspicious.resolved}</span>
                     )}
                   </div>
                   
                   <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>
-                    User: <strong>{item.userName}</strong> ({item.userEmail}) • {item.time}
+                    {lang === "vi" ? "Người dùng:" : "User:"} <strong>{item.userName}</strong> ({item.userEmail}) • {item.time}
                   </p>
 
                   <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
@@ -265,10 +294,10 @@ export default function AdminSuspiciousPage() {
                 {/* Status Badges */}
                 <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
                   {uStatus === "locked" && (
-                    <span style={{ fontSize: 11, background: "rgba(239,68,68,0.1)", color: "#ef4444", padding: "3px 8px", borderRadius: 6, fontWeight: 600 }}>🔒 User Locked</span>
+                    <span style={{ fontSize: 11, background: "rgba(239,68,68,0.1)", color: "#ef4444", padding: "3px 8px", borderRadius: 6, fontWeight: 600 }}>{t.adminSuspicious.userLockedBadge}</span>
                   )}
                   {wStatus === "frozen" && (
-                    <span style={{ fontSize: 11, background: "rgba(59,130,246,0.1)", color: "#3b82f6", padding: "3px 8px", borderRadius: 6, fontWeight: 600 }}>❄️ Wallet Frozen</span>
+                    <span style={{ fontSize: 11, background: "rgba(59,130,246,0.1)", color: "#3b82f6", padding: "3px 8px", borderRadius: 6, fontWeight: 600 }}>{t.adminSuspicious.walletFrozenBadge}</span>
                   )}
                 </div>
 
@@ -282,7 +311,7 @@ export default function AdminSuspiciousPage() {
                       cursor: "pointer", display: "flex", alignItems: "center", gap: 4
                     }}
                   >
-                    <Eye size={14} /> View Details
+                    <Eye size={14} /> {t.adminSuspicious.viewDetails}
                   </button>
                   {item.status === "pending" && (
                     <button
@@ -293,7 +322,7 @@ export default function AdminSuspiciousPage() {
                         cursor: "pointer"
                       }}
                     >
-                      Dismiss Alert
+                      {t.adminSuspicious.dismissAlert}
                     </button>
                   )}
                 </div>
@@ -327,19 +356,19 @@ export default function AdminSuspiciousPage() {
               </button>
 
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-                <AlertTriangle size={24} style={{ color: selectedItem.severity === "high" ? "#ef4444" : "#f59e0b" }} />
-                <h3 style={{ fontSize: 18, fontWeight: 800 }}>Suspicious Alert Details</h3>
+                <AlertTriangle size={24} style={{ color: selectedItem.severity === "high" || selectedItem.severity === "critical" ? "#ef4444" : "#f59e0b" }} />
+                <h3 style={{ fontSize: 18, fontWeight: 800 }}>{t.adminSuspicious.alertDetails}</h3>
               </div>
 
               {/* Alert Meta details */}
               <div style={{ display: "flex", flexDirection: "column", gap: 10, background: "var(--bg-card2)", padding: 16, borderRadius: 12, border: "1px solid var(--border)", marginBottom: 20 }}>
                 {[
-                  { label: "Alert ID", value: selectedItem.id },
-                  { label: "Account Name", value: selectedItem.userName },
-                  { label: "Linked Email", value: selectedItem.userEmail },
-                  { label: "Behavior Type", value: selectedItem.title },
-                  { label: "Time Detected", value: selectedItem.time },
-                  { label: "Severity Level", value: selectedItem.severity === "high" ? "🔴 Critical (High)" : selectedItem.severity === "medium" ? "🟡 Medium" : "🔵 Low" },
+                  { label: t.adminSuspicious.alertId, value: selectedItem.id },
+                  { label: t.adminSuspicious.accountName, value: selectedItem.userName },
+                  { label: t.adminSuspicious.linkedEmail, value: selectedItem.userEmail },
+                  { label: t.adminSuspicious.behaviorType, value: getTitleText(selectedItem.title) },
+                  { label: t.adminSuspicious.timeDetected, value: selectedItem.time },
+                  { label: t.adminSuspicious.severityLevel, value: selectedItem.severity === "high" || selectedItem.severity === "critical" ? t.adminSuspicious.critical : selectedItem.severity === "medium" ? t.adminSuspicious.medium : t.adminSuspicious.low },
                 ].map(item => (
                   <div key={item.label} style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
                     <span style={{ color: "var(--text-secondary)" }}>{item.label}:</span>
@@ -349,7 +378,7 @@ export default function AdminSuspiciousPage() {
               </div>
 
               {/* Suspicious Reasons detailed description */}
-              <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 8, textTransform: "uppercase" }}>System Flagged Reason</h4>
+              <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 8, textTransform: "uppercase" }}>{t.adminSuspicious.systemReason}</h4>
               <div style={{
                 background: "rgba(239,68,68,0.03)", border: "1px solid rgba(239,68,68,0.15)",
                 borderRadius: 10, padding: 14, marginBottom: 24, fontSize: 13, lineHeight: 1.6, color: "var(--text-primary)"
@@ -358,7 +387,7 @@ export default function AdminSuspiciousPage() {
               </div>
 
               {/* Quick Actions Footer */}
-              <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 12, textTransform: "uppercase" }}>Immediate Risk Actions</h4>
+              <h4 style={{ fontSize: 13, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 12, textTransform: "uppercase" }}>{t.adminSuspicious.immediateActions}</h4>
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                 {/* Lock account button */}
                 <button
@@ -373,9 +402,9 @@ export default function AdminSuspiciousPage() {
                   }}
                 >
                   {getUserStatus(selectedItem.userEmail) === "locked" ? (
-                    <><UserCheck size={14} /> Unlock User</>
+                    <><UserCheck size={14} /> {t.adminSuspicious.unlockUser}</>
                   ) : (
-                    <><UserMinus size={14} /> Lock Account</>
+                    <><UserMinus size={14} /> {t.adminSuspicious.lockAccount}</>
                   )}
                 </button>
 
@@ -392,9 +421,9 @@ export default function AdminSuspiciousPage() {
                   }}
                 >
                   {getWalletStatus(selectedItem.userEmail) === "frozen" ? (
-                    <> Unfreeze Wallet</>
+                    <> {t.adminSuspicious.unfreezeWallet}</>
                   ) : (
-                    <>❄️ Freeze Wallet</>
+                    <>❄️ {t.adminSuspicious.freezeWallet}</>
                   )}
                 </button>
               </div>
@@ -408,9 +437,110 @@ export default function AdminSuspiciousPage() {
                     fontSize: 13, cursor: "pointer", marginTop: 12
                   }}
                 >
-                  ✓ Resolve (Dismiss Alert)
+                  ✓ {t.adminSuspicious.dismissAlert}
                 </button>
               )}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* CUSTOM CONFIRMATION & ALERT MODAL */}
+      <AnimatePresence>
+        {customConfirm && (
+          <div style={{
+            position: "fixed", inset: 0, zIndex: 10000,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20, background: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(4px)"
+          }}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              style={{
+                background: "var(--bg-card)", border: "1px solid var(--border)",
+                borderRadius: 20, padding: 24, maxWidth: 400, width: "100%",
+                boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", position: "relative",
+                color: "var(--text-primary)"
+              }}
+            >
+              <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                <AlertTriangle size={20} style={{ color: customConfirm.danger ? "#ef4444" : "#f59e0b" }} />
+                {lang === "vi" ? "Xác nhận yêu cầu" : "Confirm Request"}
+              </h3>
+              <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text-secondary)", marginBottom: 20, whiteSpace: "pre-line" }}>
+                {customConfirm.message}
+              </p>
+              <div style={{ display: "flex", gap: 12 }}>
+                <button
+                  onClick={() => {
+                    customConfirm.onCancel?.();
+                    setCustomConfirm(null);
+                  }}
+                  style={{
+                    flex: 1, padding: 10, borderRadius: 10, fontSize: 12,
+                    background: "var(--bg-card2)", border: "1px solid var(--border)",
+                    color: "var(--text-secondary)", cursor: "pointer"
+                  }}
+                >
+                  {lang === "vi" ? "Hủy" : "Cancel"}
+                </button>
+                <button
+                  onClick={() => {
+                    customConfirm.onConfirm();
+                    setCustomConfirm(null);
+                  }}
+                  style={{
+                    flex: 1, padding: 10, borderRadius: 10, fontSize: 12, border: "none",
+                    background: customConfirm.danger ? "#ef4444" : "var(--primary)", color: "white", cursor: "pointer", fontWeight: 700
+                  }}
+                >
+                  {lang === "vi" ? "Đồng ý" : "Agree"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+
+        {customAlert && (
+          <div style={{
+            position: "fixed", inset: 0, zIndex: 10000,
+            display: "flex", alignItems: "center", justifyContent: "center",
+            padding: 20, background: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(4px)"
+          }}>
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0, y: 15 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.95, opacity: 0, y: 15 }}
+              style={{
+                background: "var(--bg-card)", border: "1px solid var(--border)",
+                borderRadius: 20, padding: 24, maxWidth: 400, width: "100%",
+                boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", position: "relative",
+                color: "var(--text-primary)"
+              }}
+            >
+              <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
+                {customAlert.type === "error" ? (
+                  <X size={20} style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)", borderRadius: "50%", padding: 2 }} />
+                ) : customAlert.type === "success" ? (
+                  <Check size={20} style={{ color: "#22c55e", background: "rgba(34,197,94,0.1)", borderRadius: "50%", padding: 2 }} />
+                ) : (
+                  <ShieldAlert size={20} style={{ color: "var(--primary)" }} />
+                )}
+                {customAlert.type === "error" ? (lang === "vi" ? "Thông báo lỗi" : "Error Alert") : (lang === "vi" ? "Thông báo" : "Notification")}
+              </h3>
+              <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text-secondary)", marginBottom: 20 }}>
+                {customAlert.message}
+              </p>
+              <button
+                onClick={() => setCustomAlert(null)}
+                style={{
+                  width: "100%", padding: 10, borderRadius: 10, fontSize: 12, border: "none",
+                  background: "var(--primary)", color: "white", cursor: "pointer", fontWeight: 700
+                }}
+              >
+                {lang === "vi" ? "Đóng" : "Close"}
+              </button>
             </motion.div>
           </div>
         )}

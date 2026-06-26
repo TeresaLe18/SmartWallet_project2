@@ -28,20 +28,20 @@ export default function Footer() {
   }, [lang]);
 
   return (
-    <footer className="bg-slate-900 text-slate-350 pt-16 pb-8 z-10 relative">
-      <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-12 gap-12">
+    <footer className="w-full bg-slate-900 text-slate-300 pt-16 pb-8 z-10 relative flex flex-col items-center">
+      <div className="w-full max-w-5xl px-6 grid grid-cols-1 md:grid-cols-3 gap-8">
         
         {/* Contact US */}
-        <div className="md:col-span-5 space-y-4">
+        <div className="space-y-4">
           <h5 className="text-sm font-bold uppercase tracking-wider text-red-500">{t.footer.contactUs}</h5>
           <ul className="space-y-4 text-sm">
             <li className="flex items-start gap-3">
               <Users className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
               <div>
-                <strong className="text-slate-100">{t.footer.devTeam}</strong>
-                <ul className="mt-1.5 space-y-1 text-slate-400 pl-4 list-disc">
+                <strong className="text-white">{t.footer.devTeam}</strong>
+                <ul className="mt-1.5 space-y-1 text-slate-300 pl-4 list-disc">
                   {t.footer.devs && t.footer.devs.map((dev, index) => (
-                    <li key={index}>{dev}</li>
+                    <li key={index} className="text-slate-300">{dev}</li>
                   ))}
                 </ul>
               </div>
@@ -54,7 +54,7 @@ export default function Footer() {
             </li>
             <li className="flex items-start gap-3">
               <MapPin className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
-              <span className="text-slate-450 font-medium">
+              <span className="text-slate-300 font-medium">
                 FPT Software Academy, Ho Chi Minh City
               </span>
             </li>
@@ -62,18 +62,18 @@ export default function Footer() {
         </div>
 
         {/* Our Services */}
-        <div className="md:col-span-3 space-y-4">
+        <div className="space-y-4 md:pl-12">
           <h5 className="text-sm font-bold uppercase tracking-wider text-red-500">{t.footer.ourServices}</h5>
           <ul className="space-y-3 text-sm font-bold">
-            <li><Link to="/shop" className="text-slate-400 hover:text-white transition-colors">{t.footer.shop}</Link></li>
-            <li><Link to="/food" className="text-slate-400 hover:text-white transition-colors">{t.footer.food}</Link></li>
-            <li><Link to="/dashboard" className="text-slate-400 hover:text-white transition-colors">{t.footer.reports}</Link></li>
-            <li><a href="#" className="text-slate-400 hover:text-white transition-colors">{t.footer.qr}</a></li>
+            <li><Link to="/shop" className="text-slate-300 hover:text-white transition-colors">{t.footer.shop}</Link></li>
+            <li><Link to="/food" className="text-slate-300 hover:text-white transition-colors">{t.footer.food}</Link></li>
+            <li><Link to="/dashboard" className="text-slate-300 hover:text-white transition-colors">{t.footer.reports}</Link></li>
+            <li><a href="#" className="text-slate-300 hover:text-white transition-colors">{t.footer.qr}</a></li>
           </ul>
         </div>
 
         {/* Embedded Map */}
-        <div className="md:col-span-4 space-y-4">
+        <div className="space-y-4 w-full">
           <h5 className="text-sm font-bold uppercase tracking-wider text-red-500">{t.footer.map}</h5>
           <div className="aspect-[16/9] rounded-2xl overflow-hidden border border-slate-800 shadow-md">
             <iframe 
@@ -88,12 +88,12 @@ export default function Footer() {
 
       </div>
 
-      <hr className="my-8 border-slate-800 max-w-7xl mx-auto px-6" />
+      <hr className="w-full max-w-5xl border-slate-800 my-8 px-6" />
 
       {/* Footer bottom */}
-      <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-sm">
+      <div className="w-full max-w-5xl px-6 flex flex-col md:flex-row items-center justify-between gap-6 text-sm">
         <div className="text-center md:text-left">
-          <p>© 2026 <strong className="text-slate-100 font-bold">{t.footer.ecosystem}</strong>. {t.footer.academicProject}.</p>
+          <p className="text-slate-300">© 2026 <strong className="text-white font-bold">{t.footer.ecosystem}</strong>. {t.footer.academicProject}.</p>
           <p className="text-xs text-red-400 font-mono mt-1.5" id="clock">{clockText}</p>
         </div>
 

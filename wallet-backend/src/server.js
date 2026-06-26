@@ -13,6 +13,8 @@ const feeRoutes = require('./routes/fee.routes');
 const categoryRoutes = require('./routes/category.routes');
 const voucherRoutes = require('./routes/voucher.routes');
 const supportRoutes = require('./routes/support.routes');
+const investmentRoutes = require('./routes/investment.routes');
+const savingsVaultRoutes = require('./routes/savings-vault.routes');
 const authMiddleware = require('./middlewares/auth.middleware');
 const categoryController = require('./controllers/category.controller');
 const voucherController = require('./controllers/voucher.controller');
@@ -68,6 +70,10 @@ app.use('/api/admin/vouchers', voucherRoutes);
 
 // Support Chat
 app.use('/api/support', supportRoutes);
+
+// Investments & Savings Vaults
+app.use('/api/investments', investmentRoutes);
+app.use('/api/savings-vaults', savingsVaultRoutes);
 
 // User: xem danh sách category, kiểm tra voucher
 app.get('/api/categories', authMiddleware, categoryController.listCategories);

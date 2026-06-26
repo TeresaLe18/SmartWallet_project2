@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeCanvas as QRCode } from "qrcode.react";
 import { walletAPI, authAPI, bankAPI, payosAPI, categoryAPI, voucherAPI, formatVND } from "../../services/api";
 import { useLanguage } from "../../context/LanguageContext";
+import jsQR from "jsqr";
 import "./Wallets.css";
 
 const BANKS = ["Vietcombank","Techcombank","BIDV","VietinBank","Agribank","MB Bank","VPBank","TPBank","ACB","Sacombank"];
@@ -825,10 +826,41 @@ export default function WalletsPage() {
     const reader = new FileReader();
     reader.onload = (ev) => {
       setQrUploadPreview(ev.target.result);
-      showToast(t.wallets.scanningQr, "success");
-      setTimeout(() => {
+      showToast(t.wallets.scanningQr || "Scanning QR Code...", "success");
+
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        canvas.width = img.width;
+        canvas.height = img.height;
+        ctx.drawImage(img, 0, 0);
+
+        const imageData = ctx.getImageData(0, 0, img.width, img.height);
+        const code = jsQR(imageData.data, imageData.width, imageData.height);
+
+        if (code && code.data) {
+          try {
+            const parsed = JSON.parse(code.data);
+            if (parsed.type === "SMARTWALLET_USER_QR" && parsed.email) {
+              setTransferMethod("smartwallet");
+              setTxForm(prev => ({
+                ...prev,
+                target: parsed.email,
+                amount: "100000",
+                note: `Chuyển khoản QR cho ${parsed.name || parsed.email}`,
+                category: categories[0]?.id ? String(categories[0].id) : "1"
+              }));
+              showToast(lang === "vi" ? "Nhận diện mã QR SmartWallet thành công!" : "Detected SmartWallet User QR successfully!", "success");
+              return;
+            }
+          } catch (err) {
+            console.log("Parsed QR data is not JSON or missing fields. Falling back to filename parsing.");
+          }
+        }
+
+        // Fallback: Filename based parsing
         const fileNameLower = file.name.toLowerCase();
-        
         let parsedName = "";
         let parsedAccount = "";
         let parsedBank = "Vietcombank";
@@ -875,7 +907,6 @@ export default function WalletsPage() {
           parsedName = "Châu Quốc Lâm Phong";
           parsedAccount = "4445556667";
         } else {
-          // Try to extract name and id from standard format smartwallet-qr-name-id.png
           const match = fileNameLower.match(/smartwallet-qr-([a-z0-9]+)-(\d+)/);
           if (match) {
             const rawName = match[1];
@@ -902,6 +933,7 @@ export default function WalletsPage() {
           }
         }
 
+        setTransferMethod("bank");
         setBankTransferForm({
           bank: parsedBank,
           account: parsedAccount,
@@ -916,7 +948,8 @@ export default function WalletsPage() {
         }));
 
         showToast(t.wallets.qrScanSuccess, "success");
-      }, 1000);
+      };
+      img.src = ev.target.result;
     };
     reader.readAsDataURL(file);
   };

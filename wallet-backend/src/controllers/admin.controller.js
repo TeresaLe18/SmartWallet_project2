@@ -641,6 +641,132 @@ const getFraudLogs = async (req, res) => {
   }
 };
 
+const getStatistics = async (req, res) => {
+  try {
+    const { period } = req.query; // 'today', 'month', 'year', 'all'
+    const now = new Date();
+    let startDate = null;
+
+    if (period === 'today') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (period === 'month') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (period === 'year') {
+      startDate = new Date(now.getFullYear(), 0, 1);
+    }
+
+    const dateFilter = startDate ? { gte: startDate } : undefined;
+
+    // 1. Doanh thu phí giao dịch
+    const feeTxQuery = {
+      status: 'SUCCESS',
+    };
+    if (dateFilter) {
+      feeTxQuery.created_at = dateFilter;
+    }
+    const feeTxSum = await prisma.transaction.aggregate({
+      where: feeTxQuery,
+      _sum: {
+        fee_amount: true,
+      },
+    });
+    const feeRevenue = Number(feeTxSum._sum.fee_amount || 0);
+
+    // 2. Số lượng hũ tiết kiệm đã mở trong kỳ
+    const vaultCountQuery = dateFilter ? { created_at: dateFilter } : {};
+    const savingsVaultCount = await prisma.savingsVault.count({ where: vaultCountQuery });
+
+    // Tổng số dư các hũ tiết kiệm hiện tại (tiền snapshot)
+    const totalVaultsSum = await prisma.savingsVault.aggregate({
+      _sum: { current_amount: true }
+    });
+    const savingsVaultBalance = Number(totalVaultsSum._sum.current_amount || 0);
+
+    // 3. Số lượng các gói đầu tư active
+    const activeInvQuery = { status: 'ACTIVE' };
+    const activeInvestments = await prisma.investment.findMany({ where: activeInvQuery });
+    
+    // Số gói tích lũy đang hoạt động mở trong kỳ
+    const openedInvQuery = { status: 'ACTIVE' };
+    if (dateFilter) {
+      openedInvQuery.start_date = dateFilter;
+    }
+    const activeInvestmentCount = await prisma.investment.count({ where: openedInvQuery });
+
+    // Tổng tiền gốc tích lũy active hiện tại
+    const activeInvestmentPrincipal = activeInvestments.reduce((acc, inv) => acc + Number(inv.amount), 0);
+
+    // Tổng tiền rảnh rỗi (Số dư các hũ + Gốc đầu tư active)
+    const totalIdleMoney = savingsVaultBalance + activeInvestmentPrincipal;
+
+    // 4. Dự chi lãi cho các gói đang hoạt động
+    let projectedInterestPayout = 0;
+    activeInvestments.forEach(inv => {
+      const amount = Number(inv.amount);
+      const rate = Number(inv.interest_rate) / 100;
+      if (inv.term_months === 0) {
+        // Gói không kỳ hạn: tính lãi dồn hàng ngày đến nay
+        const startDate = new Date(inv.start_date);
+        const diffTime = Math.max(0, now.getTime() - startDate.getTime());
+        const daysPassed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+        projectedInterestPayout += amount * rate * (daysPassed / 365);
+      } else {
+        // Gói có kỳ hạn: dự chi tổng lãi khi đáo hạn
+        projectedInterestPayout += amount * rate * (inv.term_months / 12);
+      }
+    });
+    projectedInterestPayout = Math.round(projectedInterestPayout);
+
+    // 5. Thực chi lãi (khoản lãi đã chi trả thực tế cho các gói rút trong kỳ)
+    const withdrawnInvQuery = { status: 'WITHDRAWN' };
+    if (dateFilter) {
+      withdrawnInvQuery.withdrawn_at = dateFilter;
+    }
+    const withdrawnSum = await prisma.investment.aggregate({
+      where: withdrawnInvQuery,
+      _sum: {
+        accumulated_interest: true,
+      },
+    });
+    const actualInterestPaid = Number(withdrawnSum._sum.accumulated_interest || 0);
+
+    // 6. Lấy lịch sử giao dịch thành công trong kỳ để vẽ đồ thị thống kê doanh thu/dòng tiền
+    const chartTxsQuery = {
+      status: 'SUCCESS',
+    };
+    if (dateFilter) {
+      chartTxsQuery.created_at = dateFilter;
+    }
+    const chartTxs = await prisma.transaction.findMany({
+      where: chartTxsQuery,
+      select: {
+        created_at: true,
+        amount: true,
+        fee_amount: true,
+      },
+      orderBy: { created_at: 'asc' },
+    });
+
+    return res.status(200).json({
+      success: true,
+      statistics: {
+        feeRevenue,
+        savingsVaultCount,
+        activeInvestmentCount,
+        savingsVaultBalance,
+        activeInvestmentPrincipal,
+        totalIdleMoney,
+        projectedInterestPayout,
+        actualInterestPaid,
+        chartData: chartTxs,
+      }
+    });
+  } catch (error) {
+    console.error('getStatistics error:', error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 const resolveFraudLog = async (req, res) => {
   try {
     const logId = Number(req.params.id);
@@ -665,4 +791,5 @@ module.exports = {
   reviewTransaction,
   getFraudLogs,
   resolveFraudLog,
+  getStatistics,
 };

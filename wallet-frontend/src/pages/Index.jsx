@@ -310,6 +310,89 @@ export default function Index() {
           </div>
         </section>
 
+        {/* Savings Vault Premium Section */}
+        <section className="section savings-vault-section" id="savings">
+          <div className="savings-vault-container">
+            <div className="savings-vault-grid">
+              <div className="savings-vault-text-content reveal">
+                <div className="savings-badge-wrapper">
+                  <span className="savings-interest-badge">
+                    ⚡ {t.index.savingsInterestRate}
+                  </span>
+                </div>
+                <h2>{t.index.savingsTitle}</h2>
+                <p className="savings-subtitle-text">{t.index.savingsSubtitle}</p>
+                <p className="savings-desc-text">{t.index.savingsDesc}</p>
+                <div className="savings-action-btn">
+                  <Link className="btn btn-primary btn-glow" to="/register">
+                    {t.index.savingsButton}
+                  </Link>
+                </div>
+              </div>
+
+              <div className="savings-vault-visual reveal">
+                <div className="vault-card-3d">
+                  <div className="vault-header">
+                    <span className="vault-icon">🐷</span>
+                    <div>
+                      <h4>Savings Vault</h4>
+                      <p>SmartWallet Account</p>
+                    </div>
+                    <span className="vault-rate-tag">+8.5% APY</span>
+                  </div>
+                  
+                  <div className="vault-balance-show">
+                    <p className="vault-balance-label">Total Saved Balance</p>
+                    <h3>125,500,000 ₫</h3>
+                  </div>
+
+                  <div className="vault-progress-section">
+                    <div className="progress-labels">
+                      <span>Goal: Buy New Macbook</span>
+                      <span>83% Done</span>
+                    </div>
+                    <div className="progress-bar-container">
+                      <div className="progress-bar-fill" style={{ width: '83%' }}></div>
+                    </div>
+                  </div>
+
+                  <div className="vault-features-mini">
+                    <div className="mini-feat">
+                      <span className="dot blue" />
+                      <span>Daily Compound</span>
+                    </div>
+                    <div className="mini-feat">
+                      <span className="dot green" />
+                      <span>No Lock-in Period</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Decorative glowing backdrops */}
+                <div className="vault-bg-glow" />
+              </div>
+            </div>
+
+            <div className="savings-features-grid">
+              <div className="savings-feature-card">
+                <div className="sf-icon">📈</div>
+                <h4>{t.index.savingsFeature1Title}</h4>
+                <p>{t.index.savingsFeature1Desc}</p>
+              </div>
+              <div className="savings-feature-card">
+                <div className="sf-icon">⚙️</div>
+                <h4>{t.index.savingsFeature2Title}</h4>
+                <p>{t.index.savingsFeature2Desc}</p>
+              </div>
+              <div className="savings-feature-card">
+                <div className="sf-icon">🔓</div>
+                <h4>{t.index.savingsFeature3Title}</h4>
+                <p>{t.index.savingsFeature3Desc}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="section" id="training">
           <div className="section-title reveal">
             <h2>{t.index.serviceTitle}</h2>

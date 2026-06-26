@@ -17,9 +17,10 @@ import {
   Wallet,
   X,
   Sparkles,
+  PiggyBank,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
-import { authAPI, getUploadUrl } from "../../services/api";
+import { authAPI, getUploadUrl, supportAPI } from "../../services/api";
 
 import { QrCode } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
@@ -31,6 +32,7 @@ const navItems = [
   { href: "/dashboard/qr", icon: QrCode, label: "My QR"},  
   { href: "/dashboard/wallets", icon: CreditCard, label: "My Wallets" },
   { href: "/dashboard/investment", icon: TrendingUp, label: "Investments & Savings" },
+  { href: "/dashboard/savings-vaults", icon: PiggyBank, label: "Savings Vaults" },
   { href: "/dashboard/offers", icon: Gift, label: "Offers" },
   { href: "/dashboard/support", icon: MessageSquare, label: "Live Support" },
   { href: "/dashboard/ai-chatbot", icon: Sparkles, label: "AI Advisor" },
@@ -40,6 +42,7 @@ const pageTitle = (pathname, t, lang) => {
   if (pathname === "/dashboard") return t.nav.dashboard;
   if (pathname.includes("wallets")) return t.nav.myWallets;
   if (pathname.includes("investment")) return t.nav.investment;
+  if (pathname.includes("savings-vaults")) return lang === "vi" ? "Ví tiết kiệm" : "Savings Vaults";
   if (pathname.includes("offers")) return t.nav.offers;
   if (pathname.includes("support")) return t.nav.support;
   if (pathname.includes("kyc")) return t.kyc.title;
@@ -77,6 +80,20 @@ export default function DashboardLayout() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showNotif, setShowNotif] = useState(false);
   const [dbNotifications, setDbNotifications] = useState([]);
+  const [supportUnreadCount, setSupportUnreadCount] = useState(0);
+
+  const fetchSupportUnreadCount = () => {
+    const token = localStorage.getItem("bw_token");
+    if (!token) return;
+    supportAPI
+      .getUnreadCount()
+      .then((res) => {
+        if (res?.success && typeof res.count === "number") {
+          setSupportUnreadCount(res.count);
+        }
+      })
+      .catch(() => {});
+  };
 
   const title = pageTitle(pathname, t, lang);
 
@@ -86,37 +103,14 @@ export default function DashboardLayout() {
     !isKycVerified && (user?.kycStatus === "pending" || user?.kyc === "pending");
 
   const notifications = useMemo(() => {
-    const kycItem = isKycVerified
-      ? {
-        id: "kyc_verified",
-        title: "KYC Verification Successful ✅",
-        desc: "Your account is ready for deposit, withdrawal and transfer.",
-        read: true,
-      }
-      : isKycPending
-        ? {
-          id: "kyc_pending",
-          title: "KYC Pending Review ⏳",
-          desc: "Your identity documents are being reviewed by the admin team.",
-          read: false,
-        }
-        : {
-          id: "kyc_needed",
-          title: "Verify Identity Required ⚠️",
-          desc: "Complete KYC to unlock full SmartWallet features.",
-          read: false,
-        };
-
-    const dbItems = dbNotifications.map((n) => ({
+    return dbNotifications.map((n) => ({
       id: `db_${n.id}`,
       title: n.title,
       desc: n.content,
       read: !!n.is_read,
       dbId: n.id,
     }));
-
-    return [kycItem, ...dbItems];
-  }, [dbNotifications, isKycPending, isKycVerified]);
+  }, [dbNotifications]);
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
@@ -157,12 +151,11 @@ export default function DashboardLayout() {
         if (!data?.success || !data.user) return;
 
         const kycStatus = data.user.kyc_status || "none";
-        const emailPrefix = data.user.email?.split("@")[0] || "";
-        let finalName = data.user.full_name || savedUser?.name || emailPrefix || "User";
         
-        if (savedUser?.name && savedUser.name !== emailPrefix) {
-          finalName = savedUser.name;
-        } else if (data.user.full_name) {
+        let finalName = data.user.email;
+        if (data.user.display_name) {
+          finalName = data.user.display_name;
+        } else if (kycStatus === "VERIFIED" && data.user.full_name) {
           finalName = data.user.full_name;
         }
 
@@ -170,6 +163,7 @@ export default function DashboardLayout() {
           id: data.user.id,
           email: data.user.email,
           name: finalName,
+          displayName: data.user.display_name || null,
           phone: data.user.phone || undefined,
           avatar: getUploadUrl(data.user.avatar),
           status: data.user.status,
@@ -197,9 +191,19 @@ export default function DashboardLayout() {
 
   useEffect(() => {
     fetchDbNotifications();
-    const interval = setInterval(fetchDbNotifications, 15000);
+    fetchSupportUnreadCount();
+    const interval = setInterval(() => {
+      fetchDbNotifications();
+      fetchSupportUnreadCount();
+    }, 10000);
     return () => clearInterval(interval);
   }, [user?.email]);
+
+  useEffect(() => {
+    if (pathname === "/dashboard/support") {
+      setSupportUnreadCount(0);
+    }
+  }, [pathname]);
 
   const handleLogout = async () => {
     try {
@@ -235,8 +239,11 @@ export default function DashboardLayout() {
             label === "My QR" ? t.nav.myQr :
             label === "My Wallets" ? t.nav.myWallets :
             label === "Investments & Savings" ? t.nav.investment :
+            label === "Savings Vaults" ? t.nav.savingsVaults :
             label === "Offers" ? t.nav.offers :
             label === "Live Support" ? t.nav.support : label;
+
+          const isLiveSupport = label === "Live Support";
 
           return (
             <Link
@@ -247,7 +254,12 @@ export default function DashboardLayout() {
             >
               <Icon size={19} />
               <span>{translatedLabel}</span>
-              {active && <i />}
+              {isLiveSupport && supportUnreadCount > 0 && (
+                <span className="dash-unread-badge">
+                  {supportUnreadCount}
+                </span>
+              )}
+              {active && !isLiveSupport && <i />}
             </Link>
           );
         })}
@@ -352,18 +364,79 @@ export default function DashboardLayout() {
             </button>
 
             <div className="dash-pop-wrap">
-              <Link
+              <button
                 className="dash-icon-btn"
-                to="/dashboard/notifications"
+                type="button"
                 onClick={() => {
+                  setShowNotif((prev) => !prev);
                   setShowUserMenu(false);
-                  setShowNotif(false);
                 }}
                 title={t.notifications.title}
               >
                 <Bell size={18} />
                 {unreadCount > 0 && <em>{unreadCount}</em>}
-              </Link>
+              </button>
+
+              <AnimatePresence>
+                {showNotif && (
+                  <motion.div
+                    className="dash-dropdown dash-notif"
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                  >
+                    <div className="dash-dropdown-head">
+                      <strong>{t.notifications.title || "Notifications"}</strong>
+                      <span>
+                        {unreadCount} {lang === "vi" ? "chưa đọc" : "unread"}
+                      </span>
+                    </div>
+
+                    <div className="dash-notif-list">
+                      {notifications.slice(0, 5).map((n) => (
+                        <div
+                          key={n.id}
+                          className={`dash-notif-item ${!n.read ? "unread" : ""}`}
+                          onClick={() => {
+                            if (n.dbId) {
+                              authAPI.markNotificationRead(n.dbId).then(() => {
+                                fetchDbNotifications();
+                              }).catch(() => {});
+                            }
+                            setShowNotif(false);
+                            navigate("/dashboard/notifications");
+                          }}
+                        >
+                          <strong>{n.title}</strong>
+                          <span>{n.desc}</span>
+                        </div>
+                      ))}
+                      {notifications.length === 0 && (
+                        <div className="dash-empty">
+                          {lang === "vi" ? "Không có thông báo mới" : "No new notifications"}
+                        </div>
+                      )}
+                    </div>
+
+                    <Link
+                      to="/dashboard/notifications"
+                      onClick={() => setShowNotif(false)}
+                      style={{
+                        display: "block",
+                        textAlign: "center",
+                        padding: "12px",
+                        fontSize: "12px",
+                        fontWeight: "bold",
+                        borderTop: "1px solid var(--dash-line)",
+                        textDecoration: "none",
+                        color: "var(--dash-pink)",
+                      }}
+                    >
+                      {lang === "vi" ? "Xem tất cả" : "View All"}
+                    </Link>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             <div className="dash-pop-wrap">
@@ -565,6 +638,19 @@ const dashboardLayoutCss = `
   height: 9px;
   border-radius: 999px;
   background: var(--dash-coral);
+}
+
+.dash-unread-badge {
+  margin-left: auto;
+  background: #ef4444;
+  color: white !important;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 2px 7px;
+  border-radius: 999px;
+  min-width: 18px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4);
 }
 
 .dash-side-card {

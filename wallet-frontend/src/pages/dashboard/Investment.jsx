@@ -212,8 +212,50 @@ export default function Investment() {
   const activeStats = getActiveVaultStats();
   const estReturns = calculateEstimatedReturns();
 
+  const containerVariants = {
+    hidden: { opacity: 0, y: 15 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.4,
+        staggerChildren: 0.08,
+      },
+    },
+  };
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 15 },
+    show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 120 } },
+  };
+
   return (
-    <div style={{ maxWidth: 1200, margin: "0 auto", paddingBottom: 60 }} className="animate-fade-in">
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      style={{ maxWidth: 1200, margin: "0 auto", paddingBottom: 60 }}
+    >
+      <style>{`
+        .investment-grid {
+          display: grid;
+          grid-template-columns: 1.4fr 1fr;
+          gap: 24px;
+          margin-bottom: 30px;
+        }
+        @media (max-width: 968px) {
+          .investment-grid {
+            grid-template-columns: 1fr;
+          }
+        }
+        .term-card-btn {
+          padding: 12px 8px;
+          border-radius: 12px;
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+          text-align: center;
+        }
+      `}</style>
+
       {/* Toast Notification */}
       <AnimatePresence>
         {toast && (
@@ -238,11 +280,15 @@ export default function Investment() {
       {/* Main savings stats banner */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20, marginBottom: 30 }}>
         {/* Wallet Balance Card */}
-        <div style={{
-          background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
-          borderRadius: 20, padding: 24, color: "white", display: "flex", flexDirection: "column", justifyContent: "space-between",
-          boxShadow: "0 8px 30px rgba(37, 99, 235, 0.2)"
-        }}>
+        <motion.div 
+          variants={itemVariants}
+          whileHover={{ scale: 1.02, y: -2 }}
+          style={{
+            background: "linear-gradient(135deg, #2563eb, #1d4ed8)",
+            borderRadius: 20, padding: 24, color: "white", display: "flex", flexDirection: "column", justifyContent: "space-between",
+            boxShadow: "0 8px 30px rgba(37, 99, 235, 0.2)", cursor: "default"
+          }}
+        >
           <div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
               <span style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", fontWeight: 500 }}>{t.investment.walletBalance}</span>
@@ -253,13 +299,18 @@ export default function Investment() {
           <p style={{ fontSize: 11, color: "rgba(255,255,255,0.6)", marginTop: 20 }}>
             {lang === "vi" ? "Số dư khả dụng để chuyển vào tài khoản tích lũy lãi suất cao" : "Cash available to transfer into high-yield savings"}
           </p>
-        </div>
+        </motion.div>
 
         {/* Total Principal Card */}
-        <div style={{
-          background: "var(--bg-card)", border: "1px solid var(--border)",
-          borderRadius: 20, padding: 24, display: "flex", flexDirection: "column"
-        }}>
+        <motion.div 
+          variants={itemVariants}
+          whileHover={{ scale: 1.02, y: -2 }}
+          style={{
+            background: "var(--bg-card)", border: "1px solid var(--border)",
+            borderRadius: 20, padding: 24, display: "flex", flexDirection: "column",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.02)", cursor: "default"
+          }}
+        >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>{t.investment.activeSavings}</span>
             <Lock size={20} style={{ color: "var(--primary)" }} />
@@ -268,13 +319,18 @@ export default function Investment() {
           <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 20 }}>
             {lang === "vi" ? `Đang tích lũy sinh lời trên ${activeStats.count} tài khoản` : `Earning interest across ${activeStats.count} active savings accounts`}
           </p>
-        </div>
+        </motion.div>
 
         {/* Accrued Interest Card */}
-        <div style={{
-          background: "var(--bg-card)", border: "1px solid var(--border)",
-          borderRadius: 20, padding: 24, display: "flex", flexDirection: "column"
-        }}>
+        <motion.div 
+          variants={itemVariants}
+          whileHover={{ scale: 1.02, y: -2 }}
+          style={{
+            background: "var(--bg-card)", border: "1px solid var(--border)",
+            borderRadius: 20, padding: 24, display: "flex", flexDirection: "column",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.02)", cursor: "default"
+          }}
+        >
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
             <span style={{ fontSize: 13, color: "var(--text-secondary)", fontWeight: 500 }}>{t.investment.projectedInterest}</span>
             <TrendingUp size={20} style={{ color: "#22c55e" }} />
@@ -283,15 +339,18 @@ export default function Investment() {
           <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 20 }}>
             {lang === "vi" ? "Tiền lãi cộng dồn hàng ngày theo thời gian thực" : "Interest accruing daily in real time"}
           </p>
-        </div>
+        </motion.div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr", lg: "7fr 5fr", gap: 24, marginBottom: 30 }}>
+      <div className="investment-grid">
         {/* Open Saving / Calculator Card */}
-        <div style={{
-          background: "var(--bg-card)", border: "1px solid var(--border)",
-          borderRadius: 20, padding: 28
-        }}>
+        <motion.div 
+          variants={itemVariants}
+          style={{
+            background: "var(--bg-card)", border: "1px solid var(--border)",
+            borderRadius: 20, padding: 28, boxShadow: "0 8px 24px rgba(0,0,0,0.02)"
+          }}
+        >
           <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, background: "rgba(37, 99, 235, 0.1)", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <PlusCircle size={18} style={{ color: "var(--primary)" }} />
@@ -330,14 +389,16 @@ export default function Investment() {
               {TERMS.map((tItem) => {
                 const active = selectedTerm === tItem.term;
                 return (
-                  <button
+                  <motion.button
                     key={tItem.term}
                     type="button"
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
                     onClick={() => setSelectedTerm(tItem.term)}
+                    className="term-card-btn"
                     style={{
-                      padding: "12px 8px", borderRadius: 12, border: `1px solid ${active ? "var(--primary)" : "var(--border)"}`,
-                      background: active ? "rgba(37,99,235,0.06)" : "#ffffff", cursor: "pointer", transition: "all 0.2s",
-                      textAlign: "center"
+                      border: `1px solid ${active ? "var(--primary)" : "var(--border)"}`,
+                      background: active ? "rgba(37,99,235,0.06)" : "#ffffff", cursor: "pointer",
                     }}
                   >
                     <p style={{ fontSize: 12, fontWeight: 700, color: active ? "var(--primary)" : "var(--text-primary)" }}>
@@ -349,7 +410,7 @@ export default function Investment() {
                     <p style={{ fontSize: 9, color: active ? "rgba(37,99,235,0.6)" : "var(--text-muted)" }}>
                       {lang === "vi" ? "Ngân hàng" : "Bank"}: {tItem.bankRate}%
                     </p>
-                  </button>
+                  </motion.button>
                 );
               })}
             </div>
@@ -396,22 +457,28 @@ export default function Investment() {
               </div>
             </div>
 
-            <button
+            <motion.button
               type="submit"
               disabled={submitting}
+              whileHover={{ scale: 1.01 }}
+              whileTap={{ scale: 0.99 }}
               className="btn-primary"
               style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}
             >
               {submitting ? (lang === "vi" ? "Đang xử lý giao dịch..." : "Processing transaction...") : (lang === "vi" ? `Xác nhận tích lũy ${formatVND(Number(depositAmount) || 0)}` : `Confirm Deposit ${formatVND(Number(depositAmount) || 0)}`)}
-            </button>
+            </motion.button>
           </form>
-        </div>
+        </motion.div>
 
         {/* Benefits description side box */}
-        <div style={{
-          background: "var(--bg-card)", border: "1px solid var(--border)",
-          borderRadius: 20, padding: 28, display: "flex", flexDirection: "column", justifyContent: "space-between"
-        }}>
+        <motion.div 
+          variants={itemVariants}
+          style={{
+            background: "var(--bg-card)", border: "1px solid var(--border)",
+            borderRadius: 20, padding: 28, display: "flex", flexDirection: "column", justifyContent: "space-between",
+            boxShadow: "0 8px 24px rgba(0,0,0,0.02)"
+          }}
+        >
           <div>
             <h3 style={{ fontSize: 15, fontWeight: 800, marginBottom: 14 }}>{t.investment.whyChoose}</h3>
             
@@ -450,7 +517,7 @@ export default function Investment() {
               ))}
             </div>
           </div>
-        </div>
+        </motion.div>
       </div>
 
       {/* Active vaults list */}
@@ -475,7 +542,18 @@ export default function Investment() {
             <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 4 }}>{t.investment.openFirstAccount}</p>
           </div>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <motion.div 
+            variants={{
+              hidden: { opacity: 0 },
+              show: {
+                opacity: 1,
+                transition: { staggerChildren: 0.05 }
+              }
+            }}
+            initial="hidden"
+            animate="show"
+            style={{ display: "flex", flexDirection: "column", gap: 16 }}
+          >
             {investments.map((inv) => {
               const details = getTermDetails(inv.term_months);
               const isClosed = inv.status === "WITHDRAWN";
@@ -497,8 +575,10 @@ export default function Investment() {
               }
 
               return (
-                <div
+                <motion.div
                   key={inv.id}
+                  variants={itemVariants}
+                  whileHover={isClosed ? {} : { scale: 1.01, y: -2 }}
                   style={{
                     border: "1px solid var(--border)", borderRadius: 16, padding: 20,
                     background: isClosed ? "var(--bg-card2)" : "#ffffff", opacity: isClosed ? 0.75 : 1,
@@ -587,10 +667,10 @@ export default function Investment() {
                       </div>
                     </div>
                   )}
-                </div>
+                </motion.div>
               );
             })}
-          </div>
+          </motion.div>
         )}
       </div>
 
@@ -689,6 +769,6 @@ export default function Investment() {
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   );
 }
