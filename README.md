@@ -74,13 +74,16 @@ backup_project2/
    npx prisma db push
    ```
 
-4. Khởi chạy cơ sở dữ liệu mẫu (Seed Users & KYC):
+4. Khởi chạy cơ sở dữ liệu mẫu (Seed Users, KYC & Demo Data):
    ```bash
    # Tạo tài khoản thử nghiệm
    node src/seedUsers.js
    
    # Xác thực danh tính KYC mặc định cho các tài khoản test
    node src/seedKyc.js
+
+   # Tạo dữ liệu mẫu cho ví tiết kiệm, tích lũy và thống kê
+   node src/seedDemo.js
    ```
 
 5. Khởi chạy máy chủ backend ở chế độ phát triển:
