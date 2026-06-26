@@ -5,6 +5,15 @@ const investmentController = require('../controllers/investment.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
 const accountMiddleware = require('../middlewares/account.middleware');
 const walletMiddleware = require('../middlewares/wallet.middleware');
+const adminMiddleware = require('../middlewares/admin.middleware');
+
+// Admin route must be registered before /:id routes
+router.get(
+  '/admin',
+  authMiddleware,
+  adminMiddleware,
+  investmentController.getAdminAllInvestments,
+);
 
 router.get(
   '/',

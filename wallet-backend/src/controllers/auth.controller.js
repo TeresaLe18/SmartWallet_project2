@@ -8,7 +8,7 @@ const {
     clearRefreshTokenCookie,
     getRefreshTokenFromRequest,
 } = require('../utils/authCookie');
-const { hashRefreshToken, verifyRefreshTokenHash } = require('../utils/refreshTokenHash');
+const { hashRefreshToken, verifyStoredRefreshToken } = require('../utils/refreshTokenHash');
 
 const otpStore = {};
 const resetPasswordStore = {};
@@ -346,7 +346,7 @@ const refreshTokenHandler = async (req, res) => {
             where: { id: decoded.userId }
         });
 
-        if (!user || !verifyRefreshTokenHash(refreshToken, user.refreshTokenHash)) {
+        if (!user || !verifyStoredRefreshToken(refreshToken, user.refreshTokenHash)) {
             clearRefreshTokenCookie(res);
             return res.status(401).json({
                 success: false,
@@ -354,25 +354,13 @@ const refreshTokenHandler = async (req, res) => {
             });
         }
 
-        // create new access token
+        // Issue a new access token only — keep the existing refresh token to avoid
+        // invalidating parallel refresh calls (e.g. admin dashboard polling).
         const newAccessToken = jwt.sign(
             { userId: user.id, role: user.role },
             process.env.JWT_SECRET,
             { expiresIn: '15m' }
         );
-
-        const newRefreshToken = jwt.sign(
-            { userId: user.id },
-            process.env.JWT_REFRESH_SECRET,
-            { expiresIn: '7d' }
-        );
-
-        await prisma.user.update({
-            where: { id: user.id },
-            data: { refreshTokenHash: hashRefreshToken(newRefreshToken) }
-        });
-
-        setRefreshTokenCookie(res, newRefreshToken);
 
         return res.json({
             success: true,

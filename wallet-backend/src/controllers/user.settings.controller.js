@@ -25,7 +25,6 @@ const getMe = async (req, res) => {
                 email: true,
                 phone: true,
                 avatar: true,
-                display_name: true,
                 role: true,
                 status: true,
                 pin_hash: true,
@@ -46,7 +45,6 @@ const getMe = async (req, res) => {
                 email: user.email,
                 phone: user.phone || null,
                 avatar: user.avatar || null,
-                display_name: user.display_name || null,
                 role: user.role,
                 status: user.status,
                 has_pin: !!user.pin_hash,
@@ -399,19 +397,23 @@ const updateProfile = async (req, res) => {
     try {
         const userId = req.user.userId;
         const { displayName } = req.body;
+        const trimmed = displayName?.trim() || null;
 
-        const updated = await prisma.user.update({
-            where: { id: userId },
-            data: {
-                display_name: displayName !== undefined ? displayName.trim() : null,
-            },
-        });
+        // display_name column was removed — persist name on KYC record when one exists
+        const kyc = await prisma.userKyc.findUnique({ where: { user_id: userId } });
+        if (kyc && trimmed) {
+            await prisma.userKyc.update({
+                where: { user_id: userId },
+                data: { full_name: trimmed },
+            });
+        }
 
         return res.status(200).json({
             success: true,
             message: 'Profile updated successfully',
             data: {
-                display_name: updated.display_name,
+                display_name: trimmed,
+                full_name: trimmed,
             },
         });
     } catch (error) {

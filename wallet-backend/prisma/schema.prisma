@@ -99,7 +99,7 @@ model User {
   phone     String?    @unique
   password  String
   avatar    String?
-  display_name String?
+ 
   status    UserStatus @default(ACTIVE)
 
   pin_hash String? 

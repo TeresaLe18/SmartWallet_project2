@@ -18,7 +18,16 @@ const verifyRefreshTokenHash = (token, storedHash) => {
   return crypto.timingSafeEqual(Buffer.from(hash), Buffer.from(storedHash));
 };
 
+// Xác thực refresh token: hỗ trợ hash mới và token thuần cũ (trước khi migrate hash)
+const verifyStoredRefreshToken = (token, stored) => {
+  if (!token || !stored) return false;
+  if (verifyRefreshTokenHash(token, stored)) return true;
+  // Legacy: DB còn lưu plain JWT trong cột refreshToken
+  return token === stored;
+};
+
 module.exports = {
   hashRefreshToken,
   verifyRefreshTokenHash,
+  verifyStoredRefreshToken,
 };

@@ -1,5 +1,42 @@
 const prisma = require('../config/prisma');
 
+const enrichInvestment = (inv) => {
+  if (inv.status === 'WITHDRAWN') {
+    return {
+      ...inv,
+      accruedInterest: Number(inv.accumulated_interest),
+    };
+  }
+
+  const startDate = new Date(inv.start_date);
+  const now = new Date();
+  const diffTime = Math.max(0, now.getTime() - startDate.getTime());
+  const daysPassed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  let accrued = 0;
+  const amount = Number(inv.amount);
+  const rate = Number(inv.interest_rate) / 100;
+
+  if (inv.term_months === 0) {
+    accrued = amount * rate * (daysPassed / 365);
+  } else {
+    const endDate = new Date(inv.end_date);
+    const isMature = now >= endDate;
+
+    if (isMature) {
+      accrued = amount * rate * (inv.term_months / 12);
+    } else {
+      const flexibleRate = 0.002;
+      accrued = amount * flexibleRate * (daysPassed / 365);
+    }
+  }
+
+  return {
+    ...inv,
+    accruedInterest: Math.round(accrued),
+  };
+};
+
 // GET /investments - Get all investments for the user
 const getAllInvestments = async (req, res) => {
   try {
@@ -9,45 +46,27 @@ const getAllInvestments = async (req, res) => {
       orderBy: { id: 'desc' },
     });
 
-    // Dynamically calculate current accrued interest for active investments
-    const enriched = investments.map(inv => {
-      if (inv.status === 'WITHDRAWN') {
-        return {
-          ...inv,
-          accruedInterest: Number(inv.accumulated_interest),
-        };
-      }
+    const enriched = investments.map(enrichInvestment);
 
-      const startDate = new Date(inv.start_date);
-      const now = new Date();
-      const diffTime = Math.max(0, now.getTime() - startDate.getTime());
-      const daysPassed = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return res.status(200).json({ success: true, investments: enriched });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
 
-      let accrued = 0;
-      const amount = Number(inv.amount);
-      const rate = Number(inv.interest_rate) / 100;
-
-      if (inv.term_months === 0) {
-        // Flexible: calculated daily
-        accrued = amount * rate * (daysPassed / 365);
-      } else {
-        const endDate = new Date(inv.end_date);
-        const isMature = now >= endDate;
-
-        if (isMature) {
-          accrued = amount * rate * (inv.term_months / 12);
-        } else {
-          // Early withdrawal penalty: flexible interest rate (0.2%)
-          const flexibleRate = 0.002;
-          accrued = amount * flexibleRate * (daysPassed / 365);
-        }
-      }
-
-      return {
-        ...inv,
-        accruedInterest: Math.round(accrued),
-      };
+// GET /investments/admin - Admin: list all users' savings accounts
+const getAdminAllInvestments = async (req, res) => {
+  try {
+    const investments = await prisma.investment.findMany({
+      orderBy: { id: 'desc' },
+      include: {
+        user: {
+          select: { id: true, email: true, phone: true },
+        },
+      },
     });
+
+    const enriched = investments.map(enrichInvestment);
 
     return res.status(200).json({ success: true, investments: enriched });
   } catch (error) {
@@ -88,7 +107,8 @@ const createInvestment = async (req, res) => {
       return res.status(403).json({ success: false, message: 'Your wallet is frozen' });
     }
 
-    if (Number(wallet.balance) < principal) {
+    const available = Number(wallet.balance) - Number(wallet.locked_balance);
+    if (available < principal) {
       return res.status(400).json({ success: false, message: 'Insufficient wallet balance' });
     }
 
@@ -100,13 +120,11 @@ const createInvestment = async (req, res) => {
       endDate = d;
     }
 
-    // Perform transaction: deduct balance, lock balance, create investment
+    // Lock funds for savings — do not also decrement balance (that double-counts in available = balance - locked)
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Deduct from main balance
       const updatedWallet = await tx.wallet.update({
         where: { user_id: userId },
         data: {
-          balance: { decrement: principal },
           locked_balance: { increment: principal },
         },
       });
@@ -136,14 +154,17 @@ const createInvestment = async (req, res) => {
         },
       });
 
+      const availableBefore = Number(wallet.balance) - Number(wallet.locked_balance);
+      const availableAfter = availableBefore - principal;
+
       await tx.ledgerEntry.create({
         data: {
           transaction_id: transaction.id,
           wallet_id: wallet.id,
           type: 'DEBIT',
           amount: principal,
-          balance_before: wallet.balance,
-          balance_after: updatedWallet.balance,
+          balance_before: availableBefore,
+          balance_after: availableAfter,
         },
       });
 
@@ -221,13 +242,12 @@ const withdrawInvestment = async (req, res) => {
     const roundedInterest = Math.round(interest);
     const totalPayout = amount + roundedInterest;
 
-    // Perform transaction: credit balance, release locked balance, update investment
+    // Release lock and credit earned interest (principal stays in balance; only locked portion moves)
     const result = await prisma.$transaction(async (tx) => {
-      // 1. Credit wallet
       const updatedWallet = await tx.wallet.update({
         where: { user_id: userId },
         data: {
-          balance: { increment: totalPayout },
+          balance: { increment: roundedInterest },
           locked_balance: { decrement: amount },
         },
       });
@@ -267,7 +287,7 @@ const withdrawInvestment = async (req, res) => {
         },
       });
 
-      return { investment: updatedInv, payout: totalPayout };
+      return { investment: updatedInv, payout: totalPayout, wallet: updatedWallet };
     });
 
     return res.status(200).json({
@@ -275,6 +295,7 @@ const withdrawInvestment = async (req, res) => {
       message: 'Savings withdrawn successfully',
       payout: result.payout,
       investment: result.investment,
+      wallet: result.wallet,
     });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
@@ -283,6 +304,7 @@ const withdrawInvestment = async (req, res) => {
 
 module.exports = {
   getAllInvestments,
+  getAdminAllInvestments,
   createInvestment,
   withdrawInvestment,
 };

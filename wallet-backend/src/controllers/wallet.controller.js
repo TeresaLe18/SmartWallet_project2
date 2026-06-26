@@ -1,6 +1,7 @@
 const prisma = require('../config/prisma');
 const { Prisma, TransactionStatus, TransactionType } = require('@prisma/client');
 const crypto = require('crypto');
+const { runFraudChecks } = require('../utils/fraudDetection');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -344,8 +345,8 @@ const withdraw = async (req, res) => {
     const feeAmount = feeRule ? feeRule.fee_value : new Prisma.Decimal(0);
     const finalAmount = new Prisma.Decimal(amount).plus(feeAmount);
 
-    const available = wallet.balance.minus(wallet.locked_balance);
-    if (available.lt(finalAmount)) {
+    const availableBefore = Number(wallet.balance) - Number(wallet.locked_balance);
+    if (availableBefore < Number(finalAmount)) {
       return res.status(400).json({ success: false, message: 'Insufficient balance' });
     }
 
@@ -418,6 +419,15 @@ const withdraw = async (req, res) => {
         content: `${Number(amount).toLocaleString('vi-VN')} ₫ has been withdrawn to ${bank_code} (Account: ${account_number}). Reference: ${referenceCode}.`,
       },
     }).catch(() => { /* non-critical */ });
+
+    runFraudChecks({
+      userId,
+      walletId: wallet.id,
+      transactionId: transaction.id,
+      transactionType: 'WITHDRAW',
+      amount: Number(amount),
+      availableBalanceBefore: availableBefore,
+    }).catch((err) => console.error('Fraud check failed:', err));
 
     return res.status(200).json({
       success: true,
@@ -528,7 +538,8 @@ const transfer = async (req, res) => {
 
     const finalAmount = new Prisma.Decimal(amount).plus(feeAmount).minus(discountAmount);
 
-    if (senderWallet.balance.minus(senderWallet.locked_balance).lt(finalAmount)) {
+    const availableBefore = Number(senderWallet.balance) - Number(senderWallet.locked_balance);
+    if (availableBefore < Number(finalAmount)) {
       return res.status(400).json({ success: false, message: 'Insufficient balance' });
     }
 
@@ -645,6 +656,15 @@ const transfer = async (req, res) => {
       },
     }).catch(() => { /* non-critical */ });
 
+    runFraudChecks({
+      userId,
+      walletId: senderWallet.id,
+      transactionId: transaction.id,
+      transactionType: 'TRANSFER',
+      amount: Number(amount),
+      availableBalanceBefore: availableBefore,
+    }).catch((err) => console.error('Fraud check failed:', err));
+
     return res.status(200).json({
       success: true,
       message: 'Transfer successful',
@@ -701,8 +721,8 @@ const payment = async (req, res) => {
     const feeRuleId = feeRule?.id ?? null;
     const finalAmount = new Prisma.Decimal(amount).plus(feeAmount);
 
-    const available = wallet.balance.minus(wallet.locked_balance);
-    if (available.lt(finalAmount)) {
+    const availableBefore = Number(wallet.balance) - Number(wallet.locked_balance);
+    if (availableBefore < Number(finalAmount)) {
       return res.status(400).json({ success: false, message: 'Insufficient balance' });
     }
 
@@ -859,6 +879,15 @@ const payment = async (req, res) => {
         }).catch(() => {});
       }
     }
+
+    runFraudChecks({
+      userId,
+      walletId: wallet.id,
+      transactionId: transaction.id,
+      transactionType: 'PAYMENT',
+      amount: Number(amount),
+      availableBalanceBefore: availableBefore,
+    }).catch((err) => console.error('Fraud check failed:', err));
 
     return res.status(200).json({
       success: true,
