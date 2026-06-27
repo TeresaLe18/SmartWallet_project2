@@ -703,7 +703,7 @@ export default function WalletsPage() {
     try {
       const amount = Number(depositForm.amount);
       const note = depositForm.note || "Nap tien SmartWallet";
-      const data = await payosAPI.createPaymentLink(amount, note);
+      const data = await payosAPI.createPaymentLink(amount, note, window.location.origin);
       if (data.success && data.data?.checkoutUrl) {
         closeModal();
         window.location.href = data.data.checkoutUrl;

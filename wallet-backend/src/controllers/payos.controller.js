@@ -39,7 +39,7 @@ async function creditDeposit(orderCode, amountFromProvider) {
 // POST /api/payos/create-payment-link — tạo link + QR ngân hàng thật để nạp tiền.
 async function createPaymentLink(req, res) {
   try {
-    const { amount, note } = req.body || {};
+    const { amount, note, origin } = req.body || {};
     const userId = req.user.userId;
 
     if (!amount || typeof amount !== 'number' || amount <= 0) {
@@ -56,7 +56,7 @@ async function createPaymentLink(req, res) {
 
     const orderCode = Number(`${Date.now()}`.slice(-9));
     const description = `SWDEP${orderCode}`.slice(0, 25);
-    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const frontendUrl = origin || (process.env.FRONTEND_URL || 'http://localhost:3000').split(',')[0];
 
     const paymentData = {
       orderCode,

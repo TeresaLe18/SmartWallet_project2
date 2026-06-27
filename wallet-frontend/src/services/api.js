@@ -430,8 +430,8 @@ export const bankAPI = {
 
 // ─── PayOS API ────────────────────────────────────────────────────────────────
 export const payosAPI = {
-  createPaymentLink: async (amount, note) => {
-    const res = await api.post("/payos/create-payment-link", { amount, note });
+  createPaymentLink: async (amount, note, origin) => {
+    const res = await api.post("/payos/create-payment-link", { amount, note, origin });
     return res.data;
   },
   checkPaymentStatus: async (orderCode) => {
