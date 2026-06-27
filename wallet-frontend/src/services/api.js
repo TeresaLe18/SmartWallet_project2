@@ -159,7 +159,13 @@ api.interceptors.response.use(
 );
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
-export const formatVND = (num) => Number(num).toLocaleString("vi-VN") + " ₫";
+export const formatVND = (num) => {
+  const lang = typeof window !== 'undefined' ? localStorage.getItem("lang") || "vi" : "vi";
+  if (lang === "en") {
+    return Number(num || 0).toLocaleString("en-US") + " ₫";
+  }
+  return Number(num || 0).toLocaleString("vi-VN") + " ₫";
+};
 
 // Convert a bare filename returned by the backend into a full image URL.
 // If the value is already a full URL or a base64 data-URL, it is returned unchanged.

@@ -5,7 +5,53 @@ import { motion } from "framer-motion";
 import { voucherAPI } from "../../services/api";
 import { useLanguage } from "../../context/LanguageContext";
 
-const discountLabel = (v) => v.discount_type === "PERCENT" ? `${Number(v.discount_value)}%` : `${Number(v.discount_value).toLocaleString("vi-VN")}₫`;
+const discountLabel = (v, lang) => {
+  if (v.discount_type === "PERCENT") return `${Number(v.discount_value)}%`;
+  const formatted = Number(v.discount_value).toLocaleString(lang === "en" ? "en-US" : "vi-VN");
+  return lang === "en" ? `${formatted} VND` : `${formatted}₫`;
+};
+
+const translateVoucher = (v, lang) => {
+  if (lang !== "en" || !v) return v;
+  const translations = {
+    "CHUYENTIEN50": {
+      title: "50K discount on transfer fee",
+      description: "For transactions from 500K"
+    },
+    "MUASAM10": {
+      title: "10% off shopping",
+      description: "Max 200K"
+    },
+    "BILL30": {
+      title: "30K discount on bills",
+      description: "Bill payment"
+    }
+  };
+  const trans = translations[v.code];
+  if (trans) {
+    return {
+      ...v,
+      title: trans.title,
+      description: trans.description
+    };
+  }
+  
+  const titleMap = {
+    "Giảm 50K phí chuyển tiền": "50K discount on transfer fee",
+    "Giảm 10% mua sắm": "10% off shopping",
+    "Giảm 30K hóa đơn": "30K discount on bills"
+  };
+  const descMap = {
+    "Áp dụng giao dịch từ 500K": "For transactions from 500K",
+    "Tối đa 200K": "Max 200K",
+    "Thanh toán hóa đơn": "Bill payment"
+  };
+  return {
+    ...v,
+    title: titleMap[v.title] || v.title,
+    description: descMap[v.description] || v.description
+  };
+};
 const fmtDate = (d) => { try { return new Date(d).toLocaleDateString("vi-VN"); } catch { return ""; } };
 
 const tagColors = {
@@ -86,7 +132,8 @@ export default function OffersPage() {
         </div>
       ) : (
         <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fill, minmax(280px, 1fr))", gap:16 }}>
-          {filtered.map((v, i) => {
+          {filtered.map((rawV, i) => {
+            const v = translateVoucher(rawV, lang);
             const type = normalizeTag(v.tag || "Other");
             const color = tagColors[type] || "#71717a";
             return (
@@ -106,7 +153,7 @@ export default function OffersPage() {
                 )}
                 {/* Discount badge */}
                 <div style={{ background:`linear-gradient(135deg, ${color}12, transparent)`, padding:"20px 20px 16px", borderBottom:"1px dashed var(--border)" }}>
-                  <div style={{ fontSize:32, fontWeight:900, color }}>{discountLabel(v)}</div>
+                  <div style={{ fontSize:32, fontWeight:900, color }}>{discountLabel(v, lang)}</div>
                   <p style={{ fontSize:15, fontWeight:700, marginTop:4, color:"var(--text-primary)" }}>{v.title || v.code}</p>
                 </div>
                 <div style={{ padding:"14px 20px" }}>

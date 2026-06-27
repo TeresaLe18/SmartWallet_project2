@@ -291,6 +291,15 @@ const deposit = async (req, res) => {
       },
     }).catch(() => { /* non-critical – don't fail the response */ });
 
+    runFraudChecks({
+      userId,
+      walletId: wallet.id,
+      transactionId: transaction.id,
+      transactionType: 'DEPOSIT',
+      amount: Number(amount),
+      availableBalanceBefore: Number(updatedWallet.balance) - Number(updatedWallet.locked_balance),
+    }).catch((err) => console.error('Fraud check failed:', err));
+
     return res.status(200).json({
       success: true,
       message: 'Deposit successful',

@@ -119,7 +119,7 @@ export default function Index() {
   useEffect(() => {
     const fetchOffers = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/offers");
+        const res = await fetch("/api/offers");
         if (!res.ok) throw new Error("Cannot load offers");
 
         const data = await res.json();
@@ -141,7 +141,7 @@ export default function Index() {
   useEffect(() => {
     const fetchNews = async () => {
       try {
-        const res = await fetch("http://localhost:5000/api/news");
+        const res = await fetch("/api/news");
         if (!res.ok) throw new Error("Cannot load news");
 
         const data = await res.json();

@@ -133,7 +133,7 @@ body{
   text-transform:uppercase;
 }
 
-h1{
+.hero h1{
   max-width:760px;
   color:#101828;
   font-size:64px;
@@ -141,7 +141,7 @@ h1{
   letter-spacing:-2.5px;
 }
 
-h1 span{
+.hero h1 span{
   color:var(--pink);
 }
 
@@ -592,7 +592,7 @@ h1 span{
     grid-template-columns:repeat(2,1fr);
   }
 
-  h1{
+  .hero h1{
     font-size:52px;
   }
 }
@@ -607,7 +607,7 @@ h1 span{
     grid-template-columns:1fr;
   }
 
-  h1{
+  .hero h1{
     font-size:38px;
   }
 

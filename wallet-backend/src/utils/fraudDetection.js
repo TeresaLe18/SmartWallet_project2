@@ -1,11 +1,8 @@
 const prisma = require('../config/prisma');
 
-const HIGH_AMOUNT_THRESHOLD = 20_000_000;
-const VELOCITY_WINDOW_MS = 3 * 60 * 1000;
-const VELOCITY_MIN_COUNT = 5;
-const TRANSFER_BALANCE_RATIO = 0.9;
-const HIGH_ALERT_WINDOW_MS = 24 * 60 * 60 * 1000;
-const HIGH_ALERT_THRESHOLD = 3;
+const MEDIUM_AMOUNT_THRESHOLD = 300_000_000;
+const VELOCITY_WINDOW_MS = 2 * 60 * 1000; // 2 minutes
+const VELOCITY_MIN_COUNT = 5; // > 5 means 6 or more
 
 const fmtVnd = (n) => `${Number(n).toLocaleString('vi-VN')} VND`;
 
@@ -20,24 +17,22 @@ const createFraudLog = async ({ userId, transactionId, reason, severity }) => {
   });
 };
 
-const countRecentOutgoingTransactions = async (userId) => {
+const countRecentWithdrawOrDeposit = async (userId) => {
   const since = new Date(Date.now() - VELOCITY_WINDOW_MS);
   return prisma.transaction.count({
     where: {
       status: 'SUCCESS',
       created_at: { gte: since },
-      sender_wallet: { user_id: userId },
-    },
-  });
-};
-
-const countHighAlertsIn24h = async (userId) => {
-  const since = new Date(Date.now() - HIGH_ALERT_WINDOW_MS);
-  return prisma.fraudLog.count({
-    where: {
-      user_id: userId,
-      severity: 'HIGH',
-      created_at: { gte: since },
+      OR: [
+        {
+          transaction_type: 'WITHDRAW',
+          sender_wallet: { user_id: userId },
+        },
+        {
+          transaction_type: 'DEPOSIT',
+          receiver_wallet: { user_id: userId },
+        },
+      ],
     },
   });
 };
@@ -67,75 +62,58 @@ const freezeWalletForFraud = async (walletId, userId) => {
 };
 
 /**
- * Run fraud rules after a successful outgoing transaction.
+ * Run fraud rules after a successful transaction.
  * @param {object} ctx
  * @param {number} ctx.userId
  * @param {number} ctx.walletId
  * @param {number} ctx.transactionId
- * @param {string} ctx.transactionType - TRANSFER | WITHDRAW | PAYMENT
+ * @param {string} ctx.transactionType - TRANSFER | WITHDRAW | PAYMENT | DEPOSIT
  * @param {number} ctx.amount - transaction principal amount
  * @param {number} [ctx.availableBalanceBefore] - available balance before debit
  */
 const runFraudChecks = async (ctx) => {
   const { userId, walletId, transactionId, transactionType, amount } = ctx;
-  const availableBefore = Number(ctx.availableBalanceBefore ?? 0);
   const amt = Number(amount);
 
-  // Rule 1: Transaction amount exceeds 20,000,000 VND → HIGH
-  if (amt > HIGH_AMOUNT_THRESHOLD) {
-    await createFraudLog({
-      userId,
-      transactionId,
-      severity: 'HIGH',
-      reason: `Transaction amount exceeds 20,000,000 VND (${fmtVnd(amt)})`,
-    });
-  }
-
-  // Rule 2: 5+ outgoing transactions within 3 minutes → MEDIUM
-  const recentCount = await countRecentOutgoingTransactions(userId);
-  if (recentCount >= VELOCITY_MIN_COUNT) {
+  // Rule 1 (MEDIUM): Transfer/Withdrawal amount exceeds or equals 300,000,000 VND
+  if (
+    amt >= MEDIUM_AMOUNT_THRESHOLD &&
+    (transactionType === 'TRANSFER' || transactionType === 'WITHDRAW')
+  ) {
     await createFraudLog({
       userId,
       transactionId,
       severity: 'MEDIUM',
-      reason: `5 or more transactions within 3 minutes (${recentCount} outgoing transactions detected)`,
+      reason: `Transfer/Withdrawal amount reaches or exceeds 300,000,000 VND (${fmtVnd(amt)})`,
     });
   }
 
-  // Rule 3: Transfer amount ≥ 90% of available balance → HIGH
-  if (
-    transactionType === 'TRANSFER' &&
-    availableBefore > 0 &&
-    amt / availableBefore >= TRANSFER_BALANCE_RATIO
-  ) {
-    const pct = ((amt / availableBefore) * 100).toFixed(1);
+  // Rule 2 (HIGH): Withdraw/Deposit transaction count > 5 within 2 minutes -> Freeze Wallet
+  const recentCount = await countRecentWithdrawOrDeposit(userId);
+  if (recentCount > VELOCITY_MIN_COUNT) {
+    // 1. Log the HIGH severity event
     await createFraudLog({
       userId,
       transactionId,
       severity: 'HIGH',
-      reason: `Transfer amount is 90% or more of available balance (${pct}% — ${fmtVnd(amt)} of ${fmtVnd(availableBefore)})`,
+      reason: `Withdraw/Deposit transaction count exceeds 5 within 2 minutes (${recentCount} detected)`,
     });
-  }
 
-  // Rule 4: 3+ HIGH alerts in 24 hours → CRITICAL + freeze wallet
-  const highCount = await countHighAlertsIn24h(userId);
-  if (highCount >= HIGH_ALERT_THRESHOLD) {
+    // 2. Automatically freeze the wallet immediately
     const frozen = await freezeWalletForFraud(walletId, userId);
     await createFraudLog({
       userId,
       transactionId,
       severity: 'CRITICAL',
       reason: frozen
-        ? `3 HIGH severity fraud alerts within 24 hours (${highCount} detected) — wallet frozen automatically`
-        : `3 HIGH severity fraud alerts within 24 hours (${highCount} detected) — wallet already frozen`,
+        ? `Automatic wallet freeze triggered by high frequency withdraw/deposit transactions`
+        : `Wallet already frozen`,
     });
   }
 };
 
 module.exports = {
   runFraudChecks,
-  HIGH_AMOUNT_THRESHOLD,
+  MEDIUM_AMOUNT_THRESHOLD,
   VELOCITY_MIN_COUNT,
-  TRANSFER_BALANCE_RATIO,
-  HIGH_ALERT_THRESHOLD,
 };

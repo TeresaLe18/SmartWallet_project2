@@ -17,6 +17,17 @@ const CATEGORIES = [
   { id: "General", vi: "Khác", en: "General", emoji: "💰", aliases: ["Khác", "General", "general"] }
 ];
 
+const translateVaultName = (name, lang) => {
+  if (lang !== "en" || !name) return name;
+  const dict = {
+    "Điện nước & Hóa đơn": "Utilities & Bills",
+    "Quỹ Du lịch Hè": "Summer Travel Fund",
+    "Mua sắm Tết": "Lunar New Year Shopping",
+    "Ví tiết kiệm Nimo": "Nimo Savings Pocket"
+  };
+  return dict[name.trim()] || name;
+};
+
 export default function SavingsVaults() {
   const { lang, t } = useLanguage();
   const [walletBalance, setWalletBalance] = useState(0);
@@ -203,7 +214,7 @@ export default function SavingsVaults() {
     setChatLoading(true);
 
     try {
-      const response = await fetch("http://localhost:5000/api/chat/advisor", {
+      const response = await fetch("/api/chat/advisor", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -503,7 +514,7 @@ export default function SavingsVaults() {
                       <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
                         <span style={{ fontSize: 24 }}>{cat.emoji}</span>
                         <div>
-                          <h4 style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>{vault.name}</h4>
+                          <h4 style={{ fontSize: 14, fontWeight: 800, color: "var(--text-primary)" }}>{translateVaultName(vault.name, lang)}</h4>
                           <span className="cat-badge">{lang === "vi" ? cat.vi : cat.en}</span>
                         </div>
                       </div>
@@ -716,7 +727,7 @@ export default function SavingsVaults() {
                 {modalType === "deposit" ? t.savings.depositLabel : t.savings.withdrawLabel}
               </h3>
               <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 18 }}>
-                Ví tiết kiệm: <strong>{selectedVault.name}</strong>
+                {lang === "vi" ? "Ví tiết kiệm:" : "Savings Vault:"} <strong>{translateVaultName(selectedVault.name, lang)}</strong>
               </p>
 
               <form onSubmit={handleVaultAction} style={{ display: "flex", flexDirection: "column", gap: 14 }}>

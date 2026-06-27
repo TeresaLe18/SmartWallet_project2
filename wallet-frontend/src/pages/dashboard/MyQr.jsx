@@ -4,19 +4,47 @@ import { Download, Copy, Send, QrCode } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
 import "./MyQr.css";
 
+const generateUserHash = (userId, email, name) => {
+  if (!userId || !email) return "";
+  const input = `${userId}:${email}:${name || ""}:smartwallet-secure-salt`;
+  
+  let h1 = 0xdeadbeef, h2 = 0x41c6ce57;
+  for (let i = 0; i < input.length; i++) {
+    const ch = input.charCodeAt(i);
+    h1 = Math.imul(h1 ^ ch, 2654435761);
+    h2 = Math.imul(h2 ^ ch, 1597334677);
+  }
+  h1 = Math.imul(h1 ^ (h1 >>> 16), 2246822507) ^ Math.imul(h2 ^ (h2 >>> 13), 3266489909);
+  h2 = Math.imul(h2 ^ (h2 >>> 16), 2246822507) ^ Math.imul(h1 ^ (h1 >>> 13), 3266489909);
+  const part1 = (h1 >>> 0).toString(16).padStart(8, '0');
+  const part2 = (h2 >>> 0).toString(16).padStart(8, '0');
+  
+  let h3 = 0x85ebca6b, h4 = 0xc2b2ae35;
+  const input2 = part1 + part2 + "extra-salt";
+  for (let i = 0; i < input2.length; i++) {
+    const ch = input2.charCodeAt(i);
+    h3 = Math.imul(h3 ^ ch, 2246822507);
+    h4 = Math.imul(h4 ^ ch, 3266489909);
+  }
+  const part3 = (h3 >>> 0).toString(16).padStart(8, '0');
+  const part4 = (h4 >>> 0).toString(16).padStart(8, '0');
+  
+  return (part1 + part2 + part3 + part4).toLowerCase();
+};
+
 export default function MyQr() {
   const { t } = useLanguage();
   const qrRef = useRef(null);
   const [copied, setCopied] = useState(false);
 
   const user = JSON.parse(localStorage.getItem("bw_user") || "null");
+  const userHash = generateUserHash(user?.id, user?.email, user?.name);
 
   const qrPayload = JSON.stringify({
     type: "SMARTWALLET_USER_QR",
     userId: user?.id,
     name: user?.name,
-    email: user?.email,
-    wallet: "SMARTWALLET",
+    hash: userHash,
   });
 
   const downloadQr = () => {
@@ -81,6 +109,11 @@ export default function MyQr() {
           <div className="qr-info-row">
             <span>{t.myQr.email}</span>
             <b>{user?.email}</b>
+          </div>
+
+          <div className="qr-info-row">
+            <span>Security Hash</span>
+            <b style={{ fontSize: 10, fontFamily: "monospace", color: "var(--text-secondary)", wordBreak: "break-all", maxWidth: 180, textAlign: "right" }}>{userHash}</b>
           </div>
         </div>
 

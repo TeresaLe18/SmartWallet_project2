@@ -16,7 +16,12 @@ import "./Wallets.css";
 const BANKS = ["Vietcombank","Techcombank","BIDV","VietinBank","Agribank","MB Bank","VPBank","TPBank","ACB","Sacombank"];
 
 // Nhãn giảm giá + ngày suy từ voucher DB
-const discountLabel = (v) => v.discount_type === "PERCENT" ? `${Number(v.discount_value)}%` : `${Number(v.discount_value).toLocaleString("vi-VN")}₫`;
+const discountLabel = (v, lang) => {
+  if (v.discount_type === "PERCENT") return `${Number(v.discount_value)}%`;
+  const formatted = Number(v.discount_value).toLocaleString(lang === "en" ? "en-US" : "vi-VN");
+  return lang === "en" ? `${formatted} VND` : `${formatted}₫`;
+};
+
 const fmtVoucherDate = (d) => { try { return new Date(d).toLocaleDateString("vi-VN"); } catch { return ""; } };
 
 const tagColors = {
@@ -25,12 +30,86 @@ const tagColors = {
 };
 
 const tagClassMap = {
+  "Transfer": "tag-transfer",
+  "Shopping": "tag-shopping",
+  "Withdraw": "tag-withdraw",
+  "Referral": "tag-referral",
+  "Deposit": "tag-deposit",
+  "Bills": "tag-bill",
   "Chuyển tiền": "tag-transfer",
   "Mua sắm": "tag-shopping",
   "Rút tiền": "tag-withdraw",
-  "Referral": "tag-referral",
   "Nạp tiền": "tag-deposit",
   "Hóa đơn": "tag-bill",
+};
+
+const TAG_MAP = {
+  "Chuyển tiền":"Transfer","Mua sắm":"Shopping","Rút tiền":"Withdraw",
+  "Referral":"Referral","Nạp tiền":"Deposit","Hóa đơn":"Bills"
+};
+
+const normalizeTag = (tag) => TAG_MAP[tag] || tag;
+
+const getTagLabel = (tagKey, lang) => {
+  if (lang === "vi") {
+    if (tagKey === "All") return "Tất cả";
+    if (tagKey === "Transfer") return "Chuyển tiền";
+    if (tagKey === "Shopping") return "Mua sắm";
+    if (tagKey === "Withdraw") return "Rút tiền";
+    if (tagKey === "Referral") return "Giới thiệu";
+    if (tagKey === "Deposit") return "Nạp tiền";
+    if (tagKey === "Bills") return "Hóa đơn";
+    return tagKey;
+  }
+  if (tagKey === "Chuyển tiền") return "Transfer";
+  if (tagKey === "Mua sắm") return "Shopping";
+  if (tagKey === "Rút tiền") return "Withdraw";
+  if (tagKey === "Referral") return "Referral";
+  if (tagKey === "Nạp tiền") return "Deposit";
+  if (tagKey === "Hóa đơn") return "Bills";
+  return tagKey;
+};
+
+const translateVoucher = (v, lang) => {
+  if (lang !== "en" || !v) return v;
+  const translations = {
+    "CHUYENTIEN50": {
+      title: "50K discount on transfer fee",
+      description: "For transactions from 500K"
+    },
+    "MUASAM10": {
+      title: "10% off shopping",
+      description: "Max 200K"
+    },
+    "BILL30": {
+      title: "30K discount on bills",
+      description: "Bill payment"
+    }
+  };
+  const trans = translations[v.code];
+  if (trans) {
+    return {
+      ...v,
+      title: trans.title,
+      description: trans.description
+    };
+  }
+  
+  const titleMap = {
+    "Giảm 50K phí chuyển tiền": "50K discount on transfer fee",
+    "Giảm 10% mua sắm": "10% off shopping",
+    "Giảm 30K hóa đơn": "30K discount on bills"
+  };
+  const descMap = {
+    "Áp dụng giao dịch từ 500K": "For transactions from 500K",
+    "Tối đa 200K": "Max 200K",
+    "Thanh toán hóa đơn": "Bill payment"
+  };
+  return {
+    ...v,
+    title: titleMap[v.title] || v.title,
+    description: descMap[v.description] || v.description
+  };
 };
 
 
@@ -1892,7 +1971,7 @@ export default function WalletsPage() {
                                   ✓ {t.wallets.appliedVoucher}: {appliedVoucher.code}
                                 </p>
                                 <p className="applied-promo-title">
-                                  {appliedVoucher.title}
+                                  {translateVoucher(appliedVoucher, lang).title}
                                 </p>
                                 {appliedVoucher.min_transaction_amount > 0 && (
                                   <p className="applied-promo-min-alert">
@@ -1963,19 +2042,20 @@ export default function WalletsPage() {
                       </div>
                       
                       <div className="voucher-categories-scroll">
-                        {["All", "Chuyển tiền", "Mua sắm", "Rút tiền", "Referral", "Nạp tiền", "Hóa đơn"].map(cat => (
+                        {["All", "Transfer", "Shopping", "Withdraw", "Referral", "Deposit", "Bills"].map(cat => (
                           <button 
                             key={cat} 
                             onClick={() => setActivePromoTab(cat)} 
                             className={`btn-voucher-tab ${activePromoTab===cat ? "active" : "inactive"}`}
                           >
-                            {cat}
+                            {getTagLabel(cat, lang)}
                           </button>
                         ))}
                       </div>
 
                       <div className="voucher-list-scroll">
-                        {voucherList.filter(v => activePromoTab === "All" || v.tag === activePromoTab).map(v => {
+                        {voucherList.filter(v => activePromoTab === "All" || normalizeTag(v.tag) === activePromoTab).map(rawV => {
+                          const v = translateVoucher(rawV, lang);
                           const isApplicable = !v.min_transaction_amount || (Number(txForm.amount) || 0) >= Number(v.min_transaction_amount);
                           return (
                             <div 
@@ -1985,7 +2065,7 @@ export default function WalletsPage() {
                             >
                               <div className="voucher-card-item-header">
                                 <div className="text-left">
-                                  <span className={`voucher-tag-badge ${tagClassMap[v.tag] || ""}`}>{v.tag}</span>
+                                  <span className={`voucher-tag-badge ${tagClassMap[normalizeTag(v.tag)] || ""}`}>{getTagLabel(normalizeTag(v.tag), lang)}</span>
                                   <h5 className="voucher-info-title">{v.title}</h5>
                                   <p className="voucher-info-desc">{v.description}</p>
                                   {v.min_transaction_amount > 0 && (
@@ -1996,7 +2076,7 @@ export default function WalletsPage() {
                                   <p className="voucher-info-exp">{t.wallets.expDate}: {fmtVoucherDate(v.expired_at)}</p>
                                 </div>
                                 <div className="text-right">
-                                  <span className="voucher-discount-val">{discountLabel(v)}</span>
+                                  <span className="voucher-discount-val">{discountLabel(v, lang)}</span>
                                   <div className="voucher-code-text">Code: {v.code}</div>
                                 </div>
                               </div>
