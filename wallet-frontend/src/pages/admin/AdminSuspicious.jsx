@@ -52,7 +52,7 @@ const initialSuspiciousItems = [
 ];
 
 export default function AdminSuspiciousPage() {
-  const { lang, t } = useLanguage();
+  const { t } = useLanguage();
   const [items, setItems] = useState([]);
   const [users, setUsers] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -70,14 +70,14 @@ export default function AdminSuspiciousPage() {
   };
 
   const getSeverityText = (sev) => {
-    if (sev === "critical" || sev === "high") return lang === "vi" ? "Nghiêm trọng" : "Critical";
-    if (sev === "medium") return lang === "vi" ? "Trung bình" : "Medium";
-    return lang === "vi" ? "Thấp" : "Low";
+    if (sev === "critical" || sev === "high") return t.adminSuspicious.critical;
+    if (sev === "medium") return t.adminSuspicious.medium;
+    return t.adminSuspicious.low;
   };
 
   const getTitleText = (title) => {
-    if (title === "Critical Alert") return lang === "vi" ? "Cảnh báo khẩn cấp" : "Critical Alert";
-    if (title === "Security Alert") return lang === "vi" ? "Cảnh báo bảo mật" : "Security Alert";
+    if (title === "Critical Alert") return t.adminSuspicious.titleCritical;
+    if (title === "Security Alert") return t.adminSuspicious.titleSecurity;
     return title;
   };
 
@@ -132,12 +132,12 @@ export default function AdminSuspiciousPage() {
   const handleToggleLockUser = async (email) => {
     const matchedUser = users.find(x => x.email === email);
     if (!matchedUser) {
-      showAlert(lang === "vi" ? "Không tìm thấy thông tin tài khoản người dùng." : "User account information not found.", "error");
+      showAlert(t.adminSuspicious.userNotFound, "error");
       return;
     }
     const currentStatus = matchedUser.status.toLowerCase();
     if (currentStatus === "disabled") {
-      showAlert(lang === "vi" ? "Tài khoản bị vô hiệu hóa phải được kích hoạt lại từ trang Người dùng." : "Disabled accounts must be reactivated from the Users page.", "error");
+      showAlert(t.adminSuspicious.disabledReactivateHint, "error");
       return;
     }
 
@@ -159,7 +159,7 @@ export default function AdminSuspiciousPage() {
           await loadData();
         } catch (error) {
           console.error("Failed to update user status:", error);
-          showAlert(error.response?.data?.message || (lang === "vi" ? "Lỗi hệ thống khi cập nhật trạng thái tài khoản." : "System error while updating account status."), "error");
+          showAlert(error.response?.data?.message || t.adminSuspicious.errUpdateUserStatus, "error");
         }
       },
       null,
@@ -170,7 +170,7 @@ export default function AdminSuspiciousPage() {
   const handleToggleFreezeWallet = async (email) => {
     const matchedUser = users.find(x => x.email === email);
     if (!matchedUser) {
-      showAlert(lang === "vi" ? "Không tìm thấy thông tin tài khoản người dùng." : "User account information not found.", "error");
+      showAlert(t.adminSuspicious.userNotFound, "error");
       return;
     }
     const walletStatus = matchedUser.wallet ? matchedUser.wallet.status.toLowerCase() : "active";
@@ -188,7 +188,7 @@ export default function AdminSuspiciousPage() {
           showAlert(nextStatus === "FROZEN" ? t.adminSuspicious.freezeSuccess : t.adminSuspicious.unfreezeSuccess, "success");
         } catch (error) {
           console.error("Failed to update wallet status:", error);
-          showAlert(error.response?.data?.message || (lang === "vi" ? "Lỗi hệ thống khi cập nhật trạng thái ví." : "System error while updating wallet status."), "error");
+          showAlert(error.response?.data?.message || t.adminSuspicious.errUpdateWalletStatus, "error");
         }
       },
       null,
@@ -203,7 +203,7 @@ export default function AdminSuspiciousPage() {
       showAlert(t.adminSuspicious.resolveSuccess, "success");
     } catch (error) {
       console.error("Failed to resolve fraud warning:", error);
-      showAlert(error.response?.data?.message || (lang === "vi" ? "Lỗi hệ thống khi xử lý cảnh báo." : "System error while processing alert."), "error");
+      showAlert(error.response?.data?.message || t.adminSuspicious.errResolveAlert, "error");
     }
   };
 
@@ -283,7 +283,7 @@ export default function AdminSuspiciousPage() {
                   </div>
                   
                   <p style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 8 }}>
-                    {lang === "vi" ? "Người dùng:" : "User:"} <strong>{item.userName}</strong> ({item.userEmail}) • {item.time}
+                    {t.adminSuspicious.userLabel} <strong>{item.userName}</strong> ({item.userEmail}) • {item.time}
                   </p>
 
                   <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}>
@@ -466,7 +466,7 @@ export default function AdminSuspiciousPage() {
             >
               <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
                 <AlertTriangle size={20} style={{ color: customConfirm.danger ? "#ef4444" : "#f59e0b" }} />
-                {lang === "vi" ? "Xác nhận yêu cầu" : "Confirm Request"}
+                {t.adminSuspicious.confirmRequest}
               </h3>
               <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text-secondary)", marginBottom: 20, whiteSpace: "pre-line" }}>
                 {customConfirm.message}
@@ -483,7 +483,7 @@ export default function AdminSuspiciousPage() {
                     color: "var(--text-secondary)", cursor: "pointer"
                   }}
                 >
-                  {lang === "vi" ? "Hủy" : "Cancel"}
+                  {t.adminSuspicious.cancel}
                 </button>
                 <button
                   onClick={() => {
@@ -495,7 +495,7 @@ export default function AdminSuspiciousPage() {
                     background: customConfirm.danger ? "#ef4444" : "var(--primary)", color: "white", cursor: "pointer", fontWeight: 700
                   }}
                 >
-                  {lang === "vi" ? "Đồng ý" : "Agree"}
+                  {t.adminSuspicious.agree}
                 </button>
               </div>
             </motion.div>
@@ -527,7 +527,7 @@ export default function AdminSuspiciousPage() {
                 ) : (
                   <ShieldAlert size={20} style={{ color: "var(--primary)" }} />
                 )}
-                {customAlert.type === "error" ? (lang === "vi" ? "Thông báo lỗi" : "Error Alert") : (lang === "vi" ? "Thông báo" : "Notification")}
+                {customAlert.type === "error" ? t.adminSuspicious.errorAlertTitle : t.adminSuspicious.notificationTitle}
               </h3>
               <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text-secondary)", marginBottom: 20 }}>
                 {customAlert.message}
@@ -539,7 +539,7 @@ export default function AdminSuspiciousPage() {
                   background: "var(--primary)", color: "white", cursor: "pointer", fontWeight: 700
                 }}
               >
-                {lang === "vi" ? "Đóng" : "Close"}
+                {t.adminSuspicious.close}
               </button>
             </motion.div>
           </div>

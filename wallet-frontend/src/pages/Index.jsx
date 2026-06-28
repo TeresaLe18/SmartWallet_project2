@@ -8,6 +8,8 @@ import useLandingAnimation from "../hooks/useLandingAnimation";
 import "./Index.css";
 
 import { useLanguage } from "../context/LanguageContext";
+import { relativeTime } from "../utils/relativeTime";
+import { useNow } from "../hooks/useNow";
 
 const initialCards = [
   {
@@ -110,6 +112,7 @@ export default function Index() {
   useLandingAnimation();
 
   const { t, lang } = useLanguage();
+  useNow(); // tự re-render mỗi phút để thời gian tin tức tương đối luôn cập nhật
   const [cards, setCards] = useState(initialCards);
   const [offers, setOffers] = useState(fallbackOffers);
   const [activeOffer, setActiveOffer] = useState(0);
@@ -215,7 +218,7 @@ export default function Index() {
     if (!item) return "";
     return (lang === "en" && item.tag_en) ? item.tag_en : item.tag;
   };
-  const getNewsTime = (item) => item ? item.time : "";
+  const getNewsTime = (item) => item ? (relativeTime(item.created_at, lang) || item.time) : "";
   const getNewsContent = (item) => {
     if (!item) return "";
     return (lang === "en" && item.content_en) ? item.content_en : item.content;
@@ -553,7 +556,7 @@ export default function Index() {
               <div className="news-modal-content">
                 <div className="news-meta">
                   <span>{(lang === "en" && selectedNews.tag_en) ? selectedNews.tag_en : selectedNews.tag || t.index.finance}</span>
-                  <small>{selectedNews.time || t.index.justNow}</small>
+                  <small>{getNewsTime(selectedNews) || t.index.justNow}</small>
                 </div>
 
                 <h3>{(lang === "en" && selectedNews.title_en) ? selectedNews.title_en : selectedNews.title}</h3>

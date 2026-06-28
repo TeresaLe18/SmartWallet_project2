@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminAPI, formatVND } from "../../services/api";
+import { useLanguage } from "../../context/LanguageContext";
 
 const fmtCurrency = (n) => formatVND(n);
 
@@ -32,6 +33,7 @@ const parseTxTime = (timeStr) => {
 };
 
 export default function AdminTransactions() {
+  const { t } = useLanguage();
   const [txList, setTxList] = useState([]);
   const [filterStatus, setFilterStatus] = useState("all");
   const [filterType, setFilterType] = useState("all");
@@ -50,8 +52,8 @@ export default function AdminTransactions() {
         const mapped = res.transactions.map(tx => {
           const isDeposit = tx.transaction_type === "DEPOSIT";
           const initiatorName = isDeposit
-            ? tx.receiver_wallet?.user?.kyc?.full_name || tx.receiver_wallet?.user?.email || "User"
-            : tx.sender_wallet?.user?.kyc?.full_name || tx.sender_wallet?.user?.email || "User";
+            ? tx.receiver_wallet?.user?.kyc?.full_name || tx.receiver_wallet?.user?.email || t.adminTransactions.userFallback
+            : tx.sender_wallet?.user?.kyc?.full_name || tx.sender_wallet?.user?.email || t.adminTransactions.userFallback;
           
           return {
             id: tx.reference_code || `TX${tx.id}`,
@@ -72,7 +74,7 @@ export default function AdminTransactions() {
       }
     } catch (error) {
       console.error("Failed to load transactions:", error);
-      showToast("Failed to load transaction list", "error");
+      showToast(t.adminTransactions.toastLoadFailed, "error");
     } finally {
       setLoading(false);
     }
@@ -93,37 +95,37 @@ export default function AdminTransactions() {
   const handleApprove = async (txDisplayId, e) => {
     if (e) e.stopPropagation();
     // Tìm realId từ txList (txDisplayId là reference_code hoặc "TX{id}")
-    const tx = txList.find(t => t.id === txDisplayId);
+    const tx = txList.find(item => item.id === txDisplayId);
     if (!tx) return;
     try {
       const res = await adminAPI.reviewTransaction(tx.realId, "SUCCESS");
       if (res.success) {
-        showToast(`✅ Transaction ${txDisplayId} approved successfully`, "success");
+        showToast(t.adminTransactions.toastApproveSuccess.replace("{id}", txDisplayId), "success");
         setSelectedTx(null);
         await loadTransactions();
       } else {
-        showToast(res.message || "Failed to approve transaction", "error");
+        showToast(res.message || t.adminTransactions.toastApproveFailed, "error");
       }
     } catch (err) {
-      showToast(err.response?.data?.message || "Server error", "error");
+      showToast(err.response?.data?.message || t.adminTransactions.toastServerError, "error");
     }
   };
 
   const handleReject = async (txDisplayId, e) => {
     if (e) e.stopPropagation();
-    const tx = txList.find(t => t.id === txDisplayId);
+    const tx = txList.find(item => item.id === txDisplayId);
     if (!tx) return;
     try {
       const res = await adminAPI.reviewTransaction(tx.realId, "FAILED");
       if (res.success) {
-        showToast(`❌ Transaction ${txDisplayId} rejected`, "success");
+        showToast(t.adminTransactions.toastRejectSuccess.replace("{id}", txDisplayId), "success");
         setSelectedTx(null);
         await loadTransactions();
       } else {
-        showToast(res.message || "Failed to reject transaction", "error");
+        showToast(res.message || t.adminTransactions.toastRejectFailed, "error");
       }
     } catch (err) {
-      showToast(err.response?.data?.message || "Server error", "error");
+      showToast(err.response?.data?.message || t.adminTransactions.toastServerError, "error");
     }
   };
 
@@ -140,9 +142,9 @@ export default function AdminTransactions() {
   // Calculate statistics
   const stats = {
     total: txList.length,
-    pending: txList.filter(t => t.status === "pending").length,
-    success: txList.filter(t => t.status === "success").length,
-    failed: txList.filter(t => t.status === "failed").length
+    pending: txList.filter(item => item.status === "pending").length,
+    success: txList.filter(item => item.status === "success").length,
+    failed: txList.filter(item => item.status === "failed").length
   };
 
   return (
@@ -170,17 +172,17 @@ export default function AdminTransactions() {
 
       {/* Header and overview */}
       <div>
-        <h1 style={{ fontSize:24, fontWeight:800, color:"var(--text-primary)", marginBottom:6 }}>📋 Transaction Management</h1>
-        <p style={{ color: "var(--text-secondary)", fontSize:14 }}>Approve and monitor deposit, withdrawal, and transfer requests from users</p>
+        <h1 style={{ fontSize:24, fontWeight:800, color:"var(--text-primary)", marginBottom:6 }}>{t.adminTransactions.headerTitle}</h1>
+        <p style={{ color: "var(--text-secondary)", fontSize:14 }}>{t.adminTransactions.headerSubtitle}</p>
       </div>
 
       {/* Quick stats cards */}
       <div style={{ display:"grid", gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))", gap:16 }}>
         {[
-          { label:"Total Transactions", count:stats.total, color:"#3b82f6", icon:ArrowRightLeft, desc:"System history" },
-          { label:"Pending Requests", count:stats.pending, color:"#f59e0b", icon:Clock, desc:"Requires immediate action", pulse: stats.pending > 0 },
-          { label:"Completed", count:stats.success, color:"#22c55e", icon:CheckCircle2, desc:"Successful transactions" },
-          { label:"Failed", count:stats.failed, color:"#ef4444", icon:XCircle, desc:"Failed transactions" }
+          { label:t.adminTransactions.statTotalLabel, count:stats.total, color:"#3b82f6", icon:ArrowRightLeft, desc:t.adminTransactions.statTotalDesc },
+          { label:t.adminTransactions.statPendingLabel, count:stats.pending, color:"#f59e0b", icon:Clock, desc:t.adminTransactions.statPendingDesc, pulse: stats.pending > 0 },
+          { label:t.adminTransactions.statCompletedLabel, count:stats.success, color:"#22c55e", icon:CheckCircle2, desc:t.adminTransactions.statCompletedDesc },
+          { label:t.adminTransactions.statFailedLabel, count:stats.failed, color:"#ef4444", icon:XCircle, desc:t.adminTransactions.statFailedDesc }
         ].map((item, idx) => {
           const Icon = item.icon;
           return (
@@ -230,7 +232,7 @@ export default function AdminTransactions() {
             <input 
               value={search} 
               onChange={e => setSearch(e.target.value)} 
-              placeholder="Search by Transaction ID, user name, or content..." 
+              placeholder={t.adminTransactions.searchPlaceholder}
               style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"10px 14px 10px 36px", color:"var(--text-primary)", fontSize:13, outline:"none" }} 
             />
           </div>
@@ -238,10 +240,10 @@ export default function AdminTransactions() {
           {/* Status filter */}
           <div style={{ display:"flex", gap:4, background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:3 }}>
             {[
-              { v: "all", l: "All" },
-              { v: "pending", l: "Pending" },
-              { v: "success", l: "Successful" },
-              { v: "failed", l: "Failed" }
+              { v: "all", l: t.adminTransactions.statusAll },
+              { v: "pending", l: t.adminTransactions.statusPending },
+              { v: "success", l: t.adminTransactions.statusSuccess },
+              { v: "failed", l: t.adminTransactions.statusFailed }
             ].map(s => (
               <button 
                 key={s.v} 
@@ -261,21 +263,21 @@ export default function AdminTransactions() {
           {/* Type filter */}
           <div style={{ display:"flex", gap:4, background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:3 }}>
             {[
-              { v: "all", l: "All Types" },
-              { v: "receive", l: "Deposit" },
-              { v: "send", l: "Withdraw/Transfer" }
-            ].map(t => (
-              <button 
-                key={t.v} 
-                onClick={() => setFilterType(t.v)}
+              { v: "all", l: t.adminTransactions.typeAll },
+              { v: "receive", l: t.adminTransactions.typeDeposit },
+              { v: "send", l: t.adminTransactions.typeWithdrawTransfer }
+            ].map(tp => (
+              <button
+                key={tp.v}
+                onClick={() => setFilterType(tp.v)}
                 style={{
                   padding:"6px 12px", border:"none", borderRadius:8, fontSize:12, fontWeight:600, cursor:"pointer",
-                  background: filterType === t.v ? "rgba(59,130,246,0.15)" : "transparent",
-                  color: filterType === t.v ? "#3b82f6" : "#71717a",
+                  background: filterType === tp.v ? "rgba(59,130,246,0.15)" : "transparent",
+                  color: filterType === tp.v ? "#3b82f6" : "#71717a",
                   transition: "all 0.2s"
                 }}
               >
-                {t.l}
+                {tp.l}
               </button>
             ))}
           </div>
@@ -320,7 +322,7 @@ export default function AdminTransactions() {
                     <span style={{ fontSize:11, color: "var(--text-muted)" }}>{tx.time}</span>
                   </div>
                   <p style={{ fontSize:12, color: "var(--text-secondary)", marginTop:4, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>
-                    Note: {tx.note || "—"}
+                    {t.adminTransactions.notePrefix}{tx.note || "—"}
                   </p>
                 </div>
 
@@ -335,7 +337,7 @@ export default function AdminTransactions() {
                       background: tx.status === "success" ? "rgba(34,197,94,0.1)" : tx.status === "pending" ? "rgba(245,158,11,0.1)" : "rgba(239,68,68,0.1)",
                       color: tx.status === "success" ? "#22c55e" : tx.status === "pending" ? "#f59e0b" : "#ef4444"
                     }}>
-                      {tx.status === "success" ? "Successful" : tx.status === "pending" ? "Pending" : "Failed"}
+                      {tx.status === "success" ? t.adminTransactions.pillSuccess : tx.status === "pending" ? t.adminTransactions.pillPending : t.adminTransactions.pillFailed}
                     </span>
                   </div>
 
@@ -345,7 +347,7 @@ export default function AdminTransactions() {
                       <>
                         <button
                           onClick={(e) => handleApprove(tx.id, e)}
-                          title="Approve"
+                          title={t.adminTransactions.btnApprove}
                           style={{
                             width:32, height:32, borderRadius:8, background:"rgba(34,197,94,0.12)", border:"1px solid rgba(34,197,94,0.3)",
                             color:"#22c55e", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", transition:"all 0.2s"
@@ -357,7 +359,7 @@ export default function AdminTransactions() {
                         </button>
                         <button
                           onClick={(e) => handleReject(tx.id, e)}
-                          title="Reject"
+                          title={t.adminTransactions.btnReject}
                           style={{
                             width:32, height:32, borderRadius:8, background:"rgba(239,68,68,0.12)", border:"1px solid rgba(239,68,68,0.3)",
                             color:"#ef4444", display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", transition:"all 0.2s"
@@ -382,7 +384,7 @@ export default function AdminTransactions() {
           {!loading && filtered.length === 0 && (
             <div style={{ textAlign:"center", padding:"40px 0", color: "var(--text-muted)" }}>
               <AlertCircle size={32} style={{ margin:"0 auto 12px", color: "var(--text-muted)" }} />
-              <p style={{ fontSize:14 }}>No matching transactions found</p>
+              <p style={{ fontSize:14 }}>{t.adminTransactions.noMatchingTx}</p>
             </div>
           )}
         </div>
@@ -408,7 +410,7 @@ export default function AdminTransactions() {
                 <X size={16} />
               </button>
 
-              <h3 style={{ fontSize:18, fontWeight:700, marginBottom:20, color:"var(--text-primary)" }}>Transaction Request Details</h3>
+              <h3 style={{ fontSize:18, fontWeight:700, marginBottom:20, color:"var(--text-primary)" }}>{t.adminTransactions.modalTitle}</h3>
 
               <div style={{ background: "var(--bg-card2)", borderRadius:12, padding:20, marginBottom:20, textAlign:"center", border: "1px solid var(--border)" }}>
                 <p style={{ fontSize:32, fontWeight:900, color: selectedTx.type === "receive" ? "#22c55e" : "#ef4444" }}>
@@ -419,18 +421,18 @@ export default function AdminTransactions() {
                   background: selectedTx.status === "success" ? "rgba(34,197,94,0.12)" : selectedTx.status === "pending" ? "rgba(245,158,11,0.12)" : "rgba(239,68,68,0.12)",
                   color: selectedTx.status === "success" ? "#22c55e" : selectedTx.status === "pending" ? "#f59e0b" : "#ef4444"
                 }}>
-                  {selectedTx.status === "success" ? "Successful" : selectedTx.status === "pending" ? "Pending Approval" : "Failed"}
+                  {selectedTx.status === "success" ? t.adminTransactions.pillSuccess : selectedTx.status === "pending" ? t.adminTransactions.pillPendingApproval : t.adminTransactions.pillFailed}
                 </span>
               </div>
 
               <div style={{ display:"flex", flexDirection:"column", gap:1 }}>
                 {[
-                  { label:"Transaction ID", value:selectedTx.id, font:"monospace" },
-                  { label:"Transaction Type", value: selectedTx.type === "receive" ? "Deposit" : "Withdraw/Transfer" },
-                  ...(selectedTx.category ? [{ label:"Category", value: selectedTx.category }] : []),
-                  { label:"Initiated By", value:selectedTx.name },
-                  { label:"Created At", value:selectedTx.time },
-                  { label:"Note / Description", value:selectedTx.note || "—" }
+                  { label:t.adminTransactions.rowTransactionId, value:selectedTx.id, font:"monospace" },
+                  { label:t.adminTransactions.rowTransactionType, value: selectedTx.type === "receive" ? t.adminTransactions.valueDeposit : t.adminTransactions.valueWithdrawTransfer },
+                  ...(selectedTx.category ? [{ label:t.adminTransactions.rowCategory, value: selectedTx.category }] : []),
+                  { label:t.adminTransactions.rowInitiatedBy, value:selectedTx.name },
+                  { label:t.adminTransactions.rowCreatedAt, value:selectedTx.time },
+                  { label:t.adminTransactions.rowNoteDescription, value:selectedTx.note || "—" }
                 ].map(r => (
                   <div key={r.label} style={{ display:"flex", justifyContent:"space-between", padding:"12px 0", borderBottom: "1px solid var(--border)" }}>
                     <span style={{ fontSize:13, color: "var(--text-secondary)" }}>{r.label}</span>
@@ -453,7 +455,7 @@ export default function AdminTransactions() {
                     onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.15)"}
                     onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,0.08)"}
                   >
-                    Reject
+                    {t.adminTransactions.btnReject}
                   </button>
                   <button
                     onClick={() => {
@@ -465,7 +467,7 @@ export default function AdminTransactions() {
                       display:"flex", alignItems:"center", justifyContent:"center", gap:6
                     }}
                   >
-                    <Check size={16} /> Approve
+                    <Check size={16} /> {t.adminTransactions.btnApprove}
                   </button>
                 </div>
               )}

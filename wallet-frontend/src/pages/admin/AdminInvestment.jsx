@@ -4,8 +4,10 @@ import {
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { investmentAPI, formatVND } from "../../services/api";
+import { useLanguage } from "../../context/LanguageContext";
 
 export default function AdminInvestment() {
+  const { t } = useLanguage();
   const [investments, setInvestments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filterStatus, setFilterStatus] = useState("ALL");
@@ -77,8 +79,8 @@ export default function AdminInvestment() {
   return (
     <div style={{ maxWidth: 1400, margin: "0 auto", paddingBottom: 60 }} className="animate-fade-in">
       <div style={{ marginBottom: 24 }}>
-        <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>📈 Savings & Investment Management</h1>
-        <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Monitor all accumulated savings accounts and investment balances across users</p>
+        <h1 style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>{t.adminInvestment.pageTitle}</h1>
+        <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>{t.adminInvestment.pageSubtitle}</p>
       </div>
 
       {/* Aggregate Stats Cards */}
@@ -86,48 +88,48 @@ export default function AdminInvestment() {
         {/* Total active savings capital */}
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Active Savings Principal</span>
+            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>{t.adminInvestment.activeSavingsPrincipal}</span>
             <Lock size={18} style={{ color: "var(--primary)" }} />
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)" }}>{formatVND(stats.totalActivePrincipal)}</h2>
           <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 12 }}>
-            Total principal across {stats.activeCount} active accounts
+            {t.adminInvestment.activeSavingsPrincipalDesc.replace("{count}", stats.activeCount)}
           </p>
         </div>
 
         {/* Total active yield liabilities */}
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Accrued Interest (Active)</span>
+            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>{t.adminInvestment.accruedInterestActive}</span>
             <TrendingUp size={18} style={{ color: "#22c55e" }} />
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "#22c55e" }}>{formatVND(stats.totalActiveInterest)}</h2>
           <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 12 }}>
-            Estimated cumulative interest accrued to date
+            {t.adminInvestment.accruedInterestActiveDesc}
           </p>
         </div>
 
         {/* Total closed payout volume */}
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Total Settled Principal</span>
+            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>{t.adminInvestment.totalSettledPrincipal}</span>
             <CheckCircle size={18} style={{ color: "#71717a" }} />
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "var(--text-primary)" }}>{formatVND(stats.totalWithdrawnPrincipal)}</h2>
           <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 12 }}>
-            Principal from {stats.withdrawnCount} successfully withdrawn accounts
+            {t.adminInvestment.totalSettledPrincipalDesc.replace("{count}", stats.withdrawnCount)}
           </p>
         </div>
 
         {/* Total actual interest paid out */}
         <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, padding: 20 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>Total Interest Paid Out</span>
+            <span style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>{t.adminInvestment.totalInterestPaidOut}</span>
             <ArrowRightLeft size={18} style={{ color: "#ec4899" }} />
           </div>
           <h2 style={{ fontSize: 22, fontWeight: 800, color: "#ec4899" }}>{formatVND(stats.totalWithdrawnInterest)}</h2>
           <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 12 }}>
-            Total interest actually disbursed to main wallets
+            {t.adminInvestment.totalInterestPaidOutDesc}
           </p>
         </div>
       </div>
@@ -141,9 +143,9 @@ export default function AdminInvestment() {
           {/* Status filter tabs */}
           <div style={{ display: "flex", gap: 8 }}>
             {[
-              { id: "ALL", label: "All" },
-              { id: "ACTIVE", label: "Active" },
-              { id: "WITHDRAWN", label: "Settled" }
+              { id: "ALL", label: t.adminInvestment.filterAll },
+              { id: "ACTIVE", label: t.adminInvestment.filterActive },
+              { id: "WITHDRAWN", label: t.adminInvestment.filterSettled }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -165,7 +167,7 @@ export default function AdminInvestment() {
             <Search size={16} style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-muted)" }} />
             <input
               type="text"
-              placeholder="Search by email, phone, or ID..."
+              placeholder={t.adminInvestment.searchPlaceholder}
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="input-field"
@@ -181,19 +183,19 @@ export default function AdminInvestment() {
               width: 30, height: 30, border: "3px solid var(--border)", borderTopColor: "var(--primary)",
               borderRadius: "50%", animation: "spin 1s linear infinite", margin: "0 auto 12px"
             }} />
-            <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>Loading investment records...</p>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>{t.adminInvestment.loadingRecords}</p>
           </div>
         ) : filteredInvestments.length === 0 ? (
           <div style={{ textAlign: "center", padding: "40px 0", color: "var(--text-muted)" }}>
             <span style={{ fontSize: 32 }}>📁</span>
-            <p style={{ fontSize: 13, fontWeight: 600, marginTop: 12 }}>No matching savings records found</p>
+            <p style={{ fontSize: 13, fontWeight: 600, marginTop: 12 }}>{t.adminInvestment.noRecordsFound}</p>
           </div>
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left" }}>
               <thead>
                 <tr style={{ borderBottom: "1px solid var(--border)" }}>
-                  {["ID", "CUSTOMER", "PRINCIPAL", "TERM", "INTEREST RATE", "OPEN DATE", "ACCRUED INTEREST", "STATUS"].map((header, idx) => (
+                  {[t.adminInvestment.colId, t.adminInvestment.colCustomer, t.adminInvestment.colPrincipal, t.adminInvestment.colTerm, t.adminInvestment.colInterestRate, t.adminInvestment.colOpenDate, t.adminInvestment.colAccruedInterest, t.adminInvestment.colStatus].map((header, idx) => (
                     <th key={idx} style={{ padding: "12px 16px", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                       {header}
                     </th>
@@ -221,14 +223,14 @@ export default function AdminInvestment() {
                         #SWINV-{inv.id}
                       </td>
                       <td style={{ padding: "14px 16px" }}>
-                        <p style={{ fontSize: 13, fontWeight: 600 }}>{inv.user?.email?.split("@")[0] || "Unknown"}</p>
-                        <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{inv.user?.email || "No Email"}</p>
+                        <p style={{ fontSize: 13, fontWeight: 600 }}>{inv.user?.email?.split("@")[0] || t.adminInvestment.unknown}</p>
+                        <p style={{ fontSize: 11, color: "var(--text-muted)" }}>{inv.user?.email || t.adminInvestment.noEmail}</p>
                       </td>
                       <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 700 }}>
                         {formatVND(Number(inv.amount))}
                       </td>
                       <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 600 }}>
-                        {inv.term_months === 0 ? "Flexible" : `${inv.term_months} Months`}
+                        {inv.term_months === 0 ? t.adminInvestment.flexible : t.adminInvestment.termMonths.replace("{count}", inv.term_months)}
                       </td>
                       <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 700, color: "var(--primary)" }}>
                         {inv.interest_rate}%/yr
@@ -236,7 +238,7 @@ export default function AdminInvestment() {
                       <td style={{ padding: "14px 16px" }}>
                         <p style={{ fontSize: 12, fontWeight: 500 }}>{start.toLocaleDateString("vi-VN")}</p>
                         <p style={{ fontSize: 10, color: "var(--text-muted)" }}>
-                          Maturity: {end ? end.toLocaleDateString("vi-VN") : "N/A"}
+                          {t.adminInvestment.maturity.replace("{date}", end ? end.toLocaleDateString("vi-VN") : t.adminInvestment.notAvailable)}
                         </p>
                       </td>
                       <td style={{ padding: "14px 16px", fontSize: 13, fontWeight: 700, color: "#22c55e" }}>
@@ -248,7 +250,7 @@ export default function AdminInvestment() {
                           background: isClosed ? "rgba(113, 113, 122, 0.1)" : "rgba(34, 197, 94, 0.1)",
                           color: isClosed ? "#71717a" : "#22c55e"
                         }}>
-                          {isClosed ? "SETTLED" : "ACTIVE"}
+                          {isClosed ? t.adminInvestment.statusSettled : t.adminInvestment.statusActive}
                         </span>
                       </td>
                     </tr>

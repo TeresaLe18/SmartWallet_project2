@@ -29,6 +29,8 @@ import {
 } from "lucide-react";
 import { newsAPI, walletAPI, formatVND } from "../../services/api";
 import { useLanguage } from "../../context/LanguageContext";
+import { relativeTime } from "../../utils/relativeTime";
+import { useNow } from "../../hooks/useNow";
 
 const safeParse = (value) => {
   try {
@@ -169,6 +171,7 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 export default function DashboardPage() {
   const { t, lang } = useLanguage();
+  useNow(); // tự re-render mỗi phút để thời gian tin tức tương đối luôn cập nhật
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState(() => safeParse(localStorage.getItem("bw_user")));
@@ -551,7 +554,7 @@ export default function DashboardPage() {
               <button key={post.id} type="button" onClick={() => post.link && window.open(post.link, "_blank") }>
                 <span>{(lang === "en" && post.tag_en) ? post.tag_en : (post.tag || "News")}</span>
                 <strong>{(lang === "en" && post.title_en) ? post.title_en : post.title}</strong>
-                <small>{post.time || "Just now"}</small>
+                <small>{relativeTime(post.created_at, lang) || post.time || "Just now"}</small>
               </button>
             ))}
             {!posts.length && <p className="empty-state">{t.home.noNews}</p>}

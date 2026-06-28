@@ -33,7 +33,7 @@ const persistImage = (image, req) => {
 };
 
 // Chuẩn hoá 1 bản ghi NewsPost về đúng shape mà frontend đọc (8 field).
-// Trả thẳng các field FE cần, không lộ created_at/updated_at thừa.
+// Trả các field FE cần; created_at dùng để hiển thị thời gian tương đối ("X phút trước").
 const toPost = (p) => ({
   id: p.id,
   title: p.title,
@@ -41,6 +41,7 @@ const toPost = (p) => ({
   tag: p.tag,
   tag_en: p.tag_en || p.tag,
   time: p.time,
+  created_at: p.created_at,
   image: p.image,
   link: p.link,
   content: p.content,

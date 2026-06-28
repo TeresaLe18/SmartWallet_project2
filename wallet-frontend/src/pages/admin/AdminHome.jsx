@@ -6,7 +6,7 @@ import { adminAPI } from "../../services/api";
 import { useLanguage } from "../../context/LanguageContext";
 
 export default function AdminPage() {
-  const { t, lang } = useLanguage();
+  const { t } = useLanguage();
   const [period, setPeriod] = useState("month"); // 'today', 'month', 'year', 'all'
   const [statistics, setStatistics] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -48,35 +48,35 @@ export default function AdminPage() {
     {
       label: t.admin.savingsAccounts,
       value: loading || !statistics ? "..." : (statistics.savingsVaultCount + statistics.activeInvestmentCount).toLocaleString("vi-VN"),
-      desc: `${t.admin.savingsAccounts} (active)`,
+      desc: t.admin.savingsAccountsDesc,
       icon: Users,
       color: "#2563eb"
     },
     {
       label: t.admin.idleMoney,
       value: loading || !statistics ? "..." : Number(statistics.totalIdleMoney).toLocaleString("vi-VN") + " ₫",
-      desc: "Vaults + Investments",
+      desc: t.admin.idleMoneyDesc,
       icon: CreditCard,
       color: "#3b82f6"
     },
     {
       label: t.admin.projectedPayout,
       value: loading || !statistics ? "..." : Number(statistics.projectedInterestPayout).toLocaleString("vi-VN") + " ₫",
-      desc: "Outstanding liability",
+      desc: t.admin.projectedPayoutDesc,
       icon: Activity,
       color: "#ef4444"
     },
     {
       label: t.admin.actualPaid,
       value: loading || !statistics ? "..." : Number(statistics.actualInterestPaid).toLocaleString("vi-VN") + " ₫",
-      desc: "Paid historically",
+      desc: t.admin.actualPaidDesc,
       icon: Activity,
       color: "#f59e0b"
     },
     {
-      label: lang === "vi" ? "Người dùng hệ thống" : "Total Users",
+      label: t.admin.totalUsers,
       value: loading ? "..." : usersCount.toLocaleString("vi-VN"),
-      desc: "Registered accounts",
+      desc: t.admin.registeredAccounts,
       icon: Users,
       color: "#6366f1"
     }
@@ -171,7 +171,7 @@ export default function AdminPage() {
           </div>
         ) : chartData.length === 0 ? (
           <div style={{ height: 260, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 13 }}>
-            {lang === "vi" ? "Không có dữ liệu giao dịch trong khoảng thời gian này" : "No transaction data available for this period"}
+            {t.admin.noChartData}
           </div>
         ) : (
           <ResponsiveContainer width="100%" height={260}>
@@ -183,7 +183,7 @@ export default function AdminPage() {
               <Tooltip contentStyle={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 8, color: "var(--text-primary)" }} />
               <Legend />
               <Line yAxisId="left" type="monotone" dataKey="fee" name={t.admin.feeRevenue} stroke="#22c55e" strokeWidth={2.5} activeDot={{ r: 6 }} />
-              <Line yAxisId="right" type="monotone" dataKey="amount" name={lang === "vi" ? "Tổng lượng giao dịch" : "Total Tx Volume"} stroke="#3b82f6" strokeWidth={2} />
+              <Line yAxisId="right" type="monotone" dataKey="amount" name={t.admin.totalTxVolume} stroke="#3b82f6" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         )}

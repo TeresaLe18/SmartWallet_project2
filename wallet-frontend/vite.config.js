@@ -14,7 +14,7 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': {
-        target: 'http://localhost:5050',
+        target: 'http://localhost:5000',
         changeOrigin: true,
         secure: false,
         // Forward Set-Cookie from backend so HttpOnly refresh token works in dev

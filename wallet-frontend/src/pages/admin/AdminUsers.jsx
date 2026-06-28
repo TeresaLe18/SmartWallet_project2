@@ -5,12 +5,13 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminAPI, getUploadUrl, formatVND } from "../../services/api";
+import { useLanguage } from "../../context/LanguageContext";
 
-const kycBadge = { verified:{ bg:"rgba(34,197,94,0.12)", color:"#22c55e", text:"KYC Verified" }, pending:{ bg:"rgba(245,158,11,0.12)", color:"#f59e0b", text:"Pending Review" }, rejected:{ bg:"rgba(239,68,68,0.12)", color:"#ef4444", text:"KYC Rejected" }, none:{ bg:"rgba(100,116,139,0.12)", color:"#94a3b8", text:"KYC Not Provided" } };
+const kycBadge = { verified:{ bg:"rgba(34,197,94,0.12)", color:"#22c55e" }, pending:{ bg:"rgba(245,158,11,0.12)", color:"#f59e0b" }, rejected:{ bg:"rgba(239,68,68,0.12)", color:"#ef4444" }, none:{ bg:"rgba(100,116,139,0.12)", color:"#94a3b8" } };
 const statusBadge = {
-  active: { bg: "rgba(34,197,94,0.12)", color: "#22c55e", text: "Active" },
-  locked: { bg: "rgba(239,68,68,0.12)", color: "#ef4444", text: "Locked" },
-  disabled: { bg: "rgba(100,116,139,0.12)", color: "#64748b", text: "Disabled" },
+  active: { bg: "rgba(34,197,94,0.12)", color: "#22c55e" },
+  locked: { bg: "rgba(239,68,68,0.12)", color: "#ef4444" },
+  disabled: { bg: "rgba(100,116,139,0.12)", color: "#64748b" },
 };
 
 const shortId = (id = "") => {
@@ -20,6 +21,7 @@ const shortId = (id = "") => {
 };
 
 export default function AdminUsersPage() {
+  const { t } = useLanguage();
   const [users, setUsers] = useState([]);
   const [allTransactions, setAllTransactions] = useState([]);
   const [search, setSearch] = useState("");
@@ -39,9 +41,9 @@ export default function AdminUsersPage() {
             : "none";
           return {
             id: String(u.id),
-            name: u.kyc?.full_name || "User",
+            name: u.kyc?.full_name || t.adminUsers.fallbackUser,
             email: u.email,
-            phone: u.phone || "Not updated",
+            phone: u.phone || t.adminUsers.notUpdated,
             kyc: kycState,
             kycStatus: kycState,
             status: u.status.toLowerCase(),
@@ -85,21 +87,21 @@ export default function AdminUsersPage() {
     try {
       await adminAPI.reviewKyc(id, 'VERIFIED');
       await fetchUsers();
-      alert(`✅ KYC approved for ${targetUser.name || targetUser.email}!`);
+      alert(t.adminUsers.alertApproveSuccess.replace("{name}", targetUser.name || targetUser.email));
     } catch (error) {
       console.error("Failed to approve KYC:", error);
-      alert(error.response?.data?.message || "System error while approving KYC.");
+      alert(error.response?.data?.message || t.adminUsers.errorApprove);
     }
   };
 
   const handleRejectKyc = (id) => {
     setRejectingUserId(id);
-    setRejectComment("Identity documents are unclear or information does not match.");
+    setRejectComment(t.adminUsers.defaultRejectReason);
   };
 
   const submitRejectKyc = async () => {
     if (!rejectComment.trim()) {
-      alert("Please provide a reason for rejecting KYC.");
+      alert(t.adminUsers.alertRejectReasonRequired);
       return;
     }
     const targetUser = users.find(u => u.id === rejectingUserId);
@@ -111,10 +113,10 @@ export default function AdminUsersPage() {
       }
       setRejectingUserId(null);
       setRejectComment("");
-      alert(`❌ KYC rejected for ${targetUser ? (targetUser.name || targetUser.email) : "user"}.`);
+      alert(t.adminUsers.alertRejectSuccess.replace("{name}", targetUser ? (targetUser.name || targetUser.email) : t.adminUsers.fallbackUserLower));
     } catch (error) {
       console.error("Failed to reject KYC:", error);
-      alert(error.response?.data?.message || "System error while rejecting KYC.");
+      alert(error.response?.data?.message || t.adminUsers.errorReject);
     }
   };
 
@@ -126,37 +128,37 @@ export default function AdminUsersPage() {
     const label = targetUser.name || targetUser.email;
     const confirmed = window.confirm(
       isLocking
-        ? `Lock account for ${label}?\n\nThe user will not be able to sign in or use wallet features until unlocked.`
-        : `Unlock account for ${label}?\n\nThe user will regain access to their account and wallet.`
+        ? t.adminUsers.confirmLock.replace("{name}", label)
+        : t.adminUsers.confirmUnlock.replace("{name}", label)
     );
     if (!confirmed) return;
 
     try {
       if (isLocking) {
         await adminAPI.lockUser(id);
-        alert("🔒 Account locked successfully.");
+        alert(t.adminUsers.alertLockSuccess);
       } else if (targetUser.status === "locked") {
         await adminAPI.unlockUser(id);
-        alert("✅ Account unlocked successfully.");
+        alert(t.adminUsers.alertUnlockSuccess);
       }
       await fetchUsers();
     } catch (error) {
       console.error("Failed to toggle user status:", error);
-      alert(error.response?.data?.message || "System error while changing account status.");
+      alert(error.response?.data?.message || t.adminUsers.errorLock);
     }
   };
 
   const handleReactivate = async (id) => {
     const targetUser = users.find(u => u.id === id);
     if (!targetUser || targetUser.status !== "disabled") return;
-    if (!window.confirm(`Reactivate account for ${targetUser.name || targetUser.email}?`)) return;
+    if (!window.confirm(t.adminUsers.confirmReactivate.replace("{name}", targetUser.name || targetUser.email))) return;
     try {
       await adminAPI.reactivateAccount(id);
       await fetchUsers();
-      alert("✅ Account reactivated successfully.");
+      alert(t.adminUsers.alertReactivateSuccess);
     } catch (error) {
       console.error("Failed to reactivate account:", error);
-      alert(error.response?.data?.message || "System error while reactivating account.");
+      alert(error.response?.data?.message || t.adminUsers.errorReactivate);
     }
   };
 
@@ -168,8 +170,8 @@ export default function AdminUsersPage() {
     const label = targetUser.name || targetUser.email;
     const confirmed = window.confirm(
       isFreezing
-        ? `Freeze wallet for ${label}?\n\nAll deposits, withdrawals, and transfers will be blocked until unfrozen.`
-        : `Unfreeze wallet for ${label}?\n\nThe user will be able to use wallet features again.`
+        ? t.adminUsers.confirmFreeze.replace("{name}", label)
+        : t.adminUsers.confirmUnfreeze.replace("{name}", label)
     );
     if (!confirmed) return;
 
@@ -177,10 +179,10 @@ export default function AdminUsersPage() {
     try {
       await adminAPI.updateWalletStatus(id, nextStatus);
       await fetchUsers();
-      alert(nextStatus === "FROZEN" ? "❄️ Wallet frozen successfully." : "✅ Wallet unfrozen successfully.");
+      alert(nextStatus === "FROZEN" ? t.adminUsers.alertFreezeSuccess : t.adminUsers.alertUnfreezeSuccess);
     } catch (error) {
       console.error("Failed to toggle wallet status:", error);
-      alert(error.response?.data?.message || "System error while changing wallet status.");
+      alert(error.response?.data?.message || t.adminUsers.errorFreeze);
     }
   };
 
@@ -194,8 +196,8 @@ export default function AdminUsersPage() {
     <div style={{ maxWidth:1100 }}>
       <div style={{ display:"flex", alignItems:"center", justifycontent:"space-between", marginBottom:20, flexWrap:"wrap", gap:12 }}>
         <div>
-          <h1 style={{ fontSize:18, fontWeight:800, marginBottom:2 }}>User Management</h1>
-          <p style={{ color: "var(--text-secondary)", fontSize:13 }}>{users.length} users</p>
+          <h1 style={{ fontSize:18, fontWeight:800, marginBottom:2 }}>{t.adminUsers.title}</h1>
+          <p style={{ color: "var(--text-secondary)", fontSize:13 }}>{t.adminUsers.usersCount.replace("{count}", users.length)}</p>
         </div>
       </div>
 
@@ -203,11 +205,11 @@ export default function AdminUsersPage() {
       <div style={{ display:"flex", gap:10, marginBottom:20, flexWrap:"wrap" }}>
         <div style={{ position:"relative", flex:1, minWidth:200 }}>
           <Search size={14} style={{ position:"absolute", left:12, top:"50%", transform:"translateY(-50%)", color: "var(--text-muted)" }} />
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, email, ID..."
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder={t.adminUsers.searchPlaceholder}
             style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:8, padding:"9px 12px 9px 34px", color: "var(--text-primary)", fontSize:13, outline:"none" }} />
         </div>
         <div style={{ display:"flex", gap:6 }}>
-          {[{v:"all",l:"All"},{v:"verified",l:"KYC Verified"},{v:"pending",l:"Pending Review"},{v:"none",l:"KYC Not Provided"}].map(f => (
+          {[{v:"all",l:t.adminUsers.filters.all},{v:"verified",l:t.adminUsers.filters.verified},{v:"pending",l:t.adminUsers.filters.pending},{v:"none",l:t.adminUsers.filters.none}].map(f => (
             <button key={f.v} onClick={() => setKycFilter(f.v)} style={{
               padding:"8px 12px", borderRadius:8, fontSize:12, fontWeight:500,
               background: kycFilter===f.v ? "rgba(37,99,235,0.15)" : "var(--bg-card)",
@@ -222,8 +224,8 @@ export default function AdminUsersPage() {
       <div style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius:14, overflow:"hidden" }}>
         {/* Header */}
         <div style={{ display:"grid", gridTemplateColumns:"80px 1fr 1fr 100px 100px 120px 80px", gap:0, padding:"12px 16px", borderBottom:"1px solid var(--border)", background: "var(--bg-dark)" }}>
-          {["ID","Name","Email","KYC","Status","Balance","Actions"].map(h => (
-            <span key={h} style={{ fontSize:11, fontWeight:700, color: "var(--text-muted)", textTransform:"uppercase", letterSpacing:"0.5px" }}>{h}</span>
+          {["id","name","email","kyc","status","balance","actions"].map(h => (
+            <span key={h} style={{ fontSize:11, fontWeight:700, color: "var(--text-muted)", textTransform:"uppercase", letterSpacing:"0.5px" }}>{t.adminUsers.headers[h]}</span>
           ))}
         </div>
 
@@ -252,19 +254,19 @@ export default function AdminUsersPage() {
             </div>
             <span style={{ fontSize:13, color: "var(--text-secondary)" }}>{u.email}</span>
             <span style={{ ...kycBadge[u.kyc], fontSize:11, padding:"3px 8px", borderRadius:6, fontWeight:600, display:"inline-block" }}>
-              {kycBadge[u.kyc].text}
+              {t.adminUsers.kyc[u.kyc]}
             </span>
             <span style={{ ...(statusBadge[u.status] || statusBadge.active), fontSize:11, padding:"3px 8px", borderRadius:6, fontWeight:600, display:"inline-block" }}>
-              {(statusBadge[u.status] || statusBadge.active).text}
+              {t.adminUsers.status[u.status] || t.adminUsers.status.active}
             </span>
             <span style={{ fontSize:13, fontWeight:600 }}>{u.balance}</span>
             <button onClick={() => { setSelectedUser(u); setModalTab("info"); }} style={{ background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:6, padding:"6px 10px", color: "var(--text-secondary)", cursor:"pointer", display:"flex", alignItems:"center", gap:4, fontSize:12 }}>
-              <Eye size={13} />Details
+              <Eye size={13} />{t.adminUsers.details}
             </button>
           </motion.div>
         ))}
         {filtered.length === 0 && (
-          <div style={{ textAlign:"center", padding:40, color: "var(--text-muted)" }}>No users found</div>
+          <div style={{ textAlign:"center", padding:40, color: "var(--text-muted)" }}>{t.adminUsers.noUsers}</div>
         )}
       </div>
 
@@ -275,22 +277,22 @@ export default function AdminUsersPage() {
             <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} onClick={e => e.stopPropagation()}
               style={{ background: "var(--bg-dark)", border:"1px solid #222", borderRadius:20, padding:"20px 24px", width:"100%", maxWidth:500, maxHeight:"90vh", display:"flex", flexDirection:"column" }}>
               
-              <h3 style={{ fontSize:15, fontWeight:700, marginBottom:12, color: "var(--text-primary)", flexShrink:0 }}>User: {selectedUser.name}</h3>
+              <h3 style={{ fontSize:15, fontWeight:700, marginBottom:12, color: "var(--text-primary)", flexShrink:0 }}>{t.adminUsers.userModalTitle.replace("{name}", selectedUser.name)}</h3>
 
               {/* Tabs Selector */}
               <div style={{ display:"flex", borderBottom: "1px solid var(--border)", marginBottom:14, gap:2, overflowX:"auto", scrollbarWidth:"none", flexShrink:0 }}>
                 {[
-                  { id:"info", icon:<User size={12}/>,       label:"Info" },
-                  { id:"cccd", icon:<CreditCard size={12}/>, label:"ID Docs" },
-                  { id:"tx",   icon:<History size={12}/>,    label:"Transactions" },
-                ].map(t => (
-                  <button key={t.id} onClick={() => setModalTab(t.id)} style={{
+                  { id:"info", icon:<User size={12}/>,       label:t.adminUsers.tabInfo },
+                  { id:"cccd", icon:<CreditCard size={12}/>, label:t.adminUsers.tabIdDocs },
+                  { id:"tx",   icon:<History size={12}/>,    label:t.adminUsers.tabTransactions },
+                ].map(tab => (
+                  <button key={tab.id} onClick={() => setModalTab(tab.id)} style={{
                     flexShrink:0, background:"none", border:"none", padding:"5px 10px", fontSize:12, fontWeight:600,
-                    color: modalTab === t.id ? "#2563eb" : "#71717a", cursor:"pointer",
-                    borderBottom: modalTab === t.id ? "2px solid #2563eb" : "2px solid transparent",
+                    color: modalTab === tab.id ? "#2563eb" : "#71717a", cursor:"pointer",
+                    borderBottom: modalTab === tab.id ? "2px solid #2563eb" : "2px solid transparent",
                     display:"flex", alignItems:"center", gap:4, transition:"color 0.2s", whiteSpace:"nowrap"
                   }}>
-                    {t.icon} {t.label}
+                    {tab.icon} {tab.label}
                   </button>
                 ))}
               </div>
@@ -301,18 +303,18 @@ export default function AdminUsersPage() {
               {/* Tab 1: Info */}
               {modalTab === "info" && (
                 <div>
-                  {Object.entries({
-                    "ID": selectedUser.id,
-                    "Email": selectedUser.email,
-                    "Phone": selectedUser.phone,
-                    "KYC": kycBadge[selectedUser.kyc]?.text || selectedUser.kyc,
-                    "Account Status": statusBadge[selectedUser.status]?.text || selectedUser.status,
-                    "Wallet Status": selectedUser.walletStatus === "frozen" ? "❄️ Frozen" : "🟢 Active",
-                    "Balance": selectedUser.balance,
-                    "Joined": selectedUser.joined
-                  }).map(([k,v]) => (
+                  {[
+                    { k: "id",            label: t.adminUsers.infoLabels.id,            v: selectedUser.id },
+                    { k: "email",         label: t.adminUsers.infoLabels.email,         v: selectedUser.email },
+                    { k: "phone",         label: t.adminUsers.infoLabels.phone,         v: selectedUser.phone },
+                    { k: "kyc",           label: t.adminUsers.infoLabels.kyc,           v: t.adminUsers.kyc[selectedUser.kyc] || selectedUser.kyc },
+                    { k: "accountStatus", label: t.adminUsers.infoLabels.accountStatus, v: t.adminUsers.status[selectedUser.status] || selectedUser.status },
+                    { k: "walletStatus",  label: t.adminUsers.infoLabels.walletStatus,  v: selectedUser.walletStatus === "frozen" ? t.adminUsers.walletFrozen : t.adminUsers.walletActive },
+                    { k: "balance",       label: t.adminUsers.infoLabels.balance,       v: selectedUser.balance },
+                    { k: "joined",        label: t.adminUsers.infoLabels.joined,        v: selectedUser.joined }
+                  ].map(({ k, label, v }) => (
                     <div key={k} style={{ display:"flex", justifyContent:"space-between", padding:"9px 0", borderBottom: "1px solid var(--border)" }}>
-                      <span style={{ fontSize:13, color: "var(--text-secondary)" }}>{k}</span>
+                      <span style={{ fontSize:13, color: "var(--text-secondary)" }}>{label}</span>
                       <span style={{ fontSize:13, fontWeight:600, color: "var(--text-primary)" }}>{v}</span>
                     </div>
                   ))}
@@ -325,21 +327,21 @@ export default function AdminUsersPage() {
                   {!selectedUser.cccd ? (
                     <div style={{ textAlign: "center", padding: "30px 10px", color: "var(--text-muted)" }}>
                       <CreditCard size={32} style={{ marginBottom: 12, opacity: 0.3 }} />
-                      <p style={{ fontSize: 13 }}>This user has not submitted ID documents or has not requested KYC verification.</p>
+                      <p style={{ fontSize: 13 }}>{t.adminUsers.noIdDocs}</p>
                     </div>
                   ) : (
                     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                       {/* CCCD details */}
                       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, background: "var(--bg-card)", padding: 16, borderRadius: 12, border: "1px solid var(--border)" }}>
                         {[
-                          { k: "National ID",       v: selectedUser.cccd },
-                          { k: "Full Name",         v: selectedUser.name.toUpperCase() },
-                          { k: "Date of Birth",     v: selectedUser.dob },
-                          { k: "Gender",            v: selectedUser.gender || "Not provided" },
-                          { k: "Permanent Address", v: selectedUser.address || "Not provided" },
+                          { k: "nationalId", label: t.adminUsers.cccdLabels.nationalId, v: selectedUser.cccd },
+                          { k: "fullName",   label: t.adminUsers.cccdLabels.fullName,   v: selectedUser.name.toUpperCase() },
+                          { k: "dob",        label: t.adminUsers.cccdLabels.dob,        v: selectedUser.dob },
+                          { k: "gender",     label: t.adminUsers.cccdLabels.gender,     v: selectedUser.gender || t.adminUsers.notProvided },
+                          { k: "address",    label: t.adminUsers.cccdLabels.address,    v: selectedUser.address || t.adminUsers.notProvided },
                         ].map(item => (
                           <div key={item.k} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                            <span style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase" }}>{item.k}</span>
+                            <span style={{ fontSize: 11, color: "var(--text-muted)", textTransform: "uppercase" }}>{item.label}</span>
                             <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{item.v}</span>
                           </div>
                         ))}
@@ -348,12 +350,12 @@ export default function AdminUsersPage() {
                       {/* Real uploaded images */}
                       {(selectedUser.front_image || selectedUser.back_image || selectedUser.selfie_image) && (
                         <div style={{ marginBottom: 20 }}>
-                          <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 10, textTransform: "uppercase" }}>Uploaded Documents</p>
+                          <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 10, textTransform: "uppercase" }}>{t.adminUsers.uploadedDocuments}</p>
                           <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 10 }}>
                             {[
-                              { key:"front_image",  label:"ID Card – Front" },
-                              { key:"back_image",   label:"ID Card – Back" },
-                              { key:"selfie_image", label:"Selfie" },
+                              { key:"front_image",  label:t.adminUsers.imgFront },
+                              { key:"back_image",   label:t.adminUsers.imgBack },
+                              { key:"selfie_image", label:t.adminUsers.imgSelfie },
                             ].map(({ key, label }) => {
                               const url = getUploadUrl(selectedUser[key]);
                               if (!url) return null;
@@ -370,7 +372,7 @@ export default function AdminUsersPage() {
 
                       {/* Styled citizen card mockups (Front & Back) */}
                       <div>
-                        <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 10, textTransform: "uppercase" }}>Reference Images (Chip-Enabled ID Card)</p>
+                        <p style={{ fontSize: 12, fontWeight: 700, color: "var(--text-secondary)", marginBottom: 10, textTransform: "uppercase" }}>{t.adminUsers.referenceImages}</p>
                         
                         <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 12 }}>
                           {/* CCCD Front side */}
@@ -510,8 +512,8 @@ export default function AdminUsersPage() {
                     const isSender = tx.sender_wallet?.user?.email === selectedUser.email;
                     const type = isSender ? "send" : "receive";
                     const otherUser = isSender
-                      ? tx.receiver_wallet?.user?.email || "Bank"
-                      : tx.sender_wallet?.user?.email || "Bank";
+                      ? tx.receiver_wallet?.user?.email || t.adminUsers.bank
+                      : tx.sender_wallet?.user?.email || t.adminUsers.bank;
                     
                     return {
                       id: tx.reference_code || `TX${tx.id}`,
@@ -530,11 +532,11 @@ export default function AdminUsersPage() {
                     {/* Summary stats */}
                     <div style={{ display:"grid", gridTemplateColumns:"repeat(3,1fr)", gap:8, marginBottom:16 }}>
                       {[
-                        { label:"Total Txns", val: txList.length, color:"#3b82f6" },
-                        { label:"Successful", val: txList.filter(t=>t.status==="success").length, color:"#22c55e" },
-                        { label:"Pending", val: txList.filter(t=>t.status==="pending").length, color:"#f59e0b" }
+                        { key:"total",      label:t.adminUsers.txTotal,      val: txList.length, color:"#3b82f6" },
+                        { key:"successful", label:t.adminUsers.txSuccessful, val: txList.filter(tx=>tx.status==="success").length, color:"#22c55e" },
+                        { key:"pending",    label:t.adminUsers.txPending,    val: txList.filter(tx=>tx.status==="pending").length, color:"#f59e0b" }
                       ].map(s => (
-                        <div key={s.label} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius:10, padding:"10px 14px", textAlign:"center" }}>
+                        <div key={s.key} style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius:10, padding:"10px 14px", textAlign:"center" }}>
                           <p style={{ fontSize:20, fontWeight:900, color: s.color }}>{s.val}</p>
                           <p style={{ fontSize:11, color: "var(--text-muted)", marginTop:2 }}>{s.label}</p>
                         </div>
@@ -546,7 +548,7 @@ export default function AdminUsersPage() {
                       {txList.length === 0 ? (
                         <div style={{ textAlign:"center", padding:"30px 0", color: "var(--text-muted)" }}>
                           <History size={28} style={{ marginBottom:8, opacity:0.3 }} />
-                          <p style={{ fontSize:13 }}>No transaction history</p>
+                          <p style={{ fontSize:13 }}>{t.adminUsers.noTxHistory}</p>
                         </div>
                       ) : txList.map((tx, i) => (
                         <div key={tx.id || i} style={{
@@ -586,7 +588,7 @@ export default function AdminUsersPage() {
                               background: tx.status==="success" ? "rgba(34,197,94,0.1)" : tx.status==="pending" ? "rgba(245,158,11,0.1)" : "rgba(239,68,68,0.1)",
                               color: tx.status==="success" ? "#22c55e" : tx.status==="pending" ? "#f59e0b" : "#ef4444"
                             }}>
-                              {tx.status==="success" ? "Successful" : tx.status==="pending" ? "Pending" : "Failed"}
+                              {tx.status==="success" ? t.adminUsers.txStatusSuccess : tx.status==="pending" ? t.adminUsers.txStatusPending : t.adminUsers.txStatusFailed}
                             </span>
                           </div>
                         </div>
@@ -619,7 +621,7 @@ export default function AdminUsersPage() {
                       onMouseEnter={e => e.currentTarget.style.background = "rgba(34,197,94,0.25)"}
                       onMouseLeave={e => e.currentTarget.style.background = "rgba(34,197,94,0.15)"}
                     >
-                      ✅ Approve KYC
+                      {t.adminUsers.btnApproveKyc}
                     </button>
                     <button
                       onClick={() => handleRejectKyc(selectedUser.id)}
@@ -638,7 +640,7 @@ export default function AdminUsersPage() {
                       onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.25)"}
                       onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,0.12)"}
                     >
-                      ❌ Reject KYC
+                      {t.adminUsers.btnRejectKyc}
                     </button>
                   </>
                 )}
@@ -659,7 +661,7 @@ export default function AdminUsersPage() {
                     transition: "all 0.2s"
                   }}
                 >
-                  {selectedUser.status === "active" ? "Lock Account" : selectedUser.status === "locked" ? "Unlock Account" : "Lock Account"}
+                  {selectedUser.status === "active" ? t.adminUsers.btnLockAccount : selectedUser.status === "locked" ? t.adminUsers.btnUnlockAccount : t.adminUsers.btnLockAccount}
                 </button>
                 {selectedUser.status === "disabled" && (
                   <button
@@ -677,7 +679,7 @@ export default function AdminUsersPage() {
                       transition: "all 0.2s"
                     }}
                   >
-                    ✅ Reactivate Account
+                    {t.adminUsers.btnReactivate}
                   </button>
                 )}
                 <button
@@ -695,10 +697,10 @@ export default function AdminUsersPage() {
                     transition: "all 0.2s"
                   }}
                 >
-                  {selectedUser.walletStatus === "frozen" ? "❄️ Unfreeze Wallet" : "🔒 Freeze Wallet"}
+                  {selectedUser.walletStatus === "frozen" ? t.adminUsers.btnUnfreezeWallet : t.adminUsers.btnFreezeWallet}
                 </button>
                 <button onClick={() => setSelectedUser(null)} style={{ flex:1, background: "var(--bg-card2)", border: "1px solid var(--border)", color: "var(--text-secondary)", borderRadius:8, padding:"10px", fontWeight:600, fontSize:13, cursor:"pointer" }}>
-                  Close
+                  {t.adminUsers.btnClose}
                 </button>
               </div>
             </motion.div>
@@ -713,13 +715,13 @@ export default function AdminUsersPage() {
             <motion.div initial={{scale:0.95,opacity:0}} animate={{scale:1,opacity:1}} exit={{scale:0.95,opacity:0}} onClick={e => e.stopPropagation()}
               style={{ background: "var(--bg-dark)", border:"1px solid #222", borderRadius:20, padding:28, width:"100%", maxWidth:400 }}>
               
-              <h3 style={{ fontSize:16, fontWeight:700, marginBottom:16, color: "var(--text-primary)" }}>Reject KYC Application</h3>
-              <p style={{ fontSize:13, color: "var(--text-secondary)", marginBottom:14 }}>Please enter a reason for rejecting the verification application to notify the user:</p>
+              <h3 style={{ fontSize:16, fontWeight:700, marginBottom:16, color: "var(--text-primary)" }}>{t.adminUsers.rejectModalTitle}</h3>
+              <p style={{ fontSize:13, color: "var(--text-secondary)", marginBottom:14 }}>{t.adminUsers.rejectModalDesc}</p>
 
-              <textarea 
+              <textarea
                 value={rejectComment}
                 onChange={e => setRejectComment(e.target.value)}
-                placeholder="Enter rejection reason..."
+                placeholder={t.adminUsers.rejectPlaceholder}
                 style={{
                   width: "100%", height: 100, background: "var(--bg-card2)", border: "1px solid var(--border)",
                   borderRadius: 10, padding: "10px 12px", color: "var(--text-primary)", fontSize: 13, outline: "none",
@@ -738,7 +740,7 @@ export default function AdminUsersPage() {
                   onMouseEnter={e => e.currentTarget.style.background = "rgba(239,68,68,0.25)"}
                   onMouseLeave={e => e.currentTarget.style.background = "rgba(239,68,68,0.15)"}
                 >
-                  Confirm
+                  {t.adminUsers.btnConfirm}
                 </button>
                 <button 
                   onClick={() => { setRejectingUserId(null); setRejectComment(""); }}
@@ -747,7 +749,7 @@ export default function AdminUsersPage() {
                     color: "var(--text-secondary)", borderRadius: 8, padding: "10px", fontWeight: 600, fontSize: 13, cursor: "pointer"
                   }}
                 >
-                  Cancel
+                  {t.adminUsers.btnCancel}
                 </button>
               </div>
             </motion.div>
