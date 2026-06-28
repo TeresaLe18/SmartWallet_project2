@@ -99,12 +99,14 @@ model User {
   phone     String?    @unique
   password  String
   avatar    String?
+ 
   status    UserStatus @default(ACTIVE)
 
   pin_hash String? 
   pin_failed_attempts Int @default(0)
   pin_locked_until DateTime?
-  refreshToken String? @db.Text
+  pin_changed_at DateTime?
+  refreshTokenHash String? @map("refreshToken") @db.Text
 
   wallet Wallet?
   kyc    UserKyc?
@@ -115,6 +117,9 @@ model User {
   post_comment_replies PostCommentReply[]
   fraud_logs           FraudLog[]
   notifications        Notification[]
+  support_messages     SupportMessage[]   @relation("user_support_messages")
+  investments          Investment[]
+  savings_vaults       SavingsVault[]
 
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
@@ -437,13 +442,16 @@ model PostLike {
 // `image`/`content` dùng LongText để chứa ảnh base64 / nội dung dài.
 
 model NewsPost {
-  id      Int     @id @default(autoincrement())
-  title   String
-  tag     String  @default("Economic")
-  time    String  @default("Just published")
-  image   String? @db.LongText
-  link    String?
-  content String  @db.LongText
+  id         Int     @id @default(autoincrement())
+  title      String
+  title_en   String?
+  tag        String  @default("Economic")
+  tag_en     String?
+  time       String  @default("Just published")
+  image      String? @db.LongText
+  link       String?
+  content    String  @db.LongText
+  content_en String? @db.LongText
 
   active Boolean @default(true)
 
@@ -452,3 +460,54 @@ model NewsPost {
 
   @@map("news_posts")
 }
+
+// ===================== SUPPORT CHAT =====================
+model SupportMessage {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  is_admin   Boolean  @default(false)
+  message    String?  @db.Text
+  image_url  String?  @db.LongText
+  is_read    Boolean  @default(false)
+  created_at DateTime @default(now())
+
+  user       User     @relation("user_support_messages", fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("support_messages")
+}
+
+// ===================== INVESTMENTS =====================
+model Investment {
+  id                   Int       @id @default(autoincrement())
+  user_id              Int
+  amount               Decimal   @db.Decimal(19, 2)
+  term_months          Int       // 0 for flexible, 1, 3, 6, 12, 24 for fixed term
+  interest_rate        Decimal   @db.Decimal(5, 2)
+  start_date           DateTime  @default(now())
+  end_date             DateTime? // null for flexible
+  status               String    @default("ACTIVE") // ACTIVE, WITHDRAWN
+  accumulated_interest Decimal   @default(0) @db.Decimal(19, 2)
+  withdrawn_at         DateTime?
+  payout_amount        Decimal?  @db.Decimal(19, 2)
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("investments")
+}
+
+// ===================== SAVINGS VAULTS =====================
+model SavingsVault {
+  id             Int      @id @default(autoincrement())
+  user_id        Int
+  name           String   // e.g. "Ví tiết kiệm Nimo"
+  target_amount  Decimal? @db.Decimal(19, 2)
+  current_amount Decimal  @default(0) @db.Decimal(19, 2)
+  category       String?  // e.g. "Trà sữa", "Di chuyển"
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  user User @relation(fields: [user_id], references: [id])
+
+  @@map("savings_vaults")
+}
+

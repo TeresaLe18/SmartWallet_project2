@@ -1,12 +1,30 @@
 const prisma = require('../config/prisma');
 const { Prisma, TransactionStatus, TransactionType } = require('@prisma/client');
 const crypto = require('crypto');
+const { runFraudChecks } = require('../utils/fraudDetection');
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 const calculatePercentChange = (current, previous) => {
   if (previous === 0) return current > 0 ? 100 : 0;
   return Number((((current - previous) / previous) * 100).toFixed(1));
+};
+
+// ─── GET /wallet/fees ─────────────────────────────────────────────────────────
+
+const getFees = async (req, res) => {
+  try {
+    const rules = await prisma.transactionFeeRule.findMany({
+      select: { transaction_type: true, fee_value: true },
+    });
+    const fees = {};
+    for (const rule of rules) {
+      fees[rule.transaction_type] = Number(rule.fee_value);
+    }
+    return res.status(200).json({ success: true, fees });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
 };
 
 // ─── GET /wallet/stats ───────────────────────────────────────────────────────
@@ -273,6 +291,15 @@ const deposit = async (req, res) => {
       },
     }).catch(() => { /* non-critical – don't fail the response */ });
 
+    runFraudChecks({
+      userId,
+      walletId: wallet.id,
+      transactionId: transaction.id,
+      transactionType: 'DEPOSIT',
+      amount: Number(amount),
+      availableBalanceBefore: Number(updatedWallet.balance) - Number(updatedWallet.locked_balance),
+    }).catch((err) => console.error('Fraud check failed:', err));
+
     return res.status(200).json({
       success: true,
       message: 'Deposit successful',
@@ -327,8 +354,8 @@ const withdraw = async (req, res) => {
     const feeAmount = feeRule ? feeRule.fee_value : new Prisma.Decimal(0);
     const finalAmount = new Prisma.Decimal(amount).plus(feeAmount);
 
-    const available = wallet.balance.minus(wallet.locked_balance);
-    if (available.lt(finalAmount)) {
+    const availableBefore = Number(wallet.balance) - Number(wallet.locked_balance);
+    if (availableBefore < Number(finalAmount)) {
       return res.status(400).json({ success: false, message: 'Insufficient balance' });
     }
 
@@ -401,6 +428,15 @@ const withdraw = async (req, res) => {
         content: `${Number(amount).toLocaleString('vi-VN')} ₫ has been withdrawn to ${bank_code} (Account: ${account_number}). Reference: ${referenceCode}.`,
       },
     }).catch(() => { /* non-critical */ });
+
+    runFraudChecks({
+      userId,
+      walletId: wallet.id,
+      transactionId: transaction.id,
+      transactionType: 'WITHDRAW',
+      amount: Number(amount),
+      availableBalanceBefore: availableBefore,
+    }).catch((err) => console.error('Fraud check failed:', err));
 
     return res.status(200).json({
       success: true,
@@ -511,7 +547,8 @@ const transfer = async (req, res) => {
 
     const finalAmount = new Prisma.Decimal(amount).plus(feeAmount).minus(discountAmount);
 
-    if (senderWallet.balance.minus(senderWallet.locked_balance).lt(finalAmount)) {
+    const availableBefore = Number(senderWallet.balance) - Number(senderWallet.locked_balance);
+    if (availableBefore < Number(finalAmount)) {
       return res.status(400).json({ success: false, message: 'Insufficient balance' });
     }
 
@@ -628,6 +665,15 @@ const transfer = async (req, res) => {
       },
     }).catch(() => { /* non-critical */ });
 
+    runFraudChecks({
+      userId,
+      walletId: senderWallet.id,
+      transactionId: transaction.id,
+      transactionType: 'TRANSFER',
+      amount: Number(amount),
+      availableBalanceBefore: availableBefore,
+    }).catch((err) => console.error('Fraud check failed:', err));
+
     return res.status(200).json({
       success: true,
       message: 'Transfer successful',
@@ -684,12 +730,17 @@ const payment = async (req, res) => {
     const feeRuleId = feeRule?.id ?? null;
     const finalAmount = new Prisma.Decimal(amount).plus(feeAmount);
 
-    const available = wallet.balance.minus(wallet.locked_balance);
-    if (available.lt(finalAmount)) {
+    const availableBefore = Number(wallet.balance) - Number(wallet.locked_balance);
+    if (availableBefore < Number(finalAmount)) {
       return res.status(400).json({ success: false, message: 'Insufficient balance' });
     }
 
     const referenceCode = 'PAY-' + Date.now() + '-' + crypto.randomBytes(4).toString('hex');
+
+    // Check if the destination bank account is linked to a wallet in our system
+    const recipientBank = await prisma.bankAccount.findFirst({
+      where: { bank_code, account_number },
+    });
 
     transaction = await prisma.transaction.create({
       data: {
@@ -700,7 +751,7 @@ const payment = async (req, res) => {
         discount_amount: new Prisma.Decimal(0),
         final_amount: finalAmount,
         sender_wallet_id: wallet.id,
-        receiver_wallet_id: null,
+        receiver_wallet_id: recipientBank ? recipientBank.wallet_id : null,
         payment_method: 'BANK',
         bank_code,
         account_number,
@@ -712,37 +763,96 @@ const payment = async (req, res) => {
       },
     });
 
-    await prisma.$transaction(async (tx) => {
-      await tx.$queryRaw`SELECT id FROM wallets WHERE id = ${wallet.id} FOR UPDATE`;
-      const currentWallet = await tx.wallet.findUnique({ where: { id: wallet.id } });
+    if (recipientBank) {
+      // Intrasystem interbank sandbox transfer: credit receiver wallet
+      await prisma.$transaction(async (tx) => {
+        const firstId = Math.min(wallet.id, recipientBank.wallet_id);
+        const secondId = Math.max(wallet.id, recipientBank.wallet_id);
+        await tx.$queryRaw`SELECT id FROM wallets WHERE id = ${firstId} FOR UPDATE`;
+        await tx.$queryRaw`SELECT id FROM wallets WHERE id = ${secondId} FOR UPDATE`;
 
-      const currentAvailable = currentWallet.balance.minus(currentWallet.locked_balance);
-      if (currentAvailable.lt(finalAmount)) throw new Error('Insufficient balance');
+        const currentSender = await tx.wallet.findUnique({ where: { id: wallet.id } });
+        const currentReceiver = await tx.wallet.findUnique({ where: { id: recipientBank.wallet_id } });
 
-      const balanceBefore = currentWallet.balance;
-      const balanceAfter = balanceBefore.minus(finalAmount);
+        const currentAvailable = currentSender.balance.minus(currentSender.locked_balance);
+        if (currentAvailable.lt(finalAmount)) throw new Error('Insufficient balance');
 
-      await tx.wallet.update({
-        where: { id: wallet.id },
-        data: { balance: { decrement: finalAmount } },
+        const senderBefore = currentSender.balance;
+        const senderAfter = senderBefore.minus(finalAmount);
+        const receiverBefore = currentReceiver.balance;
+        const receiverAfter = receiverBefore.plus(new Prisma.Decimal(amount));
+
+        await tx.wallet.update({
+          where: { id: wallet.id },
+          data: { balance: { decrement: finalAmount } },
+        });
+
+        await tx.wallet.update({
+          where: { id: recipientBank.wallet_id },
+          data: { balance: { increment: new Prisma.Decimal(amount) } },
+        });
+
+        await tx.ledgerEntry.create({
+          data: {
+            transaction_id: transaction.id,
+            wallet_id: wallet.id,
+            type: 'DEBIT',
+            amount: finalAmount,
+            balance_before: senderBefore,
+            balance_after: senderAfter,
+          },
+        });
+
+        await tx.ledgerEntry.create({
+          data: {
+            transaction_id: transaction.id,
+            wallet_id: recipientBank.wallet_id,
+            type: 'CREDIT',
+            amount: new Prisma.Decimal(amount),
+            balance_before: receiverBefore,
+            balance_after: receiverAfter,
+          },
+        });
+
+        await tx.transaction.update({
+          where: { id: transaction.id },
+          data: { status: 'SUCCESS' },
+        });
       });
+    } else {
+      // External sandbox bank payment: funds leave system
+      await prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM wallets WHERE id = ${wallet.id} FOR UPDATE`;
+        const currentWallet = await tx.wallet.findUnique({ where: { id: wallet.id } });
 
-      await tx.ledgerEntry.create({
-        data: {
-          transaction_id: transaction.id,
-          wallet_id: wallet.id,
-          type: 'DEBIT',
-          amount: finalAmount,
-          balance_before: balanceBefore,
-          balance_after: balanceAfter,
-        },
-      });
+        const currentAvailable = currentWallet.balance.minus(currentWallet.locked_balance);
+        if (currentAvailable.lt(finalAmount)) throw new Error('Insufficient balance');
 
-      await tx.transaction.update({
-        where: { id: transaction.id },
-        data: { status: 'SUCCESS' },
+        const balanceBefore = currentWallet.balance;
+        const balanceAfter = balanceBefore.minus(finalAmount);
+
+        await tx.wallet.update({
+          where: { id: wallet.id },
+          data: { balance: { decrement: finalAmount } },
+        });
+
+        await tx.ledgerEntry.create({
+          data: {
+            transaction_id: transaction.id,
+            wallet_id: wallet.id,
+            type: 'DEBIT',
+            amount: finalAmount,
+            balance_before: balanceBefore,
+            balance_after: balanceAfter,
+          },
+        });
+
+        await tx.transaction.update({
+          where: { id: transaction.id },
+          data: { status: 'SUCCESS' },
+        });
       });
-    });
+    }
 
     const updatedWallet = await prisma.wallet.findUnique({ where: { id: wallet.id } });
     const fullTx = await prisma.transaction.findUnique({
@@ -753,6 +863,7 @@ const payment = async (req, res) => {
       },
     });
 
+    // Notify sender
     await prisma.notification.create({
       data: {
         user_id: userId,
@@ -760,6 +871,32 @@ const payment = async (req, res) => {
         content: `${Number(amount).toLocaleString('vi-VN')} ₫ has been sent to ${bank_code} (Account: ${account_number}). Reference: ${referenceCode}.`,
       },
     }).catch(() => { /* non-critical */ });
+
+    // Notify receiver if they are in the system
+    if (recipientBank) {
+      const receiver = await prisma.wallet.findUnique({
+        where: { id: recipientBank.wallet_id },
+        include: { user: true }
+      });
+      if (receiver?.user) {
+        await prisma.notification.create({
+          data: {
+            user_id: receiver.user.id,
+            title: 'Nhận tiền từ ngân hàng liên kết 📥',
+            content: `Bạn vừa nhận được ${Number(amount).toLocaleString('vi-VN')} ₫ chuyển khoản từ ngân hàng ${bank_code} (Số TK: ${account_number}). Mã giao dịch: ${referenceCode}.`,
+          }
+        }).catch(() => {});
+      }
+    }
+
+    runFraudChecks({
+      userId,
+      walletId: wallet.id,
+      transactionId: transaction.id,
+      transactionType: 'PAYMENT',
+      amount: Number(amount),
+      availableBalanceBefore: availableBefore,
+    }).catch((err) => console.error('Fraud check failed:', err));
 
     return res.status(200).json({
       success: true,
@@ -782,4 +919,215 @@ const payment = async (req, res) => {
   }
 };  
 
-module.exports = { getStats, getTransactions, deposit, withdraw, transfer, payment };
+const createQrDeposit = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { amount, bank_code = "SANDBOX_BANK" } = req.body;
+
+    if (!amount || Number(amount) <= 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid amount",
+      });
+    }
+
+    const kyc = await prisma.userKyc.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!kyc || kyc.status !== "VERIFIED") {
+      return res.status(403).json({
+        success: false,
+        message: "Account not verified KYC. Please complete KYC before QR deposit.",
+      });
+    }
+
+    const wallet = await prisma.wallet.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!wallet) {
+      return res.status(404).json({
+        success: false,
+        message: "Wallet not found",
+      });
+    }
+
+    const referenceCode =
+      "QRD-" + Date.now() + "-" + crypto.randomBytes(4).toString("hex");
+
+    const transaction = await prisma.transaction.create({
+      data: {
+        transaction_type: "DEPOSIT",
+        amount: new Prisma.Decimal(amount),
+        fee_amount: new Prisma.Decimal(0),
+        discount_amount: new Prisma.Decimal(0),
+        final_amount: new Prisma.Decimal(amount),
+        receiver_wallet_id: wallet.id,
+        payment_method: "BANK",
+        bank_code,
+        account_number: `SW-WALLET-${wallet.id}`,
+        account_name: "SMARTWALLET QR SANDBOX",
+        message: `QR deposit sandbox ${referenceCode}`,
+        reference_code: referenceCode,
+        status: "PENDING",
+      },
+    });
+
+    const qrPayload = JSON.stringify({
+      type: "SMARTWALLET_QR_DEPOSIT",
+      mode: "SANDBOX",
+      transactionId: transaction.id,
+      referenceCode,
+      walletId: wallet.id,
+      amount: Number(amount),
+      bankCode: bank_code,
+    });
+
+    return res.status(201).json({
+      success: true,
+      message: "QR deposit created",
+      qrPayload,
+      transactionId: transaction.id,
+      referenceCode,
+      amount: Number(amount),
+      status: "PENDING",
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+const confirmQrDeposit = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { transactionId } = req.body;
+
+    if (!transactionId) {
+      return res.status(400).json({
+        success: false,
+        message: "Transaction ID is required",
+      });
+    }
+
+    const wallet = await prisma.wallet.findUnique({
+      where: { user_id: userId },
+    });
+
+    if (!wallet) {
+      return res.status(404).json({
+        success: false,
+        message: "Wallet not found",
+      });
+    }
+
+    const transaction = await prisma.transaction.findUnique({
+      where: { id: Number(transactionId) },
+    });
+
+    if (!transaction) {
+      return res.status(404).json({
+        success: false,
+        message: "QR transaction not found",
+      });
+    }
+
+    if (transaction.receiver_wallet_id !== wallet.id) {
+      return res.status(403).json({
+        success: false,
+        message: "This QR transaction does not belong to your wallet",
+      });
+    }
+
+    if (transaction.status === "SUCCESS") {
+      return res.status(409).json({
+        success: false,
+        message: "Transaction already confirmed",
+      });
+    }
+
+    if (transaction.status !== "PENDING") {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid transaction status",
+      });
+    }
+
+    const providerReferenceCode =
+      "QR-SANDBOX-" + Date.now() + "-" + crypto.randomBytes(4).toString("hex");
+
+    await prisma.$transaction(async (tx) => {
+      await tx.$queryRaw`SELECT id FROM wallets WHERE id = ${wallet.id} FOR UPDATE`;
+
+      const currentWallet = await tx.wallet.findUnique({
+        where: { id: wallet.id },
+      });
+
+      const balanceBefore = currentWallet.balance;
+      const balanceAfter = balanceBefore.plus(transaction.amount);
+
+      await tx.wallet.update({
+        where: { id: wallet.id },
+        data: {
+          balance: {
+            increment: transaction.amount,
+          },
+        },
+      });
+
+      await tx.ledgerEntry.create({
+        data: {
+          transaction_id: transaction.id,
+          wallet_id: wallet.id,
+          type: "CREDIT",
+          amount: transaction.amount,
+          balance_before: balanceBefore,
+          balance_after: balanceAfter,
+        },
+      });
+
+      await tx.transaction.update({
+        where: { id: transaction.id },
+        data: {
+          status: "SUCCESS",
+          provider_reference_code: providerReferenceCode,
+        },
+      });
+    });
+
+    const updatedWallet = await prisma.wallet.findUnique({
+      where: { id: wallet.id },
+    });
+
+    await prisma.notification.create({
+      data: {
+        user_id: userId,
+        title: "QR deposit successful ✅",
+        content: `${Number(transaction.amount).toLocaleString("vi-VN")} ₫ has been added to your SmartWallet via QR Sandbox. Reference: ${transaction.reference_code}.`,
+      },
+    }).catch(() => {});
+
+    return res.status(200).json({
+      success: true,
+      message: "QR deposit successful",
+      transactionId: transaction.id,
+      referenceCode: transaction.reference_code,
+      providerReferenceCode,
+      wallet: {
+        balance:
+          Number(updatedWallet.balance) - Number(updatedWallet.locked_balance),
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
+
+module.exports = { getStats, getFees, getTransactions, deposit, withdraw, transfer, payment, createQrDeposit,
+  confirmQrDeposit,};

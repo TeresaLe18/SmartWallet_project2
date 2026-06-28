@@ -1,0 +1,25 @@
+/* Shared layout for Live Support & AI Advisor inside dashboard shell */
+
+.chat-page-shell {
+  --chat-chrome-offset: 132px; /* topbar 76px + dash-content padding 56px */
+  display: flex;
+  flex-direction: column;
+  height: calc(100dvh - var(--chat-chrome-offset));
+  min-height: 420px;
+  max-height: calc(100dvh - var(--chat-chrome-offset));
+  min-width: 0;
+  width: 100%;
+}
+
+@media (max-width: 1024px) {
+  .chat-page-shell {
+    --chat-chrome-offset: 112px; /* topbar 76px + padding 36px */
+    min-height: 380px;
+  }
+}
+
+@media (max-height: 720px) {
+  .chat-page-shell {
+    min-height: 320px;
+  }
+}

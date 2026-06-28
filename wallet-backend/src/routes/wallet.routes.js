@@ -9,6 +9,7 @@ const walletMiddleware = require('../middlewares/wallet.middleware');
 const pinMiddleware = require('../middlewares/pin.middleware');
 
 router.get('/stats', authMiddleware, accountMiddleware, walletController.getStats);
+router.get('/fees', authMiddleware, accountMiddleware, walletController.getFees);
 router.get('/transactions', authMiddleware, accountMiddleware, walletController.getTransactions);
 
 router.post(
@@ -45,4 +46,21 @@ router.post(
   pinMiddleware,
   walletController.payment,
 );
+
+router.post(
+  "/qr-deposit/create",
+  authMiddleware,
+  accountMiddleware,
+  walletMiddleware,
+  walletController.createQrDeposit,
+);
+
+router.post(
+  "/qr-deposit/confirm",
+  authMiddleware,
+  accountMiddleware,
+  walletMiddleware,
+  walletController.confirmQrDeposit,
+);
+
 module.exports = router;

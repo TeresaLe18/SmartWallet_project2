@@ -1,6 +1,7 @@
 const prisma = require('../config/prisma');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
+const { clearRefreshTokenCookie } = require('../utils/authCookie');
 
 const otpStore = {};
 
@@ -27,6 +28,7 @@ const getMe = async (req, res) => {
                 role: true,
                 status: true,
                 pin_hash: true,
+                pin_locked_until: true,
                 kyc: { select: { status: true, full_name: true, national_id: true } },
                 wallet: { select: { status: true } },
             },
@@ -46,6 +48,7 @@ const getMe = async (req, res) => {
                 role: user.role,
                 status: user.status,
                 has_pin: !!user.pin_hash,
+                pin_locked_until: user.pin_locked_until,
                 kyc_status: user.kyc?.status || null,
                 full_name: user.kyc?.full_name || null,
                 wallet_status: user.wallet?.status || 'ACTIVE',
@@ -269,12 +272,17 @@ const changePassword = async (req, res) => {
 
         await prisma.user.update({
             where: { id: userId },
-            data: { password: hashed },
+            data: {
+                password: hashed,
+                refreshTokenHash: null,
+            },
         });
+
+        clearRefreshTokenCookie(res);
 
         return res.status(200).json({
             success: true,
-            message: 'Password changed successfully',
+            message: 'Password changed successfully. Please sign in again.',
         });
     } catch (error) {
         return res.status(500).json({
@@ -385,6 +393,34 @@ const freezeWallet = async (req, res) => {
     }
 };
 
+const updateProfile = async (req, res) => {
+    try {
+        const userId = req.user.userId;
+        const { displayName } = req.body;
+        const trimmed = displayName?.trim() || null;
+
+        // display_name column was removed — persist name on KYC record when one exists
+        const kyc = await prisma.userKyc.findUnique({ where: { user_id: userId } });
+        if (kyc && trimmed) {
+            await prisma.userKyc.update({
+                where: { user_id: userId },
+                data: { full_name: trimmed },
+            });
+        }
+
+        return res.status(200).json({
+            success: true,
+            message: 'Profile updated successfully',
+            data: {
+                display_name: trimmed,
+                full_name: trimmed,
+            },
+        });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     getMe,
     getProfile,
@@ -394,4 +430,5 @@ module.exports = {
     changePassword,
     disableAccount,
     freezeWallet,
+    updateProfile,
 };

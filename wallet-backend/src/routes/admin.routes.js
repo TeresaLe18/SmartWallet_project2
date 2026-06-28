@@ -30,4 +30,8 @@ router.post('/transactions/:id/review', ...guard, adminController.reviewTransact
 router.get('/fraud-logs', ...guard, adminController.getFraudLogs);
 router.post('/fraud-logs/:id/resolve', ...guard, adminController.resolveFraudLog);
 
+// ─── Statistics ───────────────────────────────────────────────────────────────
+// GET    /api/admin/statistics   — thống kê tài chính theo ngày/tháng/năm
+router.get('/statistics', ...guard, adminController.getStatistics);
+
 module.exports = router;
