@@ -408,7 +408,7 @@ export default function DashboardLayout() {
                     <div className="dash-dropdown-head">
                       <strong>{t.notifications.title || "Notifications"}</strong>
                       <span>
-                        {unreadCount} {lang === "vi" ? "chưa đọc" : "unread"}
+                        {unreadCount} {t.notifications.unreadShort}
                       </span>
                     </div>
 
@@ -433,7 +433,7 @@ export default function DashboardLayout() {
                       ))}
                       {notifications.length === 0 && (
                         <div className="dash-empty">
-                          {lang === "vi" ? "Không có thông báo mới" : "No new notifications"}
+                          {t.notifications.noNew}
                         </div>
                       )}
                     </div>

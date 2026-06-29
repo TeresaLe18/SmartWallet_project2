@@ -6,6 +6,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { adminAPI, getUploadUrl, formatVND } from "../../services/api";
 import { useLanguage } from "../../context/LanguageContext";
+import { useModal } from "../../context/ModalContext";
 
 const kycBadge = { verified:{ bg:"rgba(34,197,94,0.12)", color:"#22c55e" }, pending:{ bg:"rgba(245,158,11,0.12)", color:"#f59e0b" }, rejected:{ bg:"rgba(239,68,68,0.12)", color:"#ef4444" }, none:{ bg:"rgba(100,116,139,0.12)", color:"#94a3b8" } };
 const statusBadge = {
@@ -22,6 +23,7 @@ const shortId = (id = "") => {
 
 export default function AdminUsersPage() {
   const { t } = useLanguage();
+  const { showAlert, showConfirm } = useModal();
   const [users, setUsers] = useState([]);
   const [allTransactions, setAllTransactions] = useState([]);
   const [search, setSearch] = useState("");
@@ -87,10 +89,10 @@ export default function AdminUsersPage() {
     try {
       await adminAPI.reviewKyc(id, 'VERIFIED');
       await fetchUsers();
-      alert(t.adminUsers.alertApproveSuccess.replace("{name}", targetUser.name || targetUser.email));
+      showAlert(t.adminUsers.alertApproveSuccess.replace("{name}", targetUser.name || targetUser.email), "success");
     } catch (error) {
       console.error("Failed to approve KYC:", error);
-      alert(error.response?.data?.message || t.adminUsers.errorApprove);
+      showAlert(t.adminUsers.errorApprove, "error");
     }
   };
 
@@ -101,7 +103,7 @@ export default function AdminUsersPage() {
 
   const submitRejectKyc = async () => {
     if (!rejectComment.trim()) {
-      alert(t.adminUsers.alertRejectReasonRequired);
+      showAlert(t.adminUsers.alertRejectReasonRequired, "error");
       return;
     }
     const targetUser = users.find(u => u.id === rejectingUserId);
@@ -113,77 +115,76 @@ export default function AdminUsersPage() {
       }
       setRejectingUserId(null);
       setRejectComment("");
-      alert(t.adminUsers.alertRejectSuccess.replace("{name}", targetUser ? (targetUser.name || targetUser.email) : t.adminUsers.fallbackUserLower));
+      showAlert(t.adminUsers.alertRejectSuccess.replace("{name}", targetUser ? (targetUser.name || targetUser.email) : t.adminUsers.fallbackUserLower), "success");
     } catch (error) {
       console.error("Failed to reject KYC:", error);
-      alert(error.response?.data?.message || t.adminUsers.errorReject);
+      showAlert(t.adminUsers.errorReject, "error");
     }
   };
 
-  const handleToggleLock = async (id) => {
+  const handleToggleLock = (id) => {
     const targetUser = users.find(u => u.id === id);
     if (!targetUser || targetUser.status === "disabled") return;
 
     const isLocking = targetUser.status === "active";
     const label = targetUser.name || targetUser.email;
-    const confirmed = window.confirm(
-      isLocking
-        ? t.adminUsers.confirmLock.replace("{name}", label)
-        : t.adminUsers.confirmUnlock.replace("{name}", label)
-    );
-    if (!confirmed) return;
+    const message = isLocking
+      ? t.adminUsers.confirmLock.replace("{name}", label)
+      : t.adminUsers.confirmUnlock.replace("{name}", label);
 
-    try {
-      if (isLocking) {
-        await adminAPI.lockUser(id);
-        alert(t.adminUsers.alertLockSuccess);
-      } else if (targetUser.status === "locked") {
-        await adminAPI.unlockUser(id);
-        alert(t.adminUsers.alertUnlockSuccess);
+    showConfirm(message, async () => {
+      try {
+        if (isLocking) {
+          await adminAPI.lockUser(id);
+          showAlert(t.adminUsers.alertLockSuccess, "success");
+        } else if (targetUser.status === "locked") {
+          await adminAPI.unlockUser(id);
+          showAlert(t.adminUsers.alertUnlockSuccess, "success");
+        }
+        await fetchUsers();
+      } catch (error) {
+        console.error("Failed to toggle user status:", error);
+        showAlert(t.adminUsers.errorLock, "error");
       }
-      await fetchUsers();
-    } catch (error) {
-      console.error("Failed to toggle user status:", error);
-      alert(error.response?.data?.message || t.adminUsers.errorLock);
-    }
+    }, null, isLocking);
   };
 
-  const handleReactivate = async (id) => {
+  const handleReactivate = (id) => {
     const targetUser = users.find(u => u.id === id);
     if (!targetUser || targetUser.status !== "disabled") return;
-    if (!window.confirm(t.adminUsers.confirmReactivate.replace("{name}", targetUser.name || targetUser.email))) return;
-    try {
-      await adminAPI.reactivateAccount(id);
-      await fetchUsers();
-      alert(t.adminUsers.alertReactivateSuccess);
-    } catch (error) {
-      console.error("Failed to reactivate account:", error);
-      alert(error.response?.data?.message || t.adminUsers.errorReactivate);
-    }
+    showConfirm(t.adminUsers.confirmReactivate.replace("{name}", targetUser.name || targetUser.email), async () => {
+      try {
+        await adminAPI.reactivateAccount(id);
+        await fetchUsers();
+        showAlert(t.adminUsers.alertReactivateSuccess, "success");
+      } catch (error) {
+        console.error("Failed to reactivate account:", error);
+        showAlert(t.adminUsers.errorReactivate, "error");
+      }
+    });
   };
 
-  const handleToggleFreeze = async (id) => {
+  const handleToggleFreeze = (id) => {
     const targetUser = users.find(u => u.id === id);
     if (!targetUser) return;
 
     const isFreezing = targetUser.walletStatus !== "frozen";
     const label = targetUser.name || targetUser.email;
-    const confirmed = window.confirm(
-      isFreezing
-        ? t.adminUsers.confirmFreeze.replace("{name}", label)
-        : t.adminUsers.confirmUnfreeze.replace("{name}", label)
-    );
-    if (!confirmed) return;
+    const message = isFreezing
+      ? t.adminUsers.confirmFreeze.replace("{name}", label)
+      : t.adminUsers.confirmUnfreeze.replace("{name}", label);
 
-    const nextStatus = isFreezing ? "FROZEN" : "ACTIVE";
-    try {
-      await adminAPI.updateWalletStatus(id, nextStatus);
-      await fetchUsers();
-      alert(nextStatus === "FROZEN" ? t.adminUsers.alertFreezeSuccess : t.adminUsers.alertUnfreezeSuccess);
-    } catch (error) {
-      console.error("Failed to toggle wallet status:", error);
-      alert(error.response?.data?.message || t.adminUsers.errorFreeze);
-    }
+    showConfirm(message, async () => {
+      const nextStatus = isFreezing ? "FROZEN" : "ACTIVE";
+      try {
+        await adminAPI.updateWalletStatus(id, nextStatus);
+        await fetchUsers();
+        showAlert(nextStatus === "FROZEN" ? t.adminUsers.alertFreezeSuccess : t.adminUsers.alertUnfreezeSuccess, "success");
+      } catch (error) {
+        console.error("Failed to toggle wallet status:", error);
+        showAlert(t.adminUsers.errorFreeze, "error");
+      }
+    }, null, isFreezing);
   };
 
   const filtered = users.filter(u => {

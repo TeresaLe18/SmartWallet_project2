@@ -3,6 +3,7 @@ import { Plus, Pencil, Trash2, X, Tag, Percent, FolderOpen, Flame } from "lucide
 import { motion, AnimatePresence } from "framer-motion";
 import { feeAPI, categoryAPI, voucherAPI } from "../../services/api";
 import { useLanguage } from "../../context/LanguageContext";
+import { useModal } from "../../context/ModalContext";
 
 // Transaction types for fee rules (matching backend TransactionType enum)
 const TX_TYPES = ["TRANSFER", "WITHDRAW", "PAYMENT", "DEPOSIT"];
@@ -21,6 +22,7 @@ const fmtVoucherDate = (d) => { try { return new Date(d).toLocaleDateString("vi-
 
 export default function AdminServices() {
   const { t, lang } = useLanguage();
+  const { showAlert, showConfirm } = useModal();
   const [tab, setTab] = useState("voucher");
   const [vouchers, setVouchers] = useState([]);
   const [showModal, setShowModal] = useState(false);
@@ -37,12 +39,12 @@ export default function AdminServices() {
     if (!newCat.trim()) return;
     try {
       const res = await categoryAPI.create(newCat.trim());
-      if (res.success) { setNewCat(""); loadCats(); } else alert(res.message || t.adminServices.failedToAddCategory);
-    } catch (e) { alert(e.response?.data?.message || t.adminServices.failedToAddCategory); }
+      if (res.success) { setNewCat(""); loadCats(); } else showAlert(t.adminServices.failedToAddCategory, "error");
+    } catch (e) { showAlert(t.adminServices.failedToAddCategory, "error"); }
   };
   const handleDeleteCat = async (id) => {
     try { const res = await categoryAPI.remove(id); if (res.success) loadCats(); }
-    catch (e) { alert(e.response?.data?.message || t.adminServices.failedToDeleteCategory); }
+    catch (e) { showAlert(t.adminServices.failedToDeleteCategory, "error"); }
   };
 
   // Fee management states (DB qua feeAPI)
@@ -76,7 +78,7 @@ export default function AdminServices() {
   const handleSaveFee = async () => {
     const value = Number(feeForm.feeValue);
     if (!Number.isFinite(value) || value < 0) {
-      alert(t.adminServices.feeValueInvalid);
+      showAlert(t.adminServices.feeValueInvalid, "error");
       return;
     }
     try {
@@ -84,20 +86,21 @@ export default function AdminServices() {
         ? await feeAPI.update(editFeeItem.id, { feeValue: value })
         : await feeAPI.create(feeForm.transactionType, value);
       if (res.success) { await loadFees(); setShowFeeModal(false); }
-      else alert(res.message || t.adminServices.failedToSaveFee);
+      else showAlert(t.adminServices.failedToSaveFee, "error");
     } catch (e) {
-      alert(e.response?.data?.message || t.adminServices.serverErrorSavingFee);
+      showAlert(e.response?.status === 409 ? t.adminServices.feeRuleExists : t.adminServices.serverErrorSavingFee, "error");
     }
   };
 
-  const handleDeleteFee = async (id) => {
-    if (!confirm(t.adminServices.deleteFeeConfirm)) return;
-    try {
-      const res = await feeAPI.remove(id);
-      if (res.success) loadFees();
-    } catch (e) {
-      alert(e.response?.data?.message || t.adminServices.errorDeletingFee);
-    }
+  const handleDeleteFee = (id) => {
+    showConfirm(t.adminServices.deleteFeeConfirm, async () => {
+      try {
+        const res = await feeAPI.remove(id);
+        if (res.success) loadFees();
+      } catch (e) {
+        showAlert(t.adminServices.errorDeletingFee, "error");
+      }
+    }, null, true);
   };
 
   const loadVouchers = async () => {
@@ -118,10 +121,10 @@ export default function AdminServices() {
   };
 
   const handleSave = async () => {
-    if (!form.code.trim() || !form.title.trim()) { alert(t.adminServices.enterCodeAndTitle); return; }
-    if (!(Number(form.discountValue) > 0)) { alert(t.adminServices.discountValuePositive); return; }
-    if (!(Number(form.quantity) > 0)) { alert(t.adminServices.quantityPositive); return; }
-    if (!form.expiredAt) { alert(t.adminServices.selectExpiryDate); return; }
+    if (!form.code.trim() || !form.title.trim()) { showAlert(t.adminServices.enterCodeAndTitle, "error"); return; }
+    if (!(Number(form.discountValue) > 0)) { showAlert(t.adminServices.discountValuePositive, "error"); return; }
+    if (!(Number(form.quantity) > 0)) { showAlert(t.adminServices.quantityPositive, "error"); return; }
+    if (!form.expiredAt) { showAlert(t.adminServices.selectExpiryDate, "error"); return; }
     const payload = {
       code: form.code.trim(), title: form.title.trim(), description: form.desc, tag: form.tag, hot: form.hot,
       discountType: form.discountType, discountValue: Number(form.discountValue),
@@ -131,19 +134,20 @@ export default function AdminServices() {
     try {
       const res = editItem ? await voucherAPI.update(editItem.id, payload) : await voucherAPI.create(payload);
       if (res.success) { await loadVouchers(); setShowModal(false); }
-      else alert(res.message || t.adminServices.failedToSaveVoucher);
-    } catch (e) { alert(e.response?.data?.message || t.adminServices.serverErrorSavingVoucher); }
+      else showAlert(t.adminServices.failedToSaveVoucher, "error");
+    } catch (e) { showAlert(e.response?.status === 409 ? t.adminServices.voucherCodeExists : t.adminServices.serverErrorSavingVoucher, "error"); }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm(t.adminServices.deleteVoucherConfirm)) return;
-    try { const res = await voucherAPI.remove(id); if (res.success) loadVouchers(); }
-    catch (e) { alert(e.response?.data?.message || t.adminServices.errorDeletingVoucher); }
+  const handleDelete = (id) => {
+    showConfirm(t.adminServices.deleteVoucherConfirm, async () => {
+      try { const res = await voucherAPI.remove(id); if (res.success) loadVouchers(); }
+      catch (e) { showAlert(t.adminServices.errorDeletingVoucher, "error"); }
+    }, null, true);
   };
   const toggleActive = async (v) => {
     const newStatus = v.status === "ACTIVE" ? "DISABLED" : "ACTIVE";
     try { const res = await voucherAPI.update(v.id, { status: newStatus }); if (res.success) loadVouchers(); }
-    catch (e) { alert(e.response?.data?.message || t.adminServices.errorUpdatingStatus); }
+    catch (e) { showAlert(t.adminServices.errorUpdatingStatus, "error"); }
   };
 
   const tabs = [{ v:"voucher", l:t.adminServices.tabVoucher, icon:Tag }, { v:"fee", l:t.adminServices.tabFee, icon:Percent }, { v:"category", l:t.adminServices.tabCategory, icon:FolderOpen }];

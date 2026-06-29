@@ -4,6 +4,14 @@ const LanguageContext = createContext(null);
 
 export const translations = {
   vi: {
+    modal: {
+      confirmTitle: "Xác nhận",
+      notificationTitle: "Thông báo",
+      errorTitle: "Lỗi",
+      agree: "Đồng ý",
+      cancel: "Huỷ",
+      close: "Đóng",
+    },
     nav: {
       home: "Trang chủ",
       about: "Giới thiệu",
@@ -350,6 +358,9 @@ export const translations = {
       markAllRead: "Đánh dấu tất cả đã đọc",
       read: "Đã đọc",
       unread: "Chưa đọc",
+      unreadShort: "chưa đọc",
+      noNew: "Không có thông báo mới",
+      delete: "Xoá",
       time: "Thời gian",
       viewAll: "Xem tất cả thông báo",
     },
@@ -962,6 +973,7 @@ export const translations = {
       feeValueInvalid: "Giá trị phí phải là số >= 0 (VND).",
       failedToSaveFee: "Lưu phí thất bại.",
       serverErrorSavingFee: "Lỗi máy chủ khi lưu phí.",
+      feeRuleExists: "Đã có rule phí cho loại giao dịch này.",
       deleteFeeConfirm: "Xóa quy tắc phí này?",
       errorDeletingFee: "Lỗi khi xóa phí.",
       enterCodeAndTitle: "Vui lòng nhập Mã và Tiêu đề!",
@@ -970,6 +982,7 @@ export const translations = {
       selectExpiryDate: "Vui lòng chọn ngày hết hạn",
       failedToSaveVoucher: "Lưu voucher thất bại",
       serverErrorSavingVoucher: "Lỗi máy chủ khi lưu voucher",
+      voucherCodeExists: "Mã voucher đã tồn tại.",
       deleteVoucherConfirm: "Xóa voucher này?",
       errorDeletingVoucher: "Lỗi khi xóa voucher",
       errorUpdatingStatus: "Lỗi khi cập nhật trạng thái",
@@ -993,6 +1006,14 @@ export const translations = {
   },
 
   en: {
+    modal: {
+      confirmTitle: "Confirm",
+      notificationTitle: "Notification",
+      errorTitle: "Error",
+      agree: "Confirm",
+      cancel: "Cancel",
+      close: "OK",
+    },
     nav: {
       home: "Home",
       about: "About",
@@ -1339,6 +1360,9 @@ export const translations = {
       markAllRead: "Mark all as read",
       read: "Read",
       unread: "Unread",
+      unreadShort: "unread",
+      noNew: "No new notifications",
+      delete: "Delete",
       time: "Time",
       viewAll: "View all notifications",
     },
@@ -1951,6 +1975,7 @@ export const translations = {
       feeValueInvalid: "Fee value must be a number >= 0 (VND).",
       failedToSaveFee: "Failed to save fee.",
       serverErrorSavingFee: "Server error while saving fee.",
+      feeRuleExists: "A fee rule already exists for this transaction type.",
       deleteFeeConfirm: "Delete this fee rule?",
       errorDeletingFee: "Error deleting fee.",
       enterCodeAndTitle: "Please enter a Code and Title!",
@@ -1959,6 +1984,7 @@ export const translations = {
       selectExpiryDate: "Please select an expiry date",
       failedToSaveVoucher: "Failed to save voucher",
       serverErrorSavingVoucher: "Server error while saving voucher",
+      voucherCodeExists: "This voucher code already exists.",
       deleteVoucherConfirm: "Delete this voucher?",
       errorDeletingVoucher: "Error deleting voucher",
       errorUpdatingStatus: "Error updating status",

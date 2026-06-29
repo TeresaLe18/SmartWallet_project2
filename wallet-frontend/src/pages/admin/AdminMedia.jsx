@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, Newspaper, Tag, Calendar, Eye, EyeOff, Link as LinkIcon, Upload, ChevronRight, Check, AlertTriangle, ShieldAlert, X } from "lucide-react";
+import { Plus, Pencil, Trash2, Newspaper, Tag, Calendar, Eye, EyeOff, Link as LinkIcon, Upload, ChevronRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { newsAPI } from "../../services/api";
 import { useLanguage } from "../../context/LanguageContext";
+import { useModal } from "../../context/ModalContext";
 import { relativeTime } from "../../utils/relativeTime";
 import { useNow } from "../../hooks/useNow";
 
@@ -26,17 +27,8 @@ export default function AdminMedia() {
   const [editorLanguageTab, setEditorLanguageTab] = useState("vi");
   const [isGenerating, setIsGenerating] = useState(false);
 
-  const [customConfirm, setCustomConfirm] = useState(null); // { message, onConfirm, onCancel, danger }
-  const [customAlert, setCustomAlert] = useState(null); // { message, type }
+  const { showAlert, showConfirm } = useModal();
 
-  const showAlert = (message, type = "info") => {
-    setCustomAlert({ message, type });
-  };
-
-  const showConfirm = (message, onConfirm, onCancel = null, danger = false) => {
-    setCustomConfirm({ message, onConfirm, onCancel, danger });
-  };
-  
   // Expanded form state to support both VI and EN fields
   const [form, setForm] = useState({ 
     title: "", 
@@ -133,11 +125,11 @@ export default function AdminMedia() {
           tag_en: res.data.tag_en || p.tag_en
         }));
       } else {
-        showAlert(res.message || t.adminMedia.aiGenerateFail, "error");
+        showAlert(t.adminMedia.aiGenerateFail, "error");
       }
     } catch (e) {
       console.error("AI Generation error:", e);
-      showAlert(e.response?.data?.message || t.adminMedia.aiGenerateError, "error");
+      showAlert(t.adminMedia.aiGenerateError, "error");
     } finally {
       setIsGenerating(false);
     }
@@ -158,7 +150,7 @@ export default function AdminMedia() {
       }
     } catch (error) {
       console.error("Failed to save post:", error);
-      showAlert(error.response?.data?.message || t.adminMedia.saveError, "error");
+      showAlert(t.adminMedia.saveError, "error");
     }
   };
 
@@ -171,7 +163,7 @@ export default function AdminMedia() {
         }
       } catch (error) {
         console.error("Failed to delete post:", error);
-        showAlert(error.response?.data?.message || t.adminMedia.deleteError, "error");
+        showAlert(t.adminMedia.deleteError, "error");
       }
     }, null, true);
   };
@@ -184,7 +176,7 @@ export default function AdminMedia() {
       }
     } catch (error) {
       console.error("Failed to toggle active status:", error);
-      showAlert(error.response?.data?.message || t.adminMedia.toggleError, "error");
+      showAlert(t.adminMedia.toggleError, "error");
     }
   };
 
@@ -472,106 +464,6 @@ export default function AdminMedia() {
         )}
       </AnimatePresence>
 
-      {/* CUSTOM CONFIRMATION & ALERT MODAL */}
-      <AnimatePresence>
-        {customConfirm && (
-          <div style={{
-            position: "fixed", inset: 0, zIndex: 10000,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            padding: 20, background: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(4px)"
-          }}>
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              style={{
-                background: "var(--bg-card)", border: "1px solid var(--border)",
-                borderRadius: 20, padding: 24, maxWidth: 400, width: "100%",
-                boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", position: "relative",
-                color: "var(--text-primary)"
-              }}
-            >
-              <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                <AlertTriangle size={20} style={{ color: "#ef4444" }} />
-                {t.adminMedia.confirmDeleteTitle}
-              </h3>
-              <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text-secondary)", marginBottom: 20, whiteSpace: "pre-line" }}>
-                {customConfirm.message}
-              </p>
-              <div style={{ display: "flex", gap: 12 }}>
-                <button
-                  onClick={() => {
-                    customConfirm.onCancel?.();
-                    setCustomConfirm(null);
-                  }}
-                  style={{
-                    flex: 1, padding: 10, borderRadius: 10, fontSize: 12,
-                    background: "var(--bg-card2)", border: "1px solid var(--border)",
-                    color: "var(--text-secondary)", cursor: "pointer"
-                  }}
-                >
-                  {t.adminMedia.cancel}
-                </button>
-                <button
-                  onClick={() => {
-                    customConfirm.onConfirm();
-                    setCustomConfirm(null);
-                  }}
-                  style={{
-                    flex: 1, padding: 10, borderRadius: 10, fontSize: 12, border: "none",
-                    background: "#ef4444", color: "white", cursor: "pointer", fontWeight: 700
-                  }}
-                >
-                  {t.adminMedia.deleteLabel}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-
-        {customAlert && (
-          <div style={{
-            position: "fixed", inset: 0, zIndex: 10000,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            padding: 20, background: "rgba(15, 23, 42, 0.4)", backdropFilter: "blur(4px)"
-          }}>
-            <motion.div
-              initial={{ scale: 0.95, opacity: 0, y: 15 }}
-              animate={{ scale: 1, opacity: 1, y: 0 }}
-              exit={{ scale: 0.95, opacity: 0, y: 15 }}
-              style={{
-                background: "var(--bg-card)", border: "1px solid var(--border)",
-                borderRadius: 20, padding: 24, maxWidth: 400, width: "100%",
-                boxShadow: "0 20px 25px -5px rgba(0,0,0,0.1)", position: "relative",
-                color: "var(--text-primary)"
-              }}
-            >
-              <h3 style={{ fontSize: 16, fontWeight: 800, marginBottom: 12, display: "flex", alignItems: "center", gap: 8 }}>
-                {customAlert.type === "error" ? (
-                  <X size={20} style={{ color: "#ef4444", background: "rgba(239,68,68,0.1)", borderRadius: "50%", padding: 2 }} />
-                ) : customAlert.type === "success" ? (
-                  <Check size={20} style={{ color: "#22c55e", background: "rgba(34,197,94,0.1)", borderRadius: "50%", padding: 2 }} />
-                ) : (
-                  <ShieldAlert size={20} style={{ color: "var(--primary)" }} />
-                )}
-                {customAlert.type === "error" ? t.adminMedia.errorAlertTitle : t.adminMedia.notificationTitle}
-              </h3>
-              <p style={{ fontSize: 13, lineHeight: 1.5, color: "var(--text-secondary)", marginBottom: 20 }}>
-                {customAlert.message}
-              </p>
-              <button
-                onClick={() => setCustomAlert(null)}
-                style={{
-                  width: "100%", padding: 10, borderRadius: 10, fontSize: 12, border: "none",
-                  background: "var(--primary)", color: "white", cursor: "pointer", fontWeight: 700
-                }}
-              >
-                {t.adminMedia.close}
-              </button>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

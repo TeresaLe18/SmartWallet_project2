@@ -3,9 +3,11 @@ import { Send, Image, X, Headphones, User, Shield, Search, MessageSquare, AlertC
 import { supportAPI } from "../../services/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "../../context/LanguageContext";
+import { useModal } from "../../context/ModalContext";
 
 export default function AdminSupport() {
   const { t } = useLanguage();
+  const { showAlert } = useModal();
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null); // { user, messages: [] }
   const [inputText, setInputText] = useState("");
@@ -99,7 +101,7 @@ export default function AdminSupport() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert(t.adminSupport.imageSizeError);
+      showAlert(t.adminSupport.imageSizeError, "error");
       return;
     }
 
@@ -139,7 +141,7 @@ export default function AdminSupport() {
       }
     } catch (error) {
       console.error("Failed to send admin reply:", error);
-      alert(error.response?.data?.message || t.adminSupport.sendError);
+      showAlert(t.adminSupport.sendError, "error");
     } finally {
       setSending(false);
     }

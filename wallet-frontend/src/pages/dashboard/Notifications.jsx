@@ -141,7 +141,7 @@ export default function NotificationsPage() {
                 {n.is_read && (
                   <button
                     type="button"
-                    title="Delete Notification"
+                    title={t.notifications.delete}
                     onClick={(e) => {
                       e.stopPropagation();
                       handleDelete(n.id);
@@ -163,7 +163,7 @@ export default function NotificationsPage() {
                     onMouseEnter={(e) => e.currentTarget.style.background = "rgba(239, 68, 68, 0.08)"}
                     onMouseLeave={(e) => e.currentTarget.style.background = "none"}
                   >
-                    <Trash2 size={13} /> Delete
+                    <Trash2 size={13} /> {t.notifications.delete}
                   </button>
                 )}
               </div>

@@ -3,6 +3,7 @@ import { Upload, CheckCircle, Clock, AlertCircle, ArrowRight } from "lucide-reac
 import { motion } from "framer-motion";
 import { authAPI, kycAPI, getUploadUrl } from "../../services/api";
 import { useLanguage } from "../../context/LanguageContext";
+import { useModal } from "../../context/ModalContext";
 import "./Kyc.css";
 
 const GENDER_VALUES = ["Male", "Female", "Other"];
@@ -28,6 +29,7 @@ const genderLabel = (value, lang) => {
 
 export default function KycPage() {
   const { t, lang } = useLanguage();
+  const { showAlert } = useModal();
   const steps = [
     { id:1, title: t.kyc.personalInfo,    desc: "ID card & name" },
     { id:2, title: t.kyc.uploadDocuments, desc: "Front & back of ID" },
@@ -126,12 +128,12 @@ export default function KycPage() {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert("Image size must not exceed 5 MB.");
+        showAlert("Image size must not exceed 5 MB.", "error");
         return;
       }
       const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
       if (!allowedTypes.includes(file.type)) {
-        alert("Unsupported file format. Only JPG, PNG, WEBP, or GIF images are accepted.");
+        showAlert("Unsupported file format. Only JPG, PNG, WEBP, or GIF images are accepted.", "error");
         return;
       }
 
@@ -146,19 +148,19 @@ export default function KycPage() {
   const handleSubmit = async () => {
     if (step === 1) {
       if (!form.fullname.trim()) {
-        alert("Please enter your full name as shown on your ID card.");
+        showAlert("Please enter your full name as shown on your ID card.", "error");
         return;
       }
       if (!form.cccd.trim()) {
-        alert("Please enter your national ID number.");
+        showAlert("Please enter your national ID number.", "error");
         return;
       }
       if (!/^\d{9}$|^\d{12}$/.test(form.cccd.trim())) {
-        alert("Invalid ID number format — must be exactly 9 or 12 digits.");
+        showAlert("Invalid ID number format — must be exactly 9 or 12 digits.", "error");
         return;
       }
       if (!form.dob) {
-        alert("Please enter your date of birth.");
+        showAlert("Please enter your date of birth.", "error");
         return;
       }
       const birthDate = new Date(form.dob);
@@ -169,7 +171,7 @@ export default function KycPage() {
         age--;
       }
       if (age < 15) {
-        alert("You must be at least 15 years old to submit a KYC application.");
+        showAlert("You must be at least 15 years old to submit a KYC application.", "error");
         return;
       }
       setStep(2);
@@ -183,15 +185,15 @@ export default function KycPage() {
 
     if (!isUpdate) {
       if (!form.frontImg) {
-        alert("Please upload the front side of your ID card.");
+        showAlert("Please upload the front side of your ID card.", "error");
         return;
       }
       if (!form.backImg) {
-        alert("Please upload the back side of your ID card.");
+        showAlert("Please upload the back side of your ID card.", "error");
         return;
       }
       if (!form.selfieImg) {
-        alert("Please upload a selfie photo.");
+        showAlert("Please upload a selfie photo.", "error");
         return;
       }
     }
@@ -229,11 +231,11 @@ export default function KycPage() {
         window.dispatchEvent(new Event("kyc_updated"));
         setSubmitted(true);
       } else {
-        alert(res.message || "Failed to submit KYC application.");
+        showAlert(res.message || "Failed to submit KYC application.", "error");
       }
     } catch (err) {
       console.error("KYC submission error:", err);
-      alert(err.response?.data?.message || "Server error during submission. Please try again.");
+      showAlert(err.response?.data?.message || "Server error during submission. Please try again.", "error");
     }
   };
 

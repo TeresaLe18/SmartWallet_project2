@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.jsx";
 import "./globals.css";
 import { LanguageProvider } from "./context/LanguageContext";
+import { ModalProvider } from "./context/ModalContext";
 
 const container = document.getElementById("root");
 const root = createRoot(container);
@@ -10,7 +11,9 @@ const root = createRoot(container);
 root.render(
   <React.StrictMode>
     <LanguageProvider>
-      <App />
+      <ModalProvider>
+        <App />
+      </ModalProvider>
     </LanguageProvider>
   </React.StrictMode>
 );

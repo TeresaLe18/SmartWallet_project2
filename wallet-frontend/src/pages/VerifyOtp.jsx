@@ -3,9 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { Wallet, Mail, RefreshCw, CheckCircle, ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { authAPI } from "../services/api";
+import { useModal } from "../context/ModalContext";
 
 export default function VerifyOtpPage() {
   const navigate = useNavigate();
+  const { showAlert } = useModal();
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [countdown, setCountdown] = useState(60);
   const [canResend, setCanResend] = useState(false);
@@ -82,7 +84,7 @@ export default function VerifyOtpPage() {
     try {
       const res = await authAPI.resendOtp(email);
       if (res.success) {
-        alert(`A new OTP code has been sent to ${email}. Please check your inbox.`);
+        showAlert(`A new OTP code has been sent to ${email}. Please check your inbox.`, "success");
       } else {
         setError(res.message || "Failed to resend OTP.");
       }

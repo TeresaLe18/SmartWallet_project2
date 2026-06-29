@@ -3,11 +3,13 @@ import { Send, Image, X, Headphones, Shield } from "lucide-react";
 import { supportAPI } from "../../services/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "../../context/LanguageContext";
+import { useModal } from "../../context/ModalContext";
 import "./ChatLayout.css";
 import "./Support.css";
 
 export default function Support() {
   const { t, lang } = useLanguage();
+  const { showAlert } = useModal();
   const [messages, setMessages] = useState([]);
   const [inputText, setInputText] = useState("");
   const [selectedImage, setSelectedImage] = useState(null);
@@ -49,7 +51,7 @@ export default function Support() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert(lang === "vi" ? "Kích thước ảnh đính kèm không được vượt quá 5MB." : "Attached image size must not exceed 5MB.");
+      showAlert(lang === "vi" ? "Kích thước ảnh đính kèm không được vượt quá 5MB." : "Attached image size must not exceed 5MB.", "error");
       return;
     }
 
@@ -77,7 +79,7 @@ export default function Support() {
       }
     } catch (error) {
       console.error("Failed to send message:", error);
-      alert(error.response?.data?.message || (lang === "vi" ? "Không thể gửi tin nhắn hỗ trợ. Vui lòng thử lại." : "Failed to send support message. Please try again."));
+      showAlert(error.response?.data?.message || (lang === "vi" ? "Không thể gửi tin nhắn hỗ trợ. Vui lòng thử lại." : "Failed to send support message. Please try again."), "error");
     } finally {
       setSending(false);
     }

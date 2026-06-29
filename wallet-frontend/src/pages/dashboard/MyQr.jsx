@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { QRCodeCanvas } from "qrcode.react";
 import { Download, Copy, Send, QrCode } from "lucide-react";
 import { useLanguage } from "../../context/LanguageContext";
+import { useModal } from "../../context/ModalContext";
 import "./MyQr.css";
 
 const generateUserHash = (userId, email, name) => {
@@ -34,6 +35,7 @@ const generateUserHash = (userId, email, name) => {
 
 export default function MyQr() {
   const { t } = useLanguage();
+  const { showAlert } = useModal();
   const qrRef = useRef(null);
   const [copied, setCopied] = useState(false);
 
@@ -128,7 +130,7 @@ export default function MyQr() {
             {copied ? t.myQr.copied : t.myQr.copyQr}
           </button>
 
-          <button type="button" className="qr-action-btn" onClick={() => alert("Demo: QR scanner form")}>
+          <button type="button" className="qr-action-btn" onClick={() => showAlert("Demo: QR scanner form", "info")}>
             <Send size={18} />
             {t.myQr.transfer}
           </button>

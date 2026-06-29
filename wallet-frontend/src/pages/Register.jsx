@@ -15,6 +15,7 @@ import { authAPI } from "../services/api";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { useLanguage } from "../context/LanguageContext";
+import { useModal } from "../context/ModalContext";
 import "./Register.css";
 
 const EMAIL_REGEX = /\S+@\S+\.\S+/;
@@ -23,6 +24,7 @@ const strengthClasses = ["", "weak", "fair", "good", "strong"];
 export default function RegisterPage() {
   const navigate = useNavigate();
   const { t, lang } = useLanguage();
+  const { showAlert } = useModal();
   const [form, setForm] = useState({ email: "", password: "", confirmPassword: "" });
   const [showPass, setShowPass] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -97,10 +99,11 @@ export default function RegisterPage() {
 
       if (data.success) {
         localStorage.setItem("bw_pending_email", form.email);
-        alert(
+        showAlert(
           lang === "vi"
             ? `Đăng ký tài khoản thành công! Mã OTP xác thực đã được gửi đến ${form.email}. Vui lòng kiểm tra hộp thư đến Gmail của bạn (bao gồm cả thư mục spam).`
-            : `Account registered successfully! A verification OTP code has been sent to ${form.email}. Please check your Gmail inbox (including spam/junk folder).`
+            : `Account registered successfully! A verification OTP code has been sent to ${form.email}. Please check your Gmail inbox (including spam/junk folder).`,
+          "success"
         );
         navigate("/verify-otp");
       } else {

@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { QRCodeCanvas as QRCode } from "qrcode.react";
 import { walletAPI, authAPI, bankAPI, payosAPI, categoryAPI, voucherAPI, formatVND } from "../../services/api";
 import { useLanguage } from "../../context/LanguageContext";
+import { useModal } from "../../context/ModalContext";
 import jsQR from "jsqr";
 import "./Wallets.css";
 
@@ -171,6 +172,7 @@ const mapBackendTx = (tx, currentEmail) => {
 
 export default function WalletsPage() {
   const { lang, t } = useLanguage();
+  const { showConfirm } = useModal();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [tab, setTab] = useState("all");
@@ -495,23 +497,24 @@ export default function WalletsPage() {
     }
   };
 
-  const handleUnlinkBank = async (bankId, bankName) => {
-    if (!confirm(`Are you sure you want to unlink ${bankName}?`)) return;
-    try {
-      const res = await bankAPI.unlinkBank(bankId);
-      if (res.success) {
-        await fetchBanks();
-        if (selectedBankId === bankId) {
-          const remaining = linkedBanks.filter(x => x.id !== bankId);
-          setSelectedBankId(remaining[0]?.id || "");
+  const handleUnlinkBank = (bankId, bankName) => {
+    showConfirm(`Are you sure you want to unlink ${bankName}?`, async () => {
+      try {
+        const res = await bankAPI.unlinkBank(bankId);
+        if (res.success) {
+          await fetchBanks();
+          if (selectedBankId === bankId) {
+            const remaining = linkedBanks.filter(x => x.id !== bankId);
+            setSelectedBankId(remaining[0]?.id || "");
+          }
+          showToast("Bank account unlinked successfully!");
+        } else {
+          showToast(res.message || "Failed to unlink bank account.", "error");
         }
-        showToast("Bank account unlinked successfully!");
-      } else {
-        showToast(res.message || "Failed to unlink bank account.", "error");
+      } catch (err) {
+        showToast(err.response?.data?.message || "Connection error. Please try again.", "error");
       }
-    } catch (err) {
-      showToast(err.response?.data?.message || "Connection error. Please try again.", "error");
-    }
+    }, null, true);
   };
 
   const fetchWalletData = async () => {

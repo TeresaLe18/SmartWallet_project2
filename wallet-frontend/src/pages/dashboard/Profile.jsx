@@ -4,10 +4,12 @@ import { User, Camera, Phone, Mail, Lock, CheckCircle, RefreshCw, AlertCircle, E
 import { motion, AnimatePresence } from "framer-motion";
 import { authAPI, getUploadUrl } from "../../services/api";
 import { useLanguage } from "../../context/LanguageContext";
+import { useModal } from "../../context/ModalContext";
 
 export default function ProfilePage() {
   const navigate = useNavigate();
   const { t, lang } = useLanguage();
+  const { showAlert } = useModal();
 
   // 1. Fetch current logged-in user from localStorage
   const [user, setUser] = useState({
@@ -172,7 +174,7 @@ export default function ProfilePage() {
     if (!file) return;
 
     if (file.size > 2 * 1024 * 1024) {
-      alert("Image size must be less than 2MB");
+      showAlert("Image size must be less than 2MB", "error");
       return;
     }
 
@@ -192,7 +194,7 @@ export default function ProfilePage() {
       setTimeout(() => setAvatarSuccess(false), 2000);
     } catch (err) {
       console.log(err);
-      alert(err.response?.data?.message || (lang === "vi" ? "Tải ảnh đại diện thất bại. Vui lòng thử lại." : "Avatar upload failed. Please try again."));
+      showAlert(err.response?.data?.message || (lang === "vi" ? "Tải ảnh đại diện thất bại. Vui lòng thử lại." : "Avatar upload failed. Please try again."), "error");
     } finally {
       setAvatarLoading(false);
     }
@@ -200,7 +202,7 @@ export default function ProfilePage() {
 
   const handleSaveName = async () => {
     if (!editNameVal.trim()) {
-      alert(t.profile.nameCannotBeEmpty);
+      showAlert(t.profile.nameCannotBeEmpty, "error");
       return;
     }
     try {
@@ -225,11 +227,11 @@ export default function ProfilePage() {
         window.dispatchEvent(new Event("kyc_updated"));
         setIsEditingName(false);
       } else {
-        alert(res.message || "Failed to update profile name.");
+        showAlert(res.message || "Failed to update profile name.", "error");
       }
     } catch (err) {
       console.error(err);
-      alert(err.response?.data?.message || "Error updating name on server.");
+      showAlert(err.response?.data?.message || "Error updating name on server.", "error");
     }
   };
   //-------------------------------------
