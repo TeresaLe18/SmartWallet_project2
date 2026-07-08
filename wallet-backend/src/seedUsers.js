@@ -9,9 +9,7 @@ const bcrypt = require('bcrypt');
 
 const PASS_SUFFIX = '@123456';
 
-// balance = null -> không tạo ví (đúng kiểu createAdmin.js cho admin).
 const USERS = [
-  { email: 'admin@smartwallet.com', role: 'ADMIN', balance: null },
   { email: 'thuan@smartwallet.com', role: 'USER', balance: 100000000 },
   { email: 'duyen@smartwallet.com', role: 'USER', balance: 100000000 },
   { email: 'phong@smartwallet.com', role: 'USER', balance: 100000000 },
@@ -21,7 +19,7 @@ const USERS = [
 async function main() {
   for (const u of USERS) {
     const username = u.email.split('@')[0];
-    const plain = username + PASS_SUFFIX; // thuan@123456, admin@123456, ...
+    const plain = username + PASS_SUFFIX; // thuan@123456, 
     const password = await bcrypt.hash(plain, 10);
 
     const existing = await prisma.user.findUnique({ where: { email: u.email } });

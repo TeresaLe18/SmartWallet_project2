@@ -33,7 +33,9 @@ export default function Footer() {
         
         {/* Contact US */}
         <div className="space-y-4">
-          <h5 className="text-sm font-bold uppercase tracking-wider text-red-500">{t.footer.contactUs}</h5>
+          <h5 className="text-sm font-bold uppercase tracking-wider text-red-500">
+            <Link to="/contact" className="hover:text-white transition-colors">{t.footer.contactUs}</Link>
+          </h5>
           <ul className="space-y-4 text-sm">
             <li className="flex items-start gap-3">
               <Users className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />

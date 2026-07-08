@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, X, Tag, Percent, FolderOpen, Flame } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Plus, Pencil, Trash2, X, Tag, Percent, FolderOpen, Flame, CheckCircle2, XCircle } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { feeAPI, categoryAPI, voucherAPI } from "../../services/api";
 import { useLanguage } from "../../context/LanguageContext";
@@ -28,6 +28,24 @@ export default function AdminServices() {
   const [form, setForm] = useState(emptyForm);
   const [newCat, setNewCat] = useState("");
   const [catList, setCatList] = useState([]);
+  const [toast, setToast] = useState(null);
+  const toastTimeoutRef = useRef(null);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+  const [formError, setFormError] = useState("");
+  const [feeFormError, setFeeFormError] = useState("");
+
+  const showToast = (message, type = "success") => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToast({ message, type });
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
 
   const loadCats = async () => {
     try { const res = await categoryAPI.adminList(); if (res.success) setCatList(res.data); }
@@ -37,12 +55,13 @@ export default function AdminServices() {
     if (!newCat.trim()) return;
     try {
       const res = await categoryAPI.create(newCat.trim());
-      if (res.success) { setNewCat(""); loadCats(); } else alert(res.message || t.adminServices.failedToAddCategory);
-    } catch (e) { alert(e.response?.data?.message || t.adminServices.failedToAddCategory); }
+      if (res.success) { setNewCat(""); loadCats(); }
+      else showToast(res.message || t.adminServices.failedToAddCategory, "error");
+    } catch (e) { showToast(e.response?.data?.message || t.adminServices.failedToAddCategory, "error"); }
   };
   const handleDeleteCat = async (id) => {
     try { const res = await categoryAPI.remove(id); if (res.success) loadCats(); }
-    catch (e) { alert(e.response?.data?.message || t.adminServices.failedToDeleteCategory); }
+    catch (e) { showToast(e.response?.data?.message || t.adminServices.failedToDeleteCategory, "error"); }
   };
 
   // Fee management states (DB qua feeAPI)
@@ -64,40 +83,41 @@ export default function AdminServices() {
   const openAddFee = () => {
     setEditFeeItem(null);
     setFeeForm({ transactionType: "TRANSFER", feeValue: "" });
+    setFeeFormError("");
     setShowFeeModal(true);
   };
 
   const openEditFee = (fee) => {
     setEditFeeItem(fee);
     setFeeForm({ transactionType: fee.transaction_type, feeValue: String(fee.fee_value) });
+    setFeeFormError("");
     setShowFeeModal(true);
   };
 
   const handleSaveFee = async () => {
     const value = Number(feeForm.feeValue);
     if (!Number.isFinite(value) || value < 0) {
-      alert(t.adminServices.feeValueInvalid);
+      setFeeFormError(t.adminServices.feeValueInvalid);
       return;
     }
+    setFeeFormError("");
     try {
       const res = editFeeItem
         ? await feeAPI.update(editFeeItem.id, { feeValue: value })
         : await feeAPI.create(feeForm.transactionType, value);
       if (res.success) { await loadFees(); setShowFeeModal(false); }
-      else alert(res.message || t.adminServices.failedToSaveFee);
+      else setFeeFormError(res.message || t.adminServices.failedToSaveFee);
     } catch (e) {
-      alert(e.response?.data?.message || t.adminServices.serverErrorSavingFee);
+      setFeeFormError(e.response?.data?.message || t.adminServices.serverErrorSavingFee);
     }
   };
 
-  const handleDeleteFee = async (id) => {
-    if (!confirm(t.adminServices.deleteFeeConfirm)) return;
-    try {
-      const res = await feeAPI.remove(id);
-      if (res.success) loadFees();
-    } catch (e) {
-      alert(e.response?.data?.message || t.adminServices.errorDeletingFee);
-    }
+  const handleDeleteFee = (id) => {
+    setConfirmAction({
+      type: "deleteFee",
+      id,
+      message: t.adminServices.deleteFeeConfirm,
+    });
   };
 
   const loadVouchers = async () => {
@@ -105,7 +125,7 @@ export default function AdminServices() {
     catch (e) { console.error("Load vouchers failed:", e); }
   };
 
-  const openAdd = () => { setEditItem(null); setForm({ ...emptyForm }); setShowModal(true); };
+  const openAdd = () => { setEditItem(null); setForm({ ...emptyForm }); setFormError(""); setShowModal(true); };
   const openEdit = (v) => {
     setEditItem(v);
     setForm({
@@ -114,14 +134,16 @@ export default function AdminServices() {
       minTransactionAmount: String(v.min_transaction_amount), quantity: String(v.quantity),
       expiredAt: new Date(v.expired_at).toISOString().slice(0, 10), status: v.status,
     });
+    setFormError("");
     setShowModal(true);
   };
 
   const handleSave = async () => {
-    if (!form.code.trim() || !form.title.trim()) { alert(t.adminServices.enterCodeAndTitle); return; }
-    if (!(Number(form.discountValue) > 0)) { alert(t.adminServices.discountValuePositive); return; }
-    if (!(Number(form.quantity) > 0)) { alert(t.adminServices.quantityPositive); return; }
-    if (!form.expiredAt) { alert(t.adminServices.selectExpiryDate); return; }
+    if (!form.code.trim() || !form.title.trim()) { setFormError(t.adminServices.enterCodeAndTitle); return; }
+    if (!(Number(form.discountValue) > 0)) { setFormError(t.adminServices.discountValuePositive); return; }
+    if (!(Number(form.quantity) > 0)) { setFormError(t.adminServices.quantityPositive); return; }
+    if (!form.expiredAt) { setFormError(t.adminServices.selectExpiryDate); return; }
+    setFormError("");
     const payload = {
       code: form.code.trim(), title: form.title.trim(), description: form.desc, tag: form.tag, hot: form.hot,
       discountType: form.discountType, discountValue: Number(form.discountValue),
@@ -131,19 +153,46 @@ export default function AdminServices() {
     try {
       const res = editItem ? await voucherAPI.update(editItem.id, payload) : await voucherAPI.create(payload);
       if (res.success) { await loadVouchers(); setShowModal(false); }
-      else alert(res.message || t.adminServices.failedToSaveVoucher);
-    } catch (e) { alert(e.response?.data?.message || t.adminServices.serverErrorSavingVoucher); }
+      else setFormError(res.message || t.adminServices.failedToSaveVoucher);
+    } catch (e) { setFormError(e.response?.data?.message || t.adminServices.serverErrorSavingVoucher); }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm(t.adminServices.deleteVoucherConfirm)) return;
-    try { const res = await voucherAPI.remove(id); if (res.success) loadVouchers(); }
-    catch (e) { alert(e.response?.data?.message || t.adminServices.errorDeletingVoucher); }
+  const handleDelete = (id) => {
+    setConfirmAction({
+      type: "deleteVoucher",
+      id,
+      message: t.adminServices.deleteVoucherConfirm,
+    });
   };
+
+  const executeConfirmAction = async () => {
+    if (!confirmAction || confirmLoading) return;
+    const { type, id } = confirmAction;
+    setConfirmLoading(true);
+    try {
+      if (type === "deleteFee") {
+        const res = await feeAPI.remove(id);
+        if (res.success) loadFees();
+      } else if (type === "deleteVoucher") {
+        const res = await voucherAPI.remove(id);
+        if (res.success) loadVouchers();
+      }
+      setConfirmAction(null);
+    } catch (e) {
+      const errorMap = {
+        deleteFee: t.adminServices.errorDeletingFee,
+        deleteVoucher: t.adminServices.errorDeletingVoucher,
+      };
+      showToast(e.response?.data?.message || errorMap[type], "error");
+    } finally {
+      setConfirmLoading(false);
+    }
+  };
+
   const toggleActive = async (v) => {
     const newStatus = v.status === "ACTIVE" ? "DISABLED" : "ACTIVE";
     try { const res = await voucherAPI.update(v.id, { status: newStatus }); if (res.success) loadVouchers(); }
-    catch (e) { alert(e.response?.data?.message || t.adminServices.errorUpdatingStatus); }
+    catch (e) { showToast(e.response?.data?.message || t.adminServices.errorUpdatingStatus, "error"); }
   };
 
   const tabs = [{ v:"voucher", l:t.adminServices.tabVoucher, icon:Tag }, { v:"fee", l:t.adminServices.tabFee, icon:Percent }, { v:"category", l:t.adminServices.tabCategory, icon:FolderOpen }];
@@ -151,6 +200,27 @@ export default function AdminServices() {
 
   return (
     <div style={{ maxWidth:900 }}>
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            style={{
+              position: "fixed", top: 24, right: 24, zIndex: 400,
+              background: toast.type === "success" ? "rgba(34,197,94,0.95)" : "rgba(239,68,68,0.95)",
+              backdropFilter: "blur(10px)", color: "white",
+              padding: "12px 24px", borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+              display: "flex", alignItems: "center", gap: 10, fontWeight: 600, fontSize: 14,
+              maxWidth: "min(420px, calc(100vw - 48px))",
+            }}
+          >
+            {toast.type === "success" ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
+            {toast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between", marginBottom:20, flexWrap:"wrap", gap:12 }}>
         <div>
           <h1 style={{ fontSize:18, fontWeight:800, marginBottom:2 }}>{t.adminServices.pageTitle}</h1>
@@ -285,10 +355,16 @@ export default function AdminServices() {
               style={{ background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius:18, padding:26, width:"100%", maxWidth:400, maxHeight:"90vh", overflowY:"auto" }}>
               <h3 style={{ fontSize:16, fontWeight:700, marginBottom:18 }}>{editItem ? t.adminServices.editVoucherTitle : t.adminServices.addVoucherTitle}</h3>
 
+              {formError && (
+                <div style={{ marginBottom:14, padding:"10px 12px", borderRadius:8, background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.25)", color:"#ef4444", fontSize:13, lineHeight:1.45 }}>
+                  {formError}
+                </div>
+              )}
+
               {/* Code */}
               <div style={{ marginBottom:14 }}>
                 <label style={{ fontSize:12, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>{t.adminServices.labelCode} <span style={{ color:"#2563eb" }}>*</span></label>
-                <input value={form.code} onChange={e => setForm(p => ({...p, code: e.target.value.toUpperCase()}))} placeholder={t.adminServices.placeholderCode}
+                <input value={form.code} onChange={e => { setFormError(""); setForm(p => ({...p, code: e.target.value.toUpperCase()})); }} placeholder={t.adminServices.placeholderCode}
                   style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:8, padding:"10px 12px", color: "var(--text-primary)", fontSize:13, outline:"none", fontFamily:"monospace", letterSpacing:1 }} />
               </div>
 
@@ -400,6 +476,12 @@ export default function AdminServices() {
                 <Percent size={18} style={{ color: "#2563eb" }} /> {editFeeItem ? t.adminServices.editFeeTitle : t.adminServices.addFeeTitle}
               </h3>
 
+              {feeFormError && (
+                <div style={{ marginBottom:14, padding:"10px 12px", borderRadius:8, background:"rgba(239,68,68,0.1)", border:"1px solid rgba(239,68,68,0.25)", color:"#ef4444", fontSize:13, lineHeight:1.45 }}>
+                  {feeFormError}
+                </div>
+              )}
+
               {/* Loại giao dịch */}
               <div style={{ marginBottom:14 }}>
                 <label style={{ fontSize:12, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>{t.adminServices.labelTransactionType} <span style={{ color:"#2563eb" }}>*</span></label>
@@ -412,7 +494,7 @@ export default function AdminServices() {
               {/* Phí (VND) */}
               <div style={{ marginBottom:20 }}>
                 <label style={{ fontSize:12, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>{t.adminServices.labelFixedFee} <span style={{ color:"#2563eb" }}>*</span></label>
-                <input type="number" min="0" value={feeForm.feeValue} onChange={e => setFeeForm(p => ({...p, feeValue: e.target.value}))} placeholder={t.adminServices.placeholderFixedFee}
+                <input type="number" min="0" value={feeForm.feeValue} onChange={e => { setFeeFormError(""); setFeeForm(p => ({...p, feeValue: e.target.value})); }} placeholder={t.adminServices.placeholderFixedFee}
                   style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:8, padding:"10px 12px", color: "var(--text-primary)", fontSize:13, outline:"none" }} />
               </div>
 
@@ -424,6 +506,57 @@ export default function AdminServices() {
               </div>
             </motion.div>
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirm delete modal */}
+      <AnimatePresence>
+        {confirmAction && (
+          <div
+            onClick={() => !confirmLoading && setConfirmAction(null)}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 350, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: "var(--bg-dark)", border: "1px solid #222", borderRadius: 20, padding: 28, width: "100%", maxWidth: 420 }}
+            >
+              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "var(--text-primary)" }}>
+                {t.adminServices.deleteBtn}
+              </h3>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 20, lineHeight: 1.6 }}>
+                {confirmAction.message}
+              </p>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={executeConfirmAction}
+                  disabled={confirmLoading}
+                  style={{
+                    flex: 1, background: "rgba(239,68,68,0.15)", border: "1px solid rgba(239,68,68,0.3)",
+                    color: "#ef4444", borderRadius: 8, padding: "10px", fontWeight: 700, fontSize: 13,
+                    cursor: confirmLoading ? "not-allowed" : "pointer", opacity: confirmLoading ? 0.7 : 1,
+                  }}
+                >
+                  {confirmLoading ? "..." : t.adminServices.deleteBtn}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmAction(null)}
+                  disabled={confirmLoading}
+                  style={{
+                    flex: 1, background: "var(--bg-card2)", border: "1px solid var(--border)",
+                    color: "var(--text-secondary)", borderRadius: 8, padding: "10px", fontWeight: 600, fontSize: 13,
+                    cursor: confirmLoading ? "not-allowed" : "pointer",
+                  }}
+                >
+                  {t.adminServices.cancelBtn}
+                </button>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

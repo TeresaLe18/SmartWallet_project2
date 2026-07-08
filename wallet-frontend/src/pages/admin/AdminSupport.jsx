@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Send, Image, X, Headphones, User, Shield, Search, MessageSquare, AlertCircle } from "lucide-react";
+import { Send, Image, X, Headphones, User, Shield, Search, MessageSquare, AlertCircle, CheckCircle2, XCircle } from "lucide-react";
 import { supportAPI } from "../../services/api";
 import { motion, AnimatePresence } from "framer-motion";
 import { useLanguage } from "../../context/LanguageContext";
@@ -16,6 +16,20 @@ export default function AdminSupport() {
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  const toastTimeoutRef = useRef(null);
+  const [toast, setToast] = useState(null);
+
+  const showToast = (message, type = "error") => {
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    setToast({ message, type });
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
 
   // Auto-scroll to bottom of chat
   const scrollToBottom = (behavior = "smooth") => {
@@ -99,7 +113,7 @@ export default function AdminSupport() {
     if (!file) return;
 
     if (file.size > 5 * 1024 * 1024) {
-      alert(t.adminSupport.imageSizeError);
+      showToast(t.adminSupport.imageSizeError, "error");
       return;
     }
 
@@ -139,7 +153,7 @@ export default function AdminSupport() {
       }
     } catch (error) {
       console.error("Failed to send admin reply:", error);
-      alert(error.response?.data?.message || t.adminSupport.sendError);
+      showToast(error.response?.data?.message || t.adminSupport.sendError, "error");
     } finally {
       setSending(false);
     }
@@ -153,7 +167,27 @@ export default function AdminSupport() {
   );
 
   return (
-    <div style={{ display: "flex", height: "calc(100vh - 120px)", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
+    <div style={{ position: "relative", display: "flex", height: "calc(100vh - 120px)", background: "var(--bg-card)", border: "1px solid var(--border)", borderRadius: 16, overflow: "hidden" }}>
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            style={{
+              position: "fixed", top: 24, right: 24, zIndex: 400,
+              background: toast.type === "success" ? "rgba(34,197,94,0.95)" : "rgba(239,68,68,0.95)",
+              backdropFilter: "blur(10px)", color: "white",
+              padding: "12px 24px", borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+              display: "flex", alignItems: "center", gap: 10, fontWeight: 600, fontSize: 14,
+              maxWidth: "min(420px, calc(100vw - 48px))",
+            }}
+          >
+            {toast.type === "success" ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
+            {toast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* ─── LEFT SIDEBAR: CONVERSATIONS LIST ─── */}
       <div style={{ width: 320, borderRight: "1px solid var(--border)", display: "flex", flexDirection: "column", background: "rgba(255,255,255,0.01)" }}>
         {/* Search Bar */}

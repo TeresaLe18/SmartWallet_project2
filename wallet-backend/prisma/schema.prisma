@@ -255,9 +255,9 @@ model Transaction {
 
   sender_wallet   Wallet? @relation("sender", fields: [sender_wallet_id], references: [id])
   receiver_wallet Wallet? @relation("receiver", fields: [receiver_wallet_id], references: [id])
-  fee_rule TransactionFeeRule? @relation(fields: [fee_rule_id], references: [id])
-  voucher  Voucher?  @relation(fields: [voucher_id], references: [id])
-  category Category? @relation(fields: [category_id], references: [id])
+  fee_rule TransactionFeeRule? @relation(fields: [fee_rule_id], references: [id], onDelete: Restrict)
+  voucher  Voucher?  @relation(fields: [voucher_id], references: [id], onDelete: Restrict)
+  category Category? @relation(fields: [category_id], references: [id], onDelete: Restrict)
 
   ledger_entries LedgerEntry[]
   fraud_logs FraudLog[]

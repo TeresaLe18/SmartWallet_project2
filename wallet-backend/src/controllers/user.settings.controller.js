@@ -2,6 +2,7 @@ const prisma = require('../config/prisma');
 const bcrypt = require('bcrypt');
 const nodemailer = require('nodemailer');
 const { clearRefreshTokenCookie } = require('../utils/authCookie');
+const { buildOtpEmail, getEmailFrom } = require('../utils/otpEmailTemplate');
 
 const otpStore = {};
 
@@ -146,10 +147,9 @@ const requestChangeContact = async (req, res) => {
         };
 
         await transporter.sendMail({
-            from: process.env.EMAIL_USER,
+            from: getEmailFrom(),
             to: user.email,
-            subject: '[SMARTWALLET] OTP VERIFY CONTACT CHANGE',
-            text: `Your OTP code is: ${otp}\nThis code expires in 5 minutes.`,
+            ...buildOtpEmail({ purpose: 'contact_change', otp }),
         });
 
         return res.status(200).json({

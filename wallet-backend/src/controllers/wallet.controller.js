@@ -459,6 +459,71 @@ const withdraw = async (req, res) => {
   }
 };
 
+// ─── GET /wallet/transfer/recipient?dest=... ─────────────────────────────────
+
+const checkTransferRecipient = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const dest = String(req.query.dest || '').trim();
+
+    if (!dest) {
+      return res.status(400).json({ success: false, message: 'Recipient email or phone is required' });
+    }
+
+    const receiverAccount = await prisma.user.findFirst({
+      where: { OR: [{ email: dest }, { phone: dest }] },
+      include: {
+        wallet: { select: { status: true } },
+        kyc: { select: { full_name: true } },
+      },
+    });
+
+    if (!receiverAccount) {
+      return res.status(200).json({ success: true, valid: false, code: 'NOT_FOUND', message: 'Recipient not found' });
+    }
+    if (receiverAccount.id === userId) {
+      return res.status(200).json({ success: true, valid: false, code: 'SELF', message: 'Cannot transfer to yourself' });
+    }
+    if (receiverAccount.status === 'LOCKED' || receiverAccount.status === 'DISABLED') {
+      return res.status(200).json({
+        success: true,
+        valid: false,
+        code: 'ACCOUNT_INACTIVE',
+        message: 'Recipient account is not active',
+      });
+    }
+    if (!receiverAccount.wallet) {
+      return res.status(200).json({
+        success: true,
+        valid: false,
+        code: 'NO_WALLET',
+        message: 'Recipient wallet not found',
+      });
+    }
+    if (receiverAccount.wallet.status === 'FROZEN') {
+      return res.status(200).json({
+        success: true,
+        valid: false,
+        code: 'WALLET_FROZEN',
+        message: 'Recipient wallet is frozen',
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      valid: true,
+      recipient: {
+        email: receiverAccount.email,
+        phone: receiverAccount.phone,
+        name: receiverAccount.kyc?.full_name || receiverAccount.email,
+        walletStatus: receiverAccount.wallet.status,
+      },
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // ─── POST /wallet/transfer  (PIN already verified by pinMiddleware) ───────────
 
 const transfer = async (req, res) => {
@@ -495,7 +560,7 @@ const transfer = async (req, res) => {
     if (receiverAccount.id === userId) {
       return res.status(400).json({ success: false, message: 'Cannot transfer to yourself' });
     }
-    if (receiverAccount.status === 'BANNED' || receiverAccount.status === 'LOCKED') {
+    if (receiverAccount.status === 'LOCKED') {
       return res.status(403).json({ success: false, message: 'Recipient account is not active' });
     }
 
@@ -1129,5 +1194,5 @@ const confirmQrDeposit = async (req, res) => {
   }
 };
 
-module.exports = { getStats, getFees, getTransactions, deposit, withdraw, transfer, payment, createQrDeposit,
+module.exports = { getStats, getFees, getTransactions, checkTransferRecipient, deposit, withdraw, transfer, payment, createQrDeposit,
   confirmQrDeposit,};

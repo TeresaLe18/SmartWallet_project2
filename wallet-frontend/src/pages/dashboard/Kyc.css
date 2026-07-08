@@ -233,3 +233,118 @@
   color: #a16207;
   line-height: 1.5;
 }
+
+.kyc-reject-banner {
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 12px;
+}
+
+.kyc-reject-icon {
+  color: #ef4444;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.kyc-reject-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ef4444;
+  margin-bottom: 4px;
+}
+
+.kyc-reject-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.kyc-reject-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.kyc-form-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  color: #ef4444;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.kyc-form-error svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.kyc-field-group {
+  margin-bottom: 16px;
+}
+
+.kyc-field-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.kyc-required-mark {
+  color: #ef4444;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.kyc-field-input {
+  width: 100%;
+  background: var(--bg-card2);
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  border: 1px solid var(--border);
+}
+
+.kyc-field-input:focus {
+  border-color: var(--primary);
+}
+
+.kyc-field-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.kyc-server-error {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.kyc-upload-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.kyc-upload-ok {
+  font-size: 11px;
+  color: #22c55e;
+  margin-top: 4px;
+  text-align: center;
+}

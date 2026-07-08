@@ -9,6 +9,7 @@ const {
     getRefreshTokenFromRequest,
 } = require('../utils/authCookie');
 const { hashRefreshToken, verifyStoredRefreshToken } = require('../utils/refreshTokenHash');
+const { buildOtpEmail, getEmailFrom } = require('../utils/otpEmailTemplate');
 
 const otpStore = {};
 const resetPasswordStore = {};
@@ -57,10 +58,9 @@ const register = async (req, res) => {
 
         // send mail
         await transporter.sendMail({
-            from: process.env.EMAIL_USER,
+            from: getEmailFrom(),
             to: email,
-            subject: '[SMARTWALLET] [REGISTER] OTP VERIFICATION ',
-            text: `Your OTP code is: ${otp}`,
+            ...buildOtpEmail({ purpose: 'register', otp }),
         });
 
         // save opt temporarily
@@ -129,18 +129,6 @@ const verifyRegister = async (req, res) => {
 
         // delete otp after verifying
         delete otpStore[email];
-
-        // create token
-        const token = jwt.sign(
-            {
-                userId: user.id,
-                role: user.role,
-            },
-            process.env.JWT_SECRET,
-            {
-                expiresIn: '15m',
-            },
-        );
 
         return res.status(201).json({
             success: true,
@@ -213,10 +201,9 @@ const resendOtp = async (req, res) => {
 
         // send mail
         await transporter.sendMail({
-            from: process.env.EMAIL_USER,
+            from: getEmailFrom(),
             to: email,
-            subject: '[SMARTWALLET] [REGISTER] OTP VERIFICATION',
-            text: `Your new OTP code is: ${otp}`,
+            ...buildOtpEmail({ purpose: 'resend_register', otp }),
         });
 
         // update otp
@@ -443,10 +430,9 @@ const forgotPassword = async (req, res) => {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
         await transporter.sendMail({
-            from: process.env.EMAIL_USER,
+            from: getEmailFrom(),
             to: email,
-            subject: '[SMARTWALLET] PASSWORD RESET OTP',
-            text: `Your OTP code is: ${otp}`,
+            ...buildOtpEmail({ purpose: 'password_reset', otp }),
         });
 
         resetPasswordStore[email] = {
@@ -526,33 +512,33 @@ const resetPassword = async (req, res) => {
     }
 };
 // Set transaction PIN
-const setPin = async (req, res) => {
-    try {
-        const userId = req.user.userId;
-        const { pin } = req.body;
+// const setPin = async (req, res) => {
+//     try {
+//         const userId = req.user.userId;
+//         const { pin } = req.body;
 
-        if (!pin || !/^\d{4}$/.test(String(pin))) {
-            return res.status(400).json({
-                success: false,
-                message: 'PIN must be exactly 4 digits',
-            });
-        }
+//         if (!pin || !/^\d{4}$/.test(String(pin))) {
+//             return res.status(400).json({
+//                 success: false,
+//                 message: 'PIN must be exactly 4 digits',
+//             });
+//         }
 
-        const pin_hash = await bcrypt.hash(String(pin), 10);
+//         const pin_hash = await bcrypt.hash(String(pin), 10);
 
-        await prisma.user.update({
-            where: { id: userId },
-            data: { pin_hash, pin_failed_attempts: 0, pin_locked_until: null },
-        });
+//         await prisma.user.update({
+//             where: { id: userId },
+//             data: { pin_hash, pin_failed_attempts: 0, pin_locked_until: null },
+//         });
 
-        return res.status(200).json({
-            success: true,
-            message: 'Transaction PIN set successfully',
-        });
-    } catch (error) {
-        return res.status(500).json({ success: false, message: error.message });
-    }
-};
+//         return res.status(200).json({
+//             success: true,
+//             message: 'Transaction PIN set successfully',
+//         });
+//     } catch (error) {
+//         return res.status(500).json({ success: false, message: error.message });
+//     }
+// };
 
 // Change transaction PIN
 const changePin = async (req, res) => {
@@ -670,10 +656,9 @@ const requestForgotPinOtp = async (req, res) => {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
         await transporter.sendMail({
-            from: process.env.EMAIL_USER,
+            from: getEmailFrom(),
             to: user.email,
-            subject: '[SMARTWALLET] PIN RESET OTP',
-            text: `Your OTP code is: ${otp}\nThis code expires in 5 minutes.`,
+            ...buildOtpEmail({ purpose: 'pin_reset', otp }),
         });
 
         pinResetOtpStore[userId] = {
@@ -784,10 +769,9 @@ const requestCreatePinOtp = async (req, res) => {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
         await transporter.sendMail({
-            from: process.env.EMAIL_USER,
+            from: getEmailFrom(),
             to: user.email,
-            subject: '[SMARTWALLET] PIN SETUP OTP',
-            text: `Your OTP code is: ${otp}\nThis code expires in 5 minutes.`,
+            ...buildOtpEmail({ purpose: 'pin_setup', otp }),
         });
 
         createPinOtpStore[userId] = {
@@ -960,7 +944,6 @@ module.exports = {
     resendOtp,
     logout,
     refreshTokenHandler,
-    setPin,
     changePin,
     requestForgotPinOtp,
     resetPinWithOtp,

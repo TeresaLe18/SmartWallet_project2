@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { 
   X, Search, Eye, User, CreditCard,
-  ArrowDownLeft, ArrowUpRight, History
+  ArrowDownLeft, ArrowUpRight, History, CheckCircle2, XCircle
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { adminAPI, getUploadUrl, formatVND } from "../../services/api";
@@ -30,6 +30,24 @@ export default function AdminUsersPage() {
   const [modalTab, setModalTab] = useState("info");
   const [rejectingUserId, setRejectingUserId] = useState(null);
   const [rejectComment, setRejectComment] = useState("");
+  const [toast, setToast] = useState(null);
+  const toastTimeoutRef = useRef(null);
+  const [confirmAction, setConfirmAction] = useState(null);
+  const [confirmLoading, setConfirmLoading] = useState(false);
+
+  const showToast = (message, type = "success") => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToast({ message, type });
+    toastTimeoutRef.current = setTimeout(() => setToast(null), 3000);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    };
+  }, []);
 
   const fetchUsers = async () => {
     try {
@@ -87,10 +105,10 @@ export default function AdminUsersPage() {
     try {
       await adminAPI.reviewKyc(id, 'VERIFIED');
       await fetchUsers();
-      alert(t.adminUsers.alertApproveSuccess.replace("{name}", targetUser.name || targetUser.email));
+      showToast(t.adminUsers.alertApproveSuccess.replace("{name}", targetUser.name || targetUser.email), "success");
     } catch (error) {
       console.error("Failed to approve KYC:", error);
-      alert(error.response?.data?.message || t.adminUsers.errorApprove);
+      showToast(error.response?.data?.message || t.adminUsers.errorApprove, "error");
     }
   };
 
@@ -101,7 +119,7 @@ export default function AdminUsersPage() {
 
   const submitRejectKyc = async () => {
     if (!rejectComment.trim()) {
-      alert(t.adminUsers.alertRejectReasonRequired);
+      showToast(t.adminUsers.alertRejectReasonRequired, "error");
       return;
     }
     const targetUser = users.find(u => u.id === rejectingUserId);
@@ -113,76 +131,96 @@ export default function AdminUsersPage() {
       }
       setRejectingUserId(null);
       setRejectComment("");
-      alert(t.adminUsers.alertRejectSuccess.replace("{name}", targetUser ? (targetUser.name || targetUser.email) : t.adminUsers.fallbackUserLower));
+      showToast(t.adminUsers.alertRejectSuccess.replace("{name}", targetUser ? (targetUser.name || targetUser.email) : t.adminUsers.fallbackUserLower), "success");
     } catch (error) {
       console.error("Failed to reject KYC:", error);
-      alert(error.response?.data?.message || t.adminUsers.errorReject);
+      showToast(error.response?.data?.message || t.adminUsers.errorReject, "error");
     }
   };
 
-  const handleToggleLock = async (id) => {
+  const handleToggleLock = (id) => {
     const targetUser = users.find(u => u.id === id);
     if (!targetUser || targetUser.status === "disabled") return;
 
     const isLocking = targetUser.status === "active";
     const label = targetUser.name || targetUser.email;
-    const confirmed = window.confirm(
-      isLocking
-        ? t.adminUsers.confirmLock.replace("{name}", label)
-        : t.adminUsers.confirmUnlock.replace("{name}", label)
-    );
-    if (!confirmed) return;
+    const message = isLocking
+      ? t.adminUsers.confirmLock.replace("{name}", label)
+      : t.adminUsers.confirmUnlock.replace("{name}", label);
 
-    try {
-      if (isLocking) {
-        await adminAPI.lockUser(id);
-        alert(t.adminUsers.alertLockSuccess);
-      } else if (targetUser.status === "locked") {
-        await adminAPI.unlockUser(id);
-        alert(t.adminUsers.alertUnlockSuccess);
-      }
-      await fetchUsers();
-    } catch (error) {
-      console.error("Failed to toggle user status:", error);
-      alert(error.response?.data?.message || t.adminUsers.errorLock);
-    }
+    setConfirmAction({
+      type: isLocking ? "lock" : "unlock",
+      userId: id,
+      message,
+    });
   };
 
-  const handleReactivate = async (id) => {
+  const handleReactivate = (id) => {
     const targetUser = users.find(u => u.id === id);
     if (!targetUser || targetUser.status !== "disabled") return;
-    if (!window.confirm(t.adminUsers.confirmReactivate.replace("{name}", targetUser.name || targetUser.email))) return;
-    try {
-      await adminAPI.reactivateAccount(id);
-      await fetchUsers();
-      alert(t.adminUsers.alertReactivateSuccess);
-    } catch (error) {
-      console.error("Failed to reactivate account:", error);
-      alert(error.response?.data?.message || t.adminUsers.errorReactivate);
-    }
+
+    setConfirmAction({
+      type: "reactivate",
+      userId: id,
+      message: t.adminUsers.confirmReactivate.replace("{name}", targetUser.name || targetUser.email),
+    });
   };
 
-  const handleToggleFreeze = async (id) => {
+  const handleToggleFreeze = (id) => {
     const targetUser = users.find(u => u.id === id);
     if (!targetUser) return;
 
     const isFreezing = targetUser.walletStatus !== "frozen";
     const label = targetUser.name || targetUser.email;
-    const confirmed = window.confirm(
-      isFreezing
-        ? t.adminUsers.confirmFreeze.replace("{name}", label)
-        : t.adminUsers.confirmUnfreeze.replace("{name}", label)
-    );
-    if (!confirmed) return;
+    const message = isFreezing
+      ? t.adminUsers.confirmFreeze.replace("{name}", label)
+      : t.adminUsers.confirmUnfreeze.replace("{name}", label);
 
-    const nextStatus = isFreezing ? "FROZEN" : "ACTIVE";
+    setConfirmAction({
+      type: isFreezing ? "freeze" : "unfreeze",
+      userId: id,
+      message,
+    });
+  };
+
+  const executeConfirmAction = async () => {
+    if (!confirmAction || confirmLoading) return;
+
+    const { type, userId } = confirmAction;
+    setConfirmLoading(true);
+
     try {
-      await adminAPI.updateWalletStatus(id, nextStatus);
+      if (type === "lock") {
+        await adminAPI.lockUser(userId);
+        showToast(t.adminUsers.alertLockSuccess, "success");
+      } else if (type === "unlock") {
+        await adminAPI.unlockUser(userId);
+        showToast(t.adminUsers.alertUnlockSuccess, "success");
+      } else if (type === "reactivate") {
+        await adminAPI.reactivateAccount(userId);
+        showToast(t.adminUsers.alertReactivateSuccess, "success");
+      } else if (type === "freeze") {
+        await adminAPI.updateWalletStatus(userId, "FROZEN");
+        showToast(t.adminUsers.alertFreezeSuccess, "success");
+      } else if (type === "unfreeze") {
+        await adminAPI.updateWalletStatus(userId, "ACTIVE");
+        showToast(t.adminUsers.alertUnfreezeSuccess, "success");
+      }
+
       await fetchUsers();
-      alert(nextStatus === "FROZEN" ? t.adminUsers.alertFreezeSuccess : t.adminUsers.alertUnfreezeSuccess);
+      setConfirmAction(null);
     } catch (error) {
-      console.error("Failed to toggle wallet status:", error);
-      alert(error.response?.data?.message || t.adminUsers.errorFreeze);
+      console.error("Failed to execute admin action:", error);
+      const errorMap = {
+        lock: t.adminUsers.errorLock,
+        unlock: t.adminUsers.errorLock,
+        reactivate: t.adminUsers.errorReactivate,
+        freeze: t.adminUsers.errorFreeze,
+        unfreeze: t.adminUsers.errorFreeze,
+      };
+      showToast(error.response?.data?.message || errorMap[type], "error");
+    } finally {
+      setConfirmLoading(false);
     }
   };
 
@@ -194,6 +232,27 @@ export default function AdminUsersPage() {
 
   return (
     <div style={{ maxWidth:1100 }}>
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            style={{
+              position: "fixed", top: 24, right: 24, zIndex: 400,
+              background: toast.type === "success" ? "rgba(34,197,94,0.95)" : "rgba(239,68,68,0.95)",
+              backdropFilter: "blur(10px)", color: "white",
+              padding: "12px 24px", borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,0.5)",
+              display: "flex", alignItems: "center", gap: 10, fontWeight: 600, fontSize: 14,
+              maxWidth: "min(420px, calc(100vw - 48px))",
+            }}
+          >
+            {toast.type === "success" ? <CheckCircle2 size={18} /> : <XCircle size={18} />}
+            {toast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <div style={{ display:"flex", alignItems:"center", justifycontent:"space-between", marginBottom:20, flexWrap:"wrap", gap:12 }}>
         <div>
           <h1 style={{ fontSize:18, fontWeight:800, marginBottom:2 }}>{t.adminUsers.title}</h1>
@@ -747,6 +806,71 @@ export default function AdminUsersPage() {
                   style={{
                     flex: 1, background: "var(--bg-card2)", border: "1px solid var(--border)",
                     color: "var(--text-secondary)", borderRadius: 8, padding: "10px", fontWeight: 600, fontSize: 13, cursor: "pointer"
+                  }}
+                >
+                  {t.adminUsers.btnCancel}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Confirm action modal */}
+      <AnimatePresence>
+        {confirmAction && (
+          <div
+            onClick={() => !confirmLoading && setConfirmAction(null)}
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.8)", zIndex: 350, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              style={{ background: "var(--bg-dark)", border: "1px solid #222", borderRadius: 20, padding: 28, width: "100%", maxWidth: 420 }}
+            >
+              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 12, color: "var(--text-primary)" }}>
+                {t.adminUsers.btnConfirm}
+              </h3>
+              <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 20, lineHeight: 1.6, whiteSpace: "pre-line" }}>
+                {confirmAction.message}
+              </p>
+
+              <div style={{ display: "flex", gap: 10 }}>
+                <button
+                  type="button"
+                  onClick={executeConfirmAction}
+                  disabled={confirmLoading}
+                  style={{
+                    flex: 1,
+                    background: "rgba(37,99,235,0.15)",
+                    border: "1px solid rgba(37,99,235,0.3)",
+                    color: "#2563eb",
+                    borderRadius: 8,
+                    padding: "10px",
+                    fontWeight: 700,
+                    fontSize: 13,
+                    cursor: confirmLoading ? "not-allowed" : "pointer",
+                    opacity: confirmLoading ? 0.7 : 1,
+                  }}
+                >
+                  {confirmLoading ? "..." : t.adminUsers.btnConfirm}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setConfirmAction(null)}
+                  disabled={confirmLoading}
+                  style={{
+                    flex: 1,
+                    background: "var(--bg-card2)",
+                    border: "1px solid var(--border)",
+                    color: "var(--text-secondary)",
+                    borderRadius: 8,
+                    padding: "10px",
+                    fontWeight: 600,
+                    fontSize: 13,
+                    cursor: confirmLoading ? "not-allowed" : "pointer",
                   }}
                 >
                   {t.adminUsers.btnCancel}

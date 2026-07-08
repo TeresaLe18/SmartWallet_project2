@@ -28,6 +28,7 @@ export default function RegisterPage() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [successMessage, setSuccessMessage] = useState("");
 
   const features = [
     { icon: "🔒", text: t.login.featureSecure },
@@ -41,6 +42,7 @@ export default function RegisterPage() {
 
   const updateForm = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
+    if (successMessage) setSuccessMessage("");
   };
 
   const validate = () => {
@@ -90,6 +92,7 @@ export default function RegisterPage() {
     }
 
     setErrors({});
+    setSuccessMessage("");
     setLoading(true);
 
     try {
@@ -97,12 +100,14 @@ export default function RegisterPage() {
 
       if (data.success) {
         localStorage.setItem("bw_pending_email", form.email);
-        alert(
+        const message =
           lang === "vi"
             ? `Đăng ký tài khoản thành công! Mã OTP xác thực đã được gửi đến ${form.email}. Vui lòng kiểm tra hộp thư đến Gmail của bạn (bao gồm cả thư mục spam).`
-            : `Account registered successfully! A verification OTP code has been sent to ${form.email}. Please check your Gmail inbox (including spam/junk folder).`
-        );
-        navigate("/verify-otp");
+            : `Account registered successfully! A verification OTP code has been sent to ${form.email}. Please check your Gmail inbox (including spam/junk folder).`;
+        setSuccessMessage(message);
+        setLoading(false);
+        setTimeout(() => navigate("/verify-otp", { state: { message } }), 2500);
+        return;
       } else {
         setErrors({ server: data.message || (lang === "vi" ? "Đăng ký tài khoản thất bại." : "Account registration failed.") });
       }
@@ -113,9 +118,9 @@ export default function RegisterPage() {
           err.response?.data?.message ||
           (lang === "vi" ? "Lỗi kết nối máy chủ. Vui lòng kiểm tra kết nối Node.js/CSDL." : "Server connection error. Please check your database/Node.js connection."),
       });
-    } finally {
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   return (
@@ -204,6 +209,17 @@ export default function RegisterPage() {
                 </Link>
               </p>
 
+              {successMessage && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="register-success main"
+                >
+                  <CheckCircle size={18} className="register-success-icon" />
+                  <span>{successMessage}</span>
+                </motion.div>
+              )}
+
               {errors.server && <div className="register-error main">{errors.server}</div>}
 
               <form onSubmit={handleRegister} className="register-form">
@@ -283,7 +299,7 @@ export default function RegisterPage() {
                   )}
                 </div>
 
-                <button type="submit" disabled={loading} className="register-submit-btn">
+                <button type="submit" disabled={loading || !!successMessage} className="register-submit-btn">
                   {loading ? (
                     <div className="register-loader" />
                   ) : (

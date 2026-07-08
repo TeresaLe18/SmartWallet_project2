@@ -200,45 +200,109 @@ export default function WalletsPage() {
   });
   const [walletStatus, setWalletStatus] = useState("active");
   const [showFreezeConfirm, setShowFreezeConfirm] = useState(false);
-  const [pinSetupInputs, setPinSetupInputs] = useState(["", "", "", ""]);
-  const [pinSetupConfirmInputs, setPinSetupConfirmInputs] = useState(["", "", "", ""]);
+  const [pinSetupOtpInputs, setPinSetupOtpInputs] = useState(["", "", "", "", "", ""]);
+  const [pinSetupForm, setPinSetupForm] = useState({ newPin: "", confirmPin: "" });
+  const [pinSetupSending, setPinSetupSending] = useState(false);
+  const [pinSetupLoading, setPinSetupLoading] = useState(false);
+  const [pinSetupOtpCountdown, setPinSetupOtpCountdown] = useState(60);
+  const [pinSetupCanResend, setPinSetupCanResend] = useState(false);
+  const [pinSetupError, setPinSetupError] = useState("");
   const [pinTransactionInputs, setPinTransactionInputs] = useState(["", "", "", ""]);
   const [pinStep, setPinStep] = useState(false);
   const [pinActionType, setPinActionType] = useState(""); // 'withdraw' | 'transfer'
 
-  const pinSetupRefs = useRef([]);
-  const pinSetupConfirmRefs = useRef([]);
+  const pinSetupOtpRefs = useRef([]);
   const pinTransactionRefs = useRef([]);
 
-  const handlePinSetupChange = (index, value) => {
+  const getUserEmail = () => {
+    try {
+      const u = localStorage.getItem("bw_user");
+      return u ? JSON.parse(u).email : "";
+    } catch {
+      return "";
+    }
+  };
+
+  useEffect(() => {
+    if (modal !== "pin_setup") return undefined;
+
+    let cancelled = false;
+    const requestOtp = async () => {
+      setPinSetupSending(true);
+      setPinSetupError("");
+      try {
+        const res = await authAPI.requestCreatePinOtp();
+        if (cancelled) return;
+        if (res.success) {
+          setPinSetupOtpInputs(["", "", "", "", "", ""]);
+          setPinSetupForm({ newPin: "", confirmPin: "" });
+          setPinSetupOtpCountdown(60);
+          setPinSetupCanResend(false);
+        } else {
+          const msg = res.message || (lang === "vi" ? "Không thể gửi OTP." : "Failed to send OTP.");
+          setPinSetupError(msg);
+          showToast(msg, "error");
+        }
+      } catch (err) {
+        if (cancelled) return;
+        const msg = err.response?.data?.message || (lang === "vi" ? "Không thể gửi OTP. Vui lòng thử lại." : "Unable to send OTP. Please try again.");
+        setPinSetupError(msg);
+        showToast(msg, "error");
+      } finally {
+        if (!cancelled) setPinSetupSending(false);
+      }
+    };
+
+    requestOtp();
+    return () => { cancelled = true; };
+  }, [modal, lang]);
+
+  useEffect(() => {
+    if (modal !== "pin_setup") return undefined;
+    if (pinSetupOtpCountdown > 0) {
+      const timer = setTimeout(() => setPinSetupOtpCountdown((c) => c - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+    setPinSetupCanResend(true);
+    return undefined;
+  }, [modal, pinSetupOtpCountdown]);
+
+  const handlePinSetupOtpChange = (index, value) => {
     if (!/^\d*$/.test(value)) return;
-    const newPin = [...pinSetupInputs];
-    newPin[index] = value.slice(-1);
-    setPinSetupInputs(newPin);
-    if (value && index < 3) {
-      pinSetupRefs.current[index + 1]?.focus();
+    const newOtp = [...pinSetupOtpInputs];
+    newOtp[index] = value.slice(-1);
+    setPinSetupOtpInputs(newOtp);
+    setPinSetupError("");
+    if (value && index < 5) pinSetupOtpRefs.current[index + 1]?.focus();
+  };
+
+  const handlePinSetupOtpKeyDown = (index, e) => {
+    if (e.key === "Backspace" && !pinSetupOtpInputs[index] && index > 0) {
+      pinSetupOtpRefs.current[index - 1]?.focus();
     }
   };
 
-  const handlePinSetupKeyDown = (index, e) => {
-    if (e.key === "Backspace" && !pinSetupInputs[index] && index > 0) {
-      pinSetupRefs.current[index - 1]?.focus();
-    }
-  };
-
-  const handlePinSetupConfirmChange = (index, value) => {
-    if (!/^\d*$/.test(value)) return;
-    const newPin = [...pinSetupConfirmInputs];
-    newPin[index] = value.slice(-1);
-    setPinSetupConfirmInputs(newPin);
-    if (value && index < 3) {
-      pinSetupConfirmRefs.current[index + 1]?.focus();
-    }
-  };
-
-  const handlePinSetupConfirmKeyDown = (index, e) => {
-    if (e.key === "Backspace" && !pinSetupConfirmInputs[index] && index > 0) {
-      pinSetupConfirmRefs.current[index - 1]?.focus();
+  const handleResendPinSetupOtp = async () => {
+    setPinSetupError("");
+    setPinSetupSending(true);
+    try {
+      const res = await authAPI.requestCreatePinOtp();
+      if (res.success) {
+        setPinSetupOtpCountdown(60);
+        setPinSetupCanResend(false);
+        setPinSetupOtpInputs(["", "", "", "", "", ""]);
+        showToast(lang === "vi" ? "Đã gửi lại mã OTP." : "OTP resent successfully.", "success");
+      } else {
+        const msg = res.message || (lang === "vi" ? "Gửi lại OTP thất bại." : "Failed to resend OTP.");
+        setPinSetupError(msg);
+        showToast(msg, "error");
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || (lang === "vi" ? "Không thể gửi lại OTP." : "Unable to resend OTP.");
+      setPinSetupError(msg);
+      showToast(msg, "error");
+    } finally {
+      setPinSetupSending(false);
     }
   };
 
@@ -259,21 +323,33 @@ export default function WalletsPage() {
   };
 
   const submitPinSetup = async () => {
-    const pin = pinSetupInputs.join("");
-    const confirmPin = pinSetupConfirmInputs.join("");
+    const enteredOtp = pinSetupOtpInputs.join("");
+    setPinSetupError("");
 
-    if (pin.length < 4 || confirmPin.length < 4) {
-      showToast("Please enter all 4 digits for your PIN.", "error");
+    if (enteredOtp.length < 6) {
+      const msg = lang === "vi" ? "Vui lòng nhập đủ 6 số OTP." : "Please enter all 6 digits of the OTP code.";
+      setPinSetupError(msg);
+      showToast(msg, "error");
       return;
     }
 
-    if (pin !== confirmPin) {
-      showToast("PIN confirmation does not match. Please try again.", "error");
+    if (!/^\d{4}$/.test(pinSetupForm.newPin)) {
+      const msg = t.profile.pinMustBe4Digits;
+      setPinSetupError(msg);
+      showToast(msg, "error");
       return;
     }
 
+    if (pinSetupForm.newPin !== pinSetupForm.confirmPin) {
+      const msg = t.profile.pinsDoNotMatch;
+      setPinSetupError(msg);
+      showToast(msg, "error");
+      return;
+    }
+
+    setPinSetupLoading(true);
     try {
-      const res = await authAPI.setPin(pin);
+      const res = await authAPI.createPinWithOtp(enteredOtp, pinSetupForm.newPin);
       if (res.success) {
         setHasPin(true);
         const bwUser = localStorage.getItem("bw_user");
@@ -282,24 +358,30 @@ export default function WalletsPage() {
           u.has_pin = true;
           localStorage.setItem("bw_user", JSON.stringify(u));
         }
-        showToast("Transaction PIN set up successfully!");
-        
-        // Reset states
-        setPinSetupInputs(["", "", "", ""]);
-        setPinSetupConfirmInputs(["", "", "", ""]);
+        showToast(lang === "vi" ? "Thiết lập mã PIN giao dịch thành công!" : "Transaction PIN set up successfully!");
 
-        // Open the originally requested modal
-        if (pinActionType) {
-          setModal(pinActionType);
-          setPinActionType("");
+        setPinSetupOtpInputs(["", "", "", "", "", ""]);
+        setPinSetupForm({ newPin: "", confirmPin: "" });
+        setPinSetupError("");
+
+        const nextModal = pinActionType;
+        setPinActionType("");
+        if (nextModal) {
+          setModal(nextModal);
         } else {
           closeModal();
         }
       } else {
-        showToast(res.message || "Unable to set up PIN.", "error");
+        const msg = res.message || (lang === "vi" ? "Không thể tạo mã PIN." : "Unable to set up PIN.");
+        setPinSetupError(msg);
+        showToast(msg, "error");
       }
     } catch (err) {
-      showToast(err.response?.data?.message || "System error while setting up PIN.", "error");
+      const msg = err.response?.data?.message || (lang === "vi" ? "Xác thực thất bại. Vui lòng thử lại." : "Verification failed. Please try again.");
+      setPinSetupError(msg);
+      showToast(msg, "error");
+    } finally {
+      setPinSetupLoading(false);
     }
   };
 
@@ -360,6 +442,9 @@ export default function WalletsPage() {
   const [toast, setToast] = useState(null);
   const toastTimeoutRef = useRef(null);
   const [transferMethod, setTransferMethod] = useState("smartwallet"); // 'smartwallet' | 'bank'
+  const [recipientFieldError, setRecipientFieldError] = useState("");
+  const [recipientFieldOk, setRecipientFieldOk] = useState("");
+  const [recipientChecking, setRecipientChecking] = useState(false);
   const [bankTransferForm, setBankTransferForm] = useState({ bank: "", account: "", ownerName: "" });
   const [qrUploadFile, setQrUploadFile] = useState(null);
   const [qrUploadPreview, setQrUploadPreview] = useState(null);
@@ -890,12 +975,21 @@ export default function WalletsPage() {
     setAppliedVoucher(null);
     setShowPromoSelector(false);
     setPinStep(false);
-    setPinSetupInputs(["", "", "", ""]);
-    setPinSetupConfirmInputs(["", "", "", ""]);
+    setPinSetupOtpInputs(["", "", "", "", "", ""]);
+    setPinSetupForm({ newPin: "", confirmPin: "" });
+    setPinSetupError("");
+    setPinSetupOtpCountdown(60);
+    setPinSetupCanResend(false);
+    setPinSetupSending(false);
+    setPinSetupLoading(false);
+    setPinActionType("");
     setPinTransactionInputs(["", "", "", ""]);
     setDepositMethod(null);
     setDepositPaymentData(null);
     setDepositLoading(false);
+    setRecipientFieldError("");
+    setRecipientFieldOk("");
+    setRecipientChecking(false);
   };
 
   const handleQrFileChange = (e) => {
@@ -930,6 +1024,7 @@ export default function WalletsPage() {
                 note: `Chuyển khoản QR cho ${parsed.name || parsed.email}`,
                 category: categories[0]?.id ? String(categories[0].id) : "1"
               }));
+              validateRecipientField(parsed.email);
               showToast(lang === "vi" ? "Nhận diện mã QR SmartWallet thành công!" : "Detected SmartWallet User QR successfully!", "success");
               return;
             }
@@ -1033,17 +1128,72 @@ export default function WalletsPage() {
     reader.readAsDataURL(file);
   };
 
+  const getRecipientErrorMessage = (code, fallback) => {
+    const map = {
+      NOT_FOUND: t.wallets.recipientNotFound,
+      SELF: t.wallets.recipientSelf,
+      ACCOUNT_INACTIVE: t.wallets.recipientInactive,
+      WALLET_FROZEN: t.wallets.recipientWalletFrozen,
+      NO_WALLET: t.wallets.recipientNoWallet,
+    };
+    return map[code] || fallback || t.wallets.recipientNotFound;
+  };
+
+  const validateRecipientField = async (value) => {
+    const dest = (value || "").trim();
+    if (!dest) {
+      setRecipientFieldError("");
+      setRecipientFieldOk("");
+      return false;
+    }
+
+    setRecipientChecking(true);
+    setRecipientFieldError("");
+    setRecipientFieldOk("");
+
+    try {
+      const res = await walletAPI.checkTransferRecipient(dest);
+      if (res.success && res.valid) {
+        const name = res.recipient?.name || res.recipient?.email || dest;
+        setRecipientFieldOk(t.wallets.recipientValid.replace("{name}", name));
+        return true;
+      }
+
+      const message = getRecipientErrorMessage(res.code, res.message);
+      setRecipientFieldError(message);
+      return false;
+    } catch (err) {
+      const message = err.response?.data?.message || (lang === "vi" ? "Không thể kiểm tra người nhận." : "Unable to verify recipient.");
+      setRecipientFieldError(message);
+      return false;
+    } finally {
+      setRecipientChecking(false);
+    }
+  };
+
+  const handleRecipientBlur = () => {
+    if (transferMethod === "smartwallet") {
+      validateRecipientField(txForm.target);
+    }
+  };
+
   const handleConfirmTransfer = async () => {
     if (!txForm.category) {
       showToast("Please select a transfer category!", "error");
       return;
     }
-    
+
     if (transferMethod === "smartwallet") {
-      if (!txForm.target) {
-        showToast("Please enter the recipient's email!", "error");
+      if (!txForm.target.trim()) {
+        showToast(lang === "vi" ? "Vui lòng nhập email hoặc số điện thoại người nhận." : "Please enter the recipient's email or phone!", "error");
         return;
       }
+
+      const recipientOk = await validateRecipientField(txForm.target);
+      if (!recipientOk) {
+        return;
+      }
+
       if (!txForm.amount || Number(txForm.amount) <= 0) {
         showToast("Please enter a valid amount!", "error");
         return;
@@ -1060,14 +1210,14 @@ export default function WalletsPage() {
         showToast("Please enter all 4 PIN digits.", "error");
         return;
       }
-      
+
       try {
-        const dest_email = txForm.target;
+        const dest_email = txForm.target.trim();
         const amount = Number(txForm.amount);
-        const note = txForm.note || `SmartWallet transfer to ${txForm.target}`;
-        
+        const note = txForm.note || `SmartWallet transfer to ${dest_email}`;
+
         const res = await walletAPI.transfer(dest_email, amount, note, pin, txForm.category ? Number(txForm.category) : null, appliedVoucher?.code || null);
-        
+
         if (res.success) {
           if (res.transaction) {
             const newTx = mapBackendTx(res.transaction, userEmail);
@@ -1100,7 +1250,7 @@ export default function WalletsPage() {
         showToast("Please enter all 4 PIN digits.", "error");
         return;
       }
-      
+
       try {
         const amount = Number(txForm.amount);
         const res = await walletAPI.payment({
@@ -1378,51 +1528,100 @@ export default function WalletsPage() {
               {/* PIN SETUP MODAL */}
               {modal==="pin_setup" && (
                 <div className="text-center">
-                  <h3 className="modal-title">🔒 {t.wallets.pinSetupTitle}</h3>
+                  <h3 className="modal-title">🔒 {t.profile.createPinTitle}</h3>
                   <p className="modal-subtitle">
-                    {t.wallets.pinSetupText}
+                    {pinSetupSending && !pinSetupOtpInputs.some(Boolean)
+                      ? (lang === "vi" ? "Đang gửi mã OTP đến email của bạn..." : "Sending OTP to your email...")
+                      : t.profile.createPinOtpDesc}
+                    <br />
+                    <strong className="pin-setup-email">{userEmail || getUserEmail()}</strong>
                   </p>
-                  
+
+                  {pinSetupError && (
+                    <div className="pin-setup-error">{pinSetupError}</div>
+                  )}
+
                   <div className="form-group">
-                    <label className="form-label text-center">{t.wallets.enterNewPin}</label>
-                    <div className="pin-grid">
-                      {pinSetupInputs.map((digit, i) => (
+                    <label className="form-label text-center">{lang === "vi" ? "Mã OTP (6 số)" : "OTP code (6 digits)"}</label>
+                    <div className="pin-grid otp-grid">
+                      {pinSetupOtpInputs.map((digit, i) => (
                         <input
-                          key={`setup-${i}`}
-                          ref={el => pinSetupRefs.current[i] = el}
-                          type="password"
+                          key={`otp-${i}`}
+                          ref={(el) => { pinSetupOtpRefs.current[i] = el; }}
+                          type="text"
                           inputMode="numeric"
                           maxLength={1}
                           value={digit}
-                          onChange={(e) => handlePinSetupChange(i, e.target.value)}
-                          onKeyDown={(e) => handlePinSetupKeyDown(i, e)}
+                          onChange={(e) => handlePinSetupOtpChange(i, e.target.value)}
+                          onKeyDown={(e) => handlePinSetupOtpKeyDown(i, e)}
+                          disabled={pinSetupSending}
                           className={`pin-box ${digit ? "filled" : ""}`}
                         />
                       ))}
                     </div>
                   </div>
 
-                  <div className="form-group margin-bottom-24">
-                    <label className="form-label text-center">{t.wallets.confirmNewPin}</label>
-                    <div className="pin-grid">
-                      {pinSetupConfirmInputs.map((digit, i) => (
-                        <input
-                          key={`confirm-${i}`}
-                          ref={el => pinSetupConfirmRefs.current[i] = el}
-                          type="password"
-                          inputMode="numeric"
-                          maxLength={1}
-                          value={digit}
-                          onChange={(e) => handlePinSetupConfirmChange(i, e.target.value)}
-                          onKeyDown={(e) => handlePinSetupConfirmKeyDown(i, e)}
-                          className={`pin-box ${digit ? "filled" : ""}`}
-                        />
-                      ))}
+                  <div className="pin-setup-pin-row">
+                    <div className="form-group">
+                      <label className="form-label">{t.profile.newPin}</label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={4}
+                        placeholder="••••"
+                        value={pinSetupForm.newPin}
+                        onChange={(e) => {
+                          setPinSetupForm({ ...pinSetupForm, newPin: e.target.value.replace(/\D/g, "").slice(0, 4) });
+                          setPinSetupError("");
+                        }}
+                        className="pin-setup-text-input"
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">{t.profile.confirmNewPin}</label>
+                      <input
+                        type="password"
+                        inputMode="numeric"
+                        maxLength={4}
+                        placeholder="••••"
+                        value={pinSetupForm.confirmPin}
+                        onChange={(e) => {
+                          setPinSetupForm({ ...pinSetupForm, confirmPin: e.target.value.replace(/\D/g, "").slice(0, 4) });
+                          setPinSetupError("");
+                        }}
+                        className="pin-setup-text-input"
+                      />
                     </div>
                   </div>
 
-                  <button onClick={submitPinSetup} className="btn-submit">
-                    {t.wallets.confirmAndSet}
+                  <div className="pin-setup-resend">
+                    {pinSetupCanResend ? (
+                      <button
+                        type="button"
+                        onClick={handleResendPinSetupOtp}
+                        disabled={pinSetupSending}
+                        className="pin-setup-resend-btn"
+                      >
+                        {pinSetupSending
+                          ? (lang === "vi" ? "Đang gửi..." : "Sending...")
+                          : t.profile.resendCode}
+                      </button>
+                    ) : (
+                      <p className="pin-setup-countdown">
+                        {t.profile.resendIn.replace("{seconds}", pinSetupOtpCountdown)}
+                      </p>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={submitPinSetup}
+                    disabled={pinSetupLoading || pinSetupSending}
+                    className="btn-submit"
+                  >
+                    {pinSetupLoading
+                      ? (lang === "vi" ? "Đang xử lý..." : "Processing...")
+                      : t.profile.createPin}
                   </button>
                 </div>
               )}
@@ -1823,6 +2022,8 @@ export default function WalletsPage() {
                             return (
                               <button key={m.id} onClick={() => {
                                 setTransferMethod(m.id);
+                                setRecipientFieldError("");
+                                setRecipientFieldOk("");
                                 if (m.id === "bank") {
                                   setAppliedVoucher(null);
                                   setPromoCode("");
@@ -1850,9 +2051,26 @@ export default function WalletsPage() {
                           </div>
                           <div className="form-group">
                             <label className="form-label">{t.wallets.recipientEmail}</label>
-                            <input value={txForm.target} onChange={e => setTxForm({...txForm, target:e.target.value})}
+                            <input
+                              value={txForm.target}
+                              onChange={(e) => {
+                                setTxForm({ ...txForm, target: e.target.value });
+                                setRecipientFieldError("");
+                                setRecipientFieldOk("");
+                              }}
+                              onBlur={handleRecipientBlur}
                               placeholder={t.wallets.enterPhoneEmailPlaceholder}
-                              className="form-input" />
+                              className={`form-input ${recipientFieldError ? "is-invalid" : recipientFieldOk ? "is-valid" : ""}`}
+                            />
+                            {recipientChecking && (
+                              <p className="recipient-field-hint checking">{t.wallets.recipientChecking}</p>
+                            )}
+                            {!recipientChecking && recipientFieldError && (
+                              <p className="recipient-field-hint error">{recipientFieldError}</p>
+                            )}
+                            {!recipientChecking && recipientFieldOk && (
+                              <p className="recipient-field-hint success">{recipientFieldOk}</p>
+                            )}
                           </div>
                         </div>
                       )}

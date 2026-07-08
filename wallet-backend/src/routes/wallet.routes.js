@@ -11,6 +11,7 @@ const pinMiddleware = require('../middlewares/pin.middleware');
 router.get('/stats', authMiddleware, accountMiddleware, walletController.getStats);
 router.get('/fees', authMiddleware, accountMiddleware, walletController.getFees);
 router.get('/transactions', authMiddleware, accountMiddleware, walletController.getTransactions);
+router.get('/transfer/recipient', authMiddleware, accountMiddleware, walletController.checkTransferRecipient);
 
 router.post(
   '/deposit',

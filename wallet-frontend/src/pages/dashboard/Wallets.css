@@ -573,6 +573,82 @@
   background: rgba(37, 99, 235, 0.08);
 }
 
+.pin-grid.otp-grid {
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.pin-grid.otp-grid .pin-box {
+  width: 40px;
+  height: 48px;
+  font-size: 18px;
+}
+
+.pin-setup-email {
+  color: var(--primary);
+}
+
+.pin-setup-error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  color: #ef4444;
+  font-size: 13px;
+  text-align: left;
+}
+
+.pin-setup-pin-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+  text-align: left;
+}
+
+.pin-setup-pin-row .form-group {
+  margin-bottom: 0;
+}
+
+.pin-setup-text-input {
+  width: 100%;
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+  letter-spacing: 4px;
+  box-sizing: border-box;
+}
+
+.pin-setup-resend {
+  margin-bottom: 20px;
+}
+
+.pin-setup-resend-btn {
+  background: none;
+  border: none;
+  color: var(--primary);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0;
+}
+
+.pin-setup-resend-btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.pin-setup-countdown {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
 /* Forms */
 .form-group {
   margin-bottom: 20px;
@@ -601,6 +677,41 @@
 .form-input:focus, .form-select:focus {
   border-color: var(--primary);
   background: var(--bg-card);
+}
+
+.form-input.is-invalid {
+  border-color: #ef4444;
+}
+
+.form-input.is-invalid:focus {
+  border-color: #ef4444;
+}
+
+.form-input.is-valid {
+  border-color: #22c55e;
+}
+
+.form-input.is-valid:focus {
+  border-color: #22c55e;
+}
+
+.recipient-field-hint {
+  margin: 8px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  text-align: left;
+}
+
+.recipient-field-hint.checking {
+  color: var(--text-muted);
+}
+
+.recipient-field-hint.error {
+  color: #ef4444;
+}
+
+.recipient-field-hint.success {
+  color: #16a34a;
 }
 
 /* Buttons */

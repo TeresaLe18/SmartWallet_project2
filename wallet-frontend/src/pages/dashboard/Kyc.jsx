@@ -26,6 +26,23 @@ const genderLabel = (value, lang) => {
   return labels[key]?.[lang === "vi" ? "vi" : "en"] ?? key;
 };
 
+const EMPTY_ERRORS = {
+  fullname: "",
+  cccd: "",
+  dob: "",
+  frontImg: "",
+  backImg: "",
+  selfieImg: "",
+  server: "",
+};
+
+const FieldLabel = ({ as: Tag = "label", children, required = false }) => (
+  <Tag className="kyc-field-label">
+    {children}
+    {required && <span className="kyc-required-mark" aria-hidden="true">*</span>}
+  </Tag>
+);
+
 export default function KycPage() {
   const { t, lang } = useLanguage();
   const steps = [
@@ -38,6 +55,7 @@ export default function KycPage() {
   const [submitted, setSubmitted] = useState(false);
   const [user, setUser] = useState(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [errors, setErrors] = useState(EMPTY_ERRORS);
   // KYC record loaded from backend — contains server-side image filenames
   const [savedKyc, setSavedKyc] = useState(null);
 
@@ -122,19 +140,27 @@ export default function KycPage() {
       .catch(() => {});
   }, [user]);
 
+  const clearFieldError = (key) => {
+    setErrors((prev) => ({ ...prev, [key]: "", server: key === "server" ? "" : prev.server }));
+  };
+
+  const inputBorder = (key) =>
+    errors[key] ? "1px solid #ef4444" : "1px solid var(--border)";
+
   const handleFile = (key, e) => {
     const file = e.target.files[0];
     if (file) {
       if (file.size > 5 * 1024 * 1024) {
-        alert("Image size must not exceed 5 MB.");
+        setErrors((prev) => ({ ...prev, [key]: t.kyc.errImageSize, server: "" }));
         return;
       }
       const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
       if (!allowedTypes.includes(file.type)) {
-        alert("Unsupported file format. Only JPG, PNG, WEBP, or GIF images are accepted.");
+        setErrors((prev) => ({ ...prev, [key]: t.kyc.errImageFormat, server: "" }));
         return;
       }
 
+      clearFieldError(key);
       const reader = new FileReader();
       reader.onloadend = () => {
         setForm(f => ({ ...f, [key]: reader.result }));
@@ -145,57 +171,47 @@ export default function KycPage() {
 
   const handleSubmit = async () => {
     if (step === 1) {
-      if (!form.fullname.trim()) {
-        alert("Please enter your full name as shown on your ID card.");
+      const next = { fullname: "", cccd: "", dob: "", server: "" };
+
+      if (!form.fullname.trim()) next.fullname = t.kyc.errFullName;
+      if (!form.cccd.trim()) next.cccd = t.kyc.errNationalId;
+      else if (!/^\d{9}$|^\d{12}$/.test(form.cccd.trim())) next.cccd = t.kyc.errNationalIdFormat;
+      if (!form.dob) next.dob = t.kyc.errDob;
+      else {
+        const birthDate = new Date(form.dob);
+        const today = new Date();
+        let age = today.getFullYear() - birthDate.getFullYear();
+        const m = today.getMonth() - birthDate.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) age--;
+        if (age < 15) next.dob = t.kyc.errMinAge;
+      }
+
+      if (next.fullname || next.cccd || next.dob) {
+        setErrors((prev) => ({ ...prev, ...next }));
         return;
       }
-      if (!form.cccd.trim()) {
-        alert("Please enter your national ID number.");
-        return;
-      }
-      if (!/^\d{9}$|^\d{12}$/.test(form.cccd.trim())) {
-        alert("Invalid ID number format — must be exactly 9 or 12 digits.");
-        return;
-      }
-      if (!form.dob) {
-        alert("Please enter your date of birth.");
-        return;
-      }
-      const birthDate = new Date(form.dob);
-      const today = new Date();
-      let age = today.getFullYear() - birthDate.getFullYear();
-      const m = today.getMonth() - birthDate.getMonth();
-      if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-        age--;
-      }
-      if (age < 15) {
-        alert("You must be at least 15 years old to submit a KYC application.");
-        return;
-      }
+
+      setErrors(EMPTY_ERRORS);
       setStep(2);
       return;
     }
 
-    // Images are only mandatory for a brand-new submission (no existing KYC record).
-    // On an update the user can leave any unchanged — the backend keeps the old files.
     const isUpdate = !!savedKyc
       || user?.kycStatus === "rejected" || user?.kyc === "rejected";
 
     if (!isUpdate) {
-      if (!form.frontImg) {
-        alert("Please upload the front side of your ID card.");
-        return;
-      }
-      if (!form.backImg) {
-        alert("Please upload the back side of your ID card.");
-        return;
-      }
-      if (!form.selfieImg) {
-        alert("Please upload a selfie photo.");
+      const next = { frontImg: "", backImg: "", selfieImg: "", server: "" };
+      if (!form.frontImg) next.frontImg = t.kyc.errFrontImage;
+      if (!form.backImg) next.backImg = t.kyc.errBackImage;
+      if (!form.selfieImg) next.selfieImg = t.kyc.errSelfie;
+
+      if (next.frontImg || next.backImg || next.selfieImg) {
+        setErrors((prev) => ({ ...prev, ...next }));
         return;
       }
     }
 
+    setErrors((prev) => ({ ...prev, server: "" }));
     try {
       // Only send images that were newly selected — omitting them lets the backend keep the old ones
       const payload = {
@@ -229,11 +245,11 @@ export default function KycPage() {
         window.dispatchEvent(new Event("kyc_updated"));
         setSubmitted(true);
       } else {
-        alert(res.message || "Failed to submit KYC application.");
+        setErrors((prev) => ({ ...prev, server: res.message || t.kyc.errSubmitFailed }));
       }
     } catch (err) {
       console.error("KYC submission error:", err);
-      alert(err.response?.data?.message || "Server error during submission. Please try again.");
+      setErrors((prev) => ({ ...prev, server: err.response?.data?.message || t.kyc.errServer }));
     }
   };
 
@@ -357,17 +373,12 @@ export default function KycPage() {
       <p className="kyc-subtitle">{t.kyc.subtitle}</p>
 
       {rejectReason && (
-        <div style={{
-          background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.2)",
-          borderRadius: 12, padding: "16px 20px", marginBottom: 24, display: "flex", gap: 12
-        }}>
-          <AlertCircle size={20} style={{ color: "#ef4444", flexShrink: 0, marginTop: 2 }} />
+        <div className="kyc-reject-banner">
+          <AlertCircle size={20} className="kyc-reject-icon" />
           <div>
-            <p style={{ fontSize: 14, fontWeight: 700, color: "#ef4444", marginBottom: 4 }}>{t.kyc.rejectedTitle}</p>
-            <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.5 }}>{rejectReason}</p>
-            <p style={{ fontSize: 11, color: "var(--text-muted)", marginTop: 6 }}>
-              {t.kyc.rejectedDesc}
-            </p>
+            <p className="kyc-reject-title">{t.kyc.rejectedTitle}</p>
+            <p className="kyc-reject-desc">{rejectReason}</p>
+            <p className="kyc-reject-hint">{t.kyc.rejectedDesc}</p>
           </div>
         </div>
       )}
@@ -406,12 +417,18 @@ export default function KycPage() {
             { label: t.kyc.nationalId,        key:"cccd",     placeholder: lang === "vi" ? "9 hoặc 12 số" : "9 or 12 digits" },
             { label: t.kyc.dob,             key:"dob",      placeholder:"", type:"date" },
           ].map(f => (
-            <div key={f.key} style={{ marginBottom:16 }}>
-              <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>{f.label}</label>
-              <input value={form[f.key]} onChange={e => setForm(p => ({...p,[f.key]:e.target.value}))}
-                type={f.type||"text"} placeholder={f.placeholder}
-                style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"11px 14px", color: "var(--text-primary)", fontSize:14, outline:"none" }}
+            <div key={f.key} className="kyc-field-group">
+              <FieldLabel required>{f.label}</FieldLabel>
+              <input
+                value={form[f.key]}
+                onChange={(e) => { clearFieldError(f.key); setForm((p) => ({ ...p, [f.key]: e.target.value })); }}
+                type={f.type || "text"}
+                placeholder={f.placeholder}
+                className="kyc-field-input"
+                style={{ border: inputBorder(f.key) }}
+                aria-invalid={!!errors[f.key]}
               />
+              {errors[f.key] && <p className="kyc-field-error">{errors[f.key]}</p>}
             </div>
           ))}
 
@@ -423,7 +440,7 @@ export default function KycPage() {
                 <button
                   key={value}
                   type="button"
-                  onClick={() => setForm(p => ({...p, gender: value}))}
+                  onClick={() => setForm((p) => ({ ...p, gender: value }))}
                   style={{
                     flex:1, padding:"10px", borderRadius:10, fontSize:14, fontWeight:600, cursor:"pointer",
                     background: form.gender === value ? "rgba(37,99,235,0.12)" : "var(--bg-card2)",
@@ -438,15 +455,14 @@ export default function KycPage() {
             </div>
           </div>
 
-          {/* Address */}
-          <div style={{ marginBottom:16 }}>
-            <label style={{ fontSize:13, color: "var(--text-secondary)", display:"block", marginBottom:6 }}>{t.kyc.address}</label>
+          <div className="kyc-field-group">
+            <label className="kyc-field-label">{t.kyc.address}</label>
             <input
               value={form.address}
-              onChange={e => setForm(p => ({...p, address: e.target.value}))}
+              onChange={(e) => setForm((p) => ({ ...p, address: e.target.value }))}
               type="text"
               placeholder={lang === "vi" ? "Số nhà, tên đường, phường, quận, thành phố" : "House number, street, city"}
-              style={{ width:"100%", background: "var(--bg-card2)", border: "1px solid var(--border)", borderRadius:10, padding:"11px 14px", color: "var(--text-primary)", fontSize:14, outline:"none" }}
+              className="kyc-field-input"
             />
           </div>
 
@@ -468,10 +484,13 @@ export default function KycPage() {
             ].map(f => {
               const preview = form[f.key] || getUploadUrl(savedKyc?.[f.serverKey]);
               const hasImage = !!preview;
+              const uploadBorder = errors[f.key]
+                ? "2px dashed #ef4444"
+                : hasImage ? "2px dashed #22c55e" : "2px dashed var(--border)";
               return (
-                <div key={f.key}>
-                  <p style={{ fontSize:13, color: "var(--text-secondary)", marginBottom:8 }}>{f.label}</p>
-                  <label className="kyc-upload-box" style={{ border: `2px dashed ${hasImage ? "#22c55e" : "var(--border)"}` }}>
+                <div key={f.key} className="kyc-upload-field">
+                  <FieldLabel as="p" required>{f.label}</FieldLabel>
+                  <label className="kyc-upload-box" style={{ border: uploadBorder }}>
                     {hasImage
                       ? <img src={preview} alt="" />
                       : <>
@@ -481,8 +500,9 @@ export default function KycPage() {
                     }
                     <input type="file" accept="image/*" onChange={e => handleFile(f.key, e)} style={{ position:"absolute", inset:0, opacity:0, cursor:"pointer" }} />
                   </label>
-                  {form[f.key] && (
-                    <p style={{ fontSize:11, color:"#22c55e", marginTop:4, textAlign:"center" }}>✓ New</p>
+                  {errors[f.key] && <p className="kyc-field-error">{errors[f.key]}</p>}
+                  {!errors[f.key] && form[f.key] && (
+                    <p className="kyc-upload-ok">✓ New</p>
                   )}
                 </div>
               );
@@ -494,8 +514,11 @@ export default function KycPage() {
               {t.kyc.alertNote}
             </p>
           </div>
+          {errors.server && (
+            <p className="kyc-field-error kyc-server-error" role="alert">{errors.server}</p>
+          )}
           <div style={{ display:"flex", gap:10 }}>
-            <button onClick={() => setStep(1)} className="kyc-btn" style={{ flex:1 }}>
+            <button onClick={() => { setErrors(EMPTY_ERRORS); setStep(1); }} className="kyc-btn" style={{ flex:1 }}>
               {t.kyc.back}
             </button>
             <button onClick={handleSubmit} style={{ flex:2, background:"linear-gradient(135deg,#2563eb,#1d4ed8)", color: "white", border:"none", borderRadius:10, padding:"13px", fontWeight:700, fontSize:14, cursor:"pointer" }}>

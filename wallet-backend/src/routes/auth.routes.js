@@ -18,7 +18,7 @@ router.post('/refresh', authController.refreshTokenHandler);
 router.post('/logout', authController.logout);
 router.post('/forgot-password', normalizeEmail, authController.forgotPassword);
 router.post('/reset-password', normalizeEmail, authController.resetPassword);
-router.post('/set-pin', authMiddleware, authController.setPin);
+// router.post('/set-pin', authMiddleware, authController.setPin);
 router.post('/change-pin', authMiddleware, authController.changePin);
 router.post('/forgot-pin/send-otp', authMiddleware, authController.requestForgotPinOtp);
 router.post('/forgot-pin/reset', authMiddleware, authController.resetPinWithOtp);

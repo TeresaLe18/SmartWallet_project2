@@ -467,11 +467,11 @@ const reviewKyc = async (req, res) => {
     await prisma.notification.create({
       data: {
         user_id: userId,
-        title: status === 'VERIFIED' ? 'KYC xác minh thành công ✅' : 'Hồ sơ KYC bị từ chối ❌',
+        title: status === 'VERIFIED' ? 'KYC Verification Successful✅' : 'KYC Verification Rejected ❌',
         content:
           status === 'VERIFIED'
-            ? 'Tài khoản của bạn đã được xác minh danh tính. Toàn bộ tính năng giao dịch đã được mở khoá.'
-            : reason || 'Hồ sơ KYC của bạn không đạt yêu cầu. Vui lòng gửi lại.',
+            ? 'Your identity has been successfully verified. All trading features are now available.'
+            : reason || 'Your KYC verification was rejected. Please review the requirements and submit your documents again.',
       },
     });
 

@@ -406,6 +406,10 @@ export const walletAPI = {
     const res = await api.get("/wallet/fees");
     return res.data;
   },
+  checkTransferRecipient: async (dest) => {
+    const res = await api.get("/wallet/transfer/recipient", { params: { dest } });
+    return res.data;
+  },
   freezeWallet: async () => {
     const res = await api.patch("/users/wallet/freeze");
     return res.data;
