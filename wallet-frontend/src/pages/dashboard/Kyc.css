@@ -1,0 +1,350 @@
+/* Stylesheet for Kyc page - SmartWallet */
+
+.kyc-container {
+  max-width: 560px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.kyc-header {
+  margin-bottom: 28px;
+}
+
+.kyc-title {
+  font-size: 20px;
+  font-weight: 800;
+  margin-bottom: 4px;
+  color: var(--text-primary);
+}
+
+.kyc-subtitle {
+  color: var(--text-secondary);
+  font-size: 14px;
+}
+
+.kyc-verified-box {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.02);
+}
+
+.kyc-status-alert {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 24px;
+  padding: 12px 16px;
+  background: rgba(34, 197, 94, 0.06);
+  border: 1px solid rgba(34, 197, 94, 0.2);
+  border-radius: 10px;
+}
+
+.kyc-status-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #22c55e;
+}
+
+.kyc-status-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.kyc-info-section-title {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+}
+
+.kyc-info-table {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.kyc-info-row {
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.kyc-info-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.kyc-info-value {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.kyc-images-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+
+.kyc-image-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+  text-align: center;
+}
+
+.kyc-image-preview-box {
+  height: 110px;
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  overflow: hidden;
+}
+
+.kyc-image-preview-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.kyc-btn {
+  width: 100%;
+  background: var(--bg-card2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.kyc-btn:hover {
+  border-color: var(--primary);
+}
+
+/* Stepper */
+.kyc-stepper {
+  display: flex;
+  align-items: center;
+  margin-bottom: 32px;
+}
+
+.kyc-step-item {
+  display: flex;
+  align-items: center;
+}
+
+.kyc-step-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  transition: all 0.3s ease;
+}
+
+.kyc-step-line {
+  flex: 1;
+  height: 2px;
+  margin: 0 12px;
+  transition: all 0.3s ease;
+}
+
+.kyc-step-text-title {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.kyc-step-text-desc {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+/* Submission Card */
+.kyc-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 28px;
+}
+
+.kyc-upload-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.kyc-upload-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 140px;
+  border: 2px dashed var(--border);
+  border-radius: 12px;
+  cursor: pointer;
+  background: var(--bg-card2);
+  overflow: hidden;
+  transition: all 0.2s ease;
+  position: relative;
+}
+
+.kyc-upload-box:hover {
+  border-color: var(--primary);
+}
+
+.kyc-upload-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.kyc-alert-banner {
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+  display: flex;
+  gap: 8px;
+}
+
+.kyc-alert-text {
+  font-size: 12px;
+  color: #a16207;
+  line-height: 1.5;
+}
+
+.kyc-reject-banner {
+  background: rgba(239, 68, 68, 0.06);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 12px;
+}
+
+.kyc-reject-icon {
+  color: #ef4444;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.kyc-reject-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ef4444;
+  margin-bottom: 4px;
+}
+
+.kyc-reject-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.5;
+}
+
+.kyc-reject-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 6px;
+}
+
+.kyc-form-error {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 12px 14px;
+  border-radius: 10px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.22);
+  color: #ef4444;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+.kyc-form-error svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.kyc-field-group {
+  margin-bottom: 16px;
+}
+
+.kyc-field-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.kyc-required-mark {
+  color: #ef4444;
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.kyc-field-input {
+  width: 100%;
+  background: var(--bg-card2);
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+  border: 1px solid var(--border);
+}
+
+.kyc-field-input:focus {
+  border-color: var(--primary);
+}
+
+.kyc-field-error {
+  margin: 6px 0 0;
+  font-size: 12px;
+  line-height: 1.45;
+  color: #ef4444;
+  font-weight: 500;
+}
+
+.kyc-server-error {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.kyc-upload-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.kyc-upload-ok {
+  font-size: 11px;
+  color: #22c55e;
+  margin-top: 4px;
+  text-align: center;
+}

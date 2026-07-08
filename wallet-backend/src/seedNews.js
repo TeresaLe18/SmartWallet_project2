@@ -1,91 +1,112 @@
-// Seed dữ liệu News mẫu cho dashboard (Task 21 - Quản lý bài viết).
-// Chạy: node src/seedNews.js
-// An toàn: nếu bảng đã có bài thì BỎ QUA (không tạo trùng).
+// Seed sample English news articles for Admin → Articles (SmartWallet Insights).
+// Run: node src/seedNews.js
 require('dotenv').config();
 const prisma = require('./config/prisma');
 
-// Tag khớp đúng danh sách chuyên mục trong AdminMedia.jsx:
-// "Kinh tế", "Fintech", "Công nghệ", "Đầu tư", "Thị trường".
+// Unsplash images — finance / fintech themed, 800px wide
+const IMG = {
+  security: 'https://images.unsplash.com/photo-1563986768609-322da13575f3?w=800&auto=format&fit=crop&q=80',
+  cashless: 'https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?w=800&auto=format&fit=crop&q=80',
+  aiFinance: 'https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&auto=format&fit=crop&q=80',
+  savings: 'https://images.unsplash.com/photo-1579621970563-ebec7560ff3e?w=800&auto=format&fit=crop&q=80',
+  qrPay: 'https://images.unsplash.com/photo-1601597111158-2fceff292cdc?w=800&auto=format&fit=crop&q=80',
+  investment: 'https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?w=800&auto=format&fit=crop&q=80',
+  kyc: 'https://images.unsplash.com/photo-1450101499163-c8848c66ca85?w=800&auto=format&fit=crop&q=80',
+  market: 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=800&auto=format&fit=crop&q=80',
+};
+
+/** All fields in English (title/content duplicated in _en for bilingual UI fallback). */
+const article = (title, tag, time, image, content) => ({
+  title,
+  title_en: title,
+  tag,
+  tag_en: tag,
+  time,
+  image,
+  link: '',
+  content,
+  content_en: content,
+  active: true,
+});
+
 const samplePosts = [
-  {
-    title: 'Ngân hàng Nhà nước giữ nguyên lãi suất điều hành trong quý này',
-    tag: 'Kinh tế',
-    time: 'Vừa xong',
-    image: 'https://picsum.photos/seed/news-kinhte/800/450',
-    link: '',
-    content:
-      'Ngân hàng Nhà nước quyết định giữ nguyên các mức lãi suất điều hành nhằm ổn định ' +
-      'thị trường tiền tệ và hỗ trợ tăng trưởng. Giới phân tích cho rằng động thái này ' +
-      'giúp doanh nghiệp tiếp cận vốn với chi phí ổn định hơn trong nửa cuối năm.',
-    active: true,
-  },
-  {
-    title: 'Ví điện tử tăng tốc: thanh toán không tiền mặt lập kỷ lục mới',
-    tag: 'Fintech',
-    time: '1 giờ trước',
-    image: 'https://picsum.photos/seed/news-fintech/800/450',
-    link: '',
-    content:
-      'Số lượng giao dịch qua ví điện tử tiếp tục tăng mạnh khi người dùng chuyển dịch ' +
-      'sang thanh toán QR và chuyển khoản tức thời. Các nền tảng đẩy mạnh tính năng bảo mật ' +
-      'như xác thực PIN và cảnh báo giao dịch bất thường để bảo vệ người dùng.',
-    active: true,
-  },
-  {
-    title: 'AI cá nhân hóa quản lý chi tiêu: xu hướng tài chính số 2026',
-    tag: 'Công nghệ',
-    time: '3 giờ trước',
-    image: 'https://picsum.photos/seed/news-congnghe/800/450',
-    link: '',
-    content:
-      'Các trợ lý tài chính tích hợp AI giúp người dùng theo dõi chi tiêu theo danh mục, ' +
-      'dự báo dòng tiền và đưa ra gợi ý tiết kiệm. Công nghệ này đang dần trở thành tính năng ' +
-      'tiêu chuẩn trên các ứng dụng ví và ngân hàng số.',
-    active: true,
-  },
-  {
-    title: 'Dòng vốn ngoại trở lại, nhà đầu tư kỳ vọng vào nhóm tài chính',
-    tag: 'Đầu tư',
-    time: 'Hôm qua',
-    image: 'https://picsum.photos/seed/news-dautu/800/450',
-    link: '',
-    content:
-      'Khối ngoại mua ròng trở lại trong những phiên gần đây, tập trung vào nhóm cổ phiếu ' +
-      'ngân hàng và công nghệ tài chính. Chuyên gia khuyến nghị nhà đầu tư cân nhắc khẩu vị ' +
-      'rủi ro và phân bổ danh mục hợp lý thay vì chạy theo tâm lý đám đông.',
-    active: true,
-  },
-  {
-    title: 'Thị trường thanh toán số Việt Nam được dự báo tăng trưởng hai chữ số',
-    tag: 'Thị trường',
-    time: '2 ngày trước',
-    image: 'https://picsum.photos/seed/news-thitruong/800/450',
-    link: '',
-    content:
-      'Báo cáo mới nhất dự báo thị trường thanh toán số tiếp tục tăng trưởng hai chữ số ' +
-      'nhờ độ phủ smartphone cao và hạ tầng thanh toán mở rộng. Cạnh tranh giữa các ví ' +
-      'và ngân hàng số được kỳ vọng mang lại nhiều ưu đãi hơn cho người dùng.',
-    active: true,
-  },
+  article(
+    'SmartWallet upgrades real-time transaction security',
+    'Fintech',
+    'Just now',
+    IMG.security,
+    'SmartWallet has rolled out a new security layer that monitors balance changes and transactions as they happen. The system combines JWT authentication, a 4-digit transaction PIN, and instant alerts when unusual activity is detected.\n\n' +
+      'Users can transfer, withdraw, and deposit with greater confidence — every action is recorded in a detailed transaction history. Admins can also lock accounts or freeze wallets in emergencies to protect user funds.'
+  ),
+  article(
+    'Cashless boom: e-wallets hit new transaction records',
+    'Markets',
+    '1 hour ago',
+    IMG.cashless,
+    'Latest figures show that e-wallet and QR payment volume in Vietnam continues to surge. Users increasingly prefer instant transfers via email or phone number over cash.\n\n' +
+      'SmartWallet supports deposits from linked banks, PayOS QR scanning, and wallet-to-wallet transfers in seconds. This trend confirms that digital finance is becoming the default choice for younger consumers.'
+  ),
+  article(
+    'AI in personal finance — the new SmartWallet standard',
+    'Technology',
+    '3 hours ago',
+    IMG.aiFinance,
+    'SmartWallet\'s built-in AI financial assistant helps users analyze spending, suggest savings plans, and optimize wallet balance — no manual bookkeeping required.\n\n' +
+      'Simply ask: "Analyze my last 10 transactions" or "Suggest a plan to save 10 million VND", and the assistant responds based on your anonymized transaction history. This marks a major step toward personalized, intelligent digital finance.'
+  ),
+  article(
+    'Smart savings vaults: goal-based money management',
+    'Investment',
+    'Yesterday',
+    IMG.savings,
+    'SmartWallet lets you create multiple savings vaults — for travel, a new laptop, or small daily budgets — each with a custom name, category, and optional target amount.\n\n' +
+      'Deposit from your main wallet, track progress toward your goal, and withdraw anytime. Combined with fixed-term investment accounts, SmartWallet helps you separate everyday spending from long-term financial goals.'
+  ),
+  article(
+    'QR payments & PayOS: faster wallet top-ups than ever',
+    'Fintech',
+    'Yesterday',
+    IMG.qrPay,
+    'SmartWallet integrates the PayOS payment gateway (sandbox) so users can top up via bank QR codes. Scan, transfer, and the system automatically checks transaction status.\n\n' +
+      'You can also link up to 3 bank accounts for direct deposits and withdrawals. QR payments are quickly becoming the most popular method at stores and online services across Vietnam.'
+  ),
+  article(
+    'KYC & transaction limits: secure identity verification on SmartWallet',
+    'Fintech',
+    '2 days ago',
+    IMG.kyc,
+    'To unlock full features and higher transaction limits, SmartWallet users must complete KYC: enter personal details, upload front and back ID card photos, and a selfie.\n\n' +
+      'Admins review submissions and update status (Pending / Approved / Rejected). This process follows industry-standard identity verification, protecting both users and the broader e-wallet ecosystem.'
+  ),
+  article(
+    'Investment markets: foreign capital returns to tech stocks',
+    'Investment',
+    '2 days ago',
+    IMG.investment,
+    'The stock market is seeing renewed foreign net buying, focused on tech companies and banks with strong digital platforms.\n\n' +
+      'In this context, SmartWallet offers fixed-term savings accounts with transparent interest rates — ideal for users who want to earn on idle balance while keeping flexible liquidity.'
+  ),
+  article(
+    'Vietnam\'s digital economy: e-wallet market grows at double-digit pace',
+    'Economy',
+    '3 days ago',
+    IMG.market,
+    'Market analysts predict mobile payment volume in Vietnam will maintain double-digit growth over the next five years, driven by digital economy policies and high smartphone adoption.\n\n' +
+      'SmartWallet joins this race with fee-discount vouchers, bilingual support (VI/EN), light/dark mode, and a full e-wallet experience — from deposits, withdrawals, and transfers to savings and AI financial advice.'
+  ),
 ];
 
 async function main() {
-  const existing = await prisma.newsPost.count();
-  if (existing > 0) {
-    console.log(
-      `Đã có ${existing} bài News trong DB → bỏ qua seed để tránh trùng. ` +
-        'Nếu muốn seed lại, xoá dữ liệu bảng news_posts trước.'
-    );
-    return;
-  }
+  console.log('Clearing existing news posts...');
+  await prisma.newsPost.deleteMany({});
 
   const result = await prisma.newsPost.createMany({ data: samplePosts });
-  console.log(`Đã seed ${result.count} bài News mẫu.`);
+  console.log(`✅ Seeded ${result.count} English sample news articles (with images).`);
 }
 
 main()
   .catch((err) => {
-    console.error('Seed News thất bại:', err.message);
+    console.error('Seed News failed:', err.message);
     process.exitCode = 1;
   })
   .finally(async () => {

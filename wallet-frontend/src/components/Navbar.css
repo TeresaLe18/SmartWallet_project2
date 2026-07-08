@@ -1,0 +1,268 @@
+:root {
+  --navy: #07172f;
+  --navy2: #102447;
+  --pink: #2563eb;
+  --pink2: #11c981;
+}
+
+/* HEADER */
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+
+  height: 88px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+
+  padding: 0 6% 0 0;
+
+  background: rgba(7, 23, 47, 0.82);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 35px rgba(0, 0, 0, 0.12);
+
+  transition: background 0.35s ease, box-shadow 0.35s ease;
+}
+
+.site-header-scrolled{
+  background: rgba(7, 23, 47, 0.28);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  box-shadow: none;
+}
+
+/* LOGO */
+.site-logo {
+  position: relative;
+  overflow: hidden;
+
+  width: 280px;
+  height: 88px;
+  flex-shrink: 0;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+
+  background: linear-gradient(135deg, var(--navy), var(--navy2));
+  color: #fff;
+  text-decoration: none;
+
+  font-size: 38px;
+  font-weight: 900;
+  letter-spacing: -2px;
+}
+
+.site-logo::before {
+  content: "";
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  right: -90px;
+  top: -100px;
+  border-radius: 50%;
+  background: rgba(37, 99, 235, 0.32);
+  filter: blur(35px);
+}
+
+.site-logo > * {
+  position: relative;
+  z-index: 2;
+}
+
+.site-logo-icon {
+  color: var(--pink);
+  font-size: 38px;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  50% {
+    transform: scale(1.15);
+    filter: drop-shadow(0 0 10px var(--pink));
+  }
+}
+
+/* NAV */
+.site-nav {
+  display: flex;
+  align-items: center;
+  gap: 38px;
+  margin-left: auto;
+  margin-right: 40px;
+}
+
+.site-nav a {
+  position: relative;
+  color: #fff;
+  text-decoration: none;
+  font-size: 15px;
+  font-weight: 800;
+  transition: 0.25s ease;
+}
+
+.site-nav a::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -10px;
+  width: 0;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--pink), var(--pink2));
+  transition: 0.3s ease;
+}
+
+.site-nav a:hover {
+  color: var(--pink);
+}
+
+.site-nav a:hover::after {
+  width: 100%;
+}
+
+/* ACTIONS */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  transition: 0.28s ease;
+}
+
+.icon-btn:hover {
+  background: var(--pink);
+  transform: translateY(-3px);
+}
+
+.login-btn {
+  height: 46px;
+  padding: 0 22px;
+  border: none;
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--pink), #1d4ed8);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  box-shadow: 0 16px 34px rgba(37, 99, 235, 0.25);
+  transition: 0.28s ease;
+}
+
+.login-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 24px 48px rgba(37, 99, 235, 0.35);
+}
+
+/* Đẩy nội dung xuống dưới fixed navbar */
+main,
+.hero {
+  padding-top: 88px;
+}
+
+/* TABLET */
+@media (max-width: 1100px) {
+  .site-nav {
+    display: none;
+  }
+
+  .site-logo {
+    width: 240px;
+    font-size: 30px;
+  }
+}
+
+/* MOBILE */
+@media (max-width: 680px) {
+  .site-header {
+    height: 76px;
+    padding-right: 4%;
+  }
+
+  .site-logo {
+    width: 190px;
+    height: 76px;
+    font-size: 24px;
+    gap: 10px;
+  }
+
+  .site-logo-icon {
+    font-size: 24px;
+  }
+
+  .header-actions {
+    gap: 8px;
+  }
+
+  .icon-btn {
+    width: 38px;
+    height: 38px;
+  }
+
+  .login-btn {
+    height: 40px;
+    padding: 0 14px;
+    font-size: 11px;
+  }
+
+  main,
+  .hero {
+    padding-top: 76px;
+  }
+}
+
+.user-menu {
+  position: relative;
+}
+
+.user-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 12px);
+  min-width: 180px;
+  padding: 10px;
+  background: #ffffff;
+  border-radius: 16px;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.18);
+  z-index: 9999;
+}
+
+.user-dropdown button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 12px 14px;
+  border-radius: 12px;
+  text-align: left;
+  font-weight: 700;
+  cursor: pointer;
+  color: #0f172a;
+}
+
+.user-dropdown button:hover {
+  background: #f1f5f9;
+}
+
+.user-dropdown button:last-child {
+  color: #ef2f5f;
+}

@@ -33,15 +33,19 @@ const persistImage = (image, req) => {
 };
 
 // Chuẩn hoá 1 bản ghi NewsPost về đúng shape mà frontend đọc (8 field).
-// Trả thẳng các field FE cần, không lộ created_at/updated_at thừa.
+// Trả các field FE cần; created_at dùng để hiển thị thời gian tương đối ("X phút trước").
 const toPost = (p) => ({
   id: p.id,
   title: p.title,
+  title_en: p.title_en || p.title,
   tag: p.tag,
+  tag_en: p.tag_en || p.tag,
   time: p.time,
+  created_at: p.created_at,
   image: p.image,
   link: p.link,
   content: p.content,
+  content_en: p.content_en || p.content,
   active: p.active,
 });
 
@@ -73,7 +77,7 @@ const getAdminNews = async (req, res) => {
 // POST /api/news/admin — admin tạo bài mới.
 const createPost = async (req, res) => {
   try {
-    const { title, tag, time, content, image, link, active } = req.body || {};
+    const { title, title_en, tag, tag_en, time, content, content_en, image, link, active } = req.body || {};
 
     if (!title || !String(title).trim()) {
       return res.status(400).json({ success: false, message: 'Title is required' });
@@ -82,9 +86,12 @@ const createPost = async (req, res) => {
     const post = await prisma.newsPost.create({
       data: {
         title: String(title).trim(),
+        title_en: title_en ? String(title_en).trim() : null,
         tag: tag || 'Kinh tế',
+        tag_en: tag_en || 'Economic',
         time: time || 'Vừa xong',
         content: content ?? '',
+        content_en: content_en ?? '',
         image: persistImage(image, req),
         link: link || null,
         active: active === undefined ? true : Boolean(active),
@@ -110,7 +117,7 @@ const updatePost = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Post not found' });
     }
 
-    const { title, tag, time, content, image, link, active } = req.body || {};
+    const { title, title_en, tag, tag_en, time, content, content_en, image, link, active } = req.body || {};
 
     if (title !== undefined && !String(title).trim()) {
       return res.status(400).json({ success: false, message: 'Title is required' });
@@ -120,9 +127,12 @@ const updatePost = async (req, res) => {
       where: { id },
       data: {
         ...(title !== undefined ? { title: String(title).trim() } : {}),
+        ...(title_en !== undefined ? { title_en: title_en ? String(title_en).trim() : null } : {}),
         ...(tag !== undefined ? { tag } : {}),
+        ...(tag_en !== undefined ? { tag_en } : {}),
         ...(time !== undefined ? { time } : {}),
         ...(content !== undefined ? { content: content ?? '' } : {}),
+        ...(content_en !== undefined ? { content_en: content_en ?? '' } : {}),
         ...(image !== undefined ? { image: persistImage(image, req) } : {}),
         ...(link !== undefined ? { link: link || null } : {}),
         ...(active !== undefined ? { active: Boolean(active) } : {}),
@@ -179,6 +189,97 @@ const toggleActive = async (req, res) => {
   }
 };
 
+// POST /api/news/admin/generate-ai — admin tự động sinh bài viết từ tiêu đề sử dụng OpenAI.
+const generateAiPost = async (req, res) => {
+  try {
+    const { title } = req.body || {};
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ success: false, message: 'Title is required to generate article content' });
+    }
+
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+    if (!openaiApiKey || openaiApiKey === 'YOUR_OPENAI_API_KEY') {
+      return res.status(400).json({
+        success: false,
+        message: 'OPENAI_API_KEY is not configured in the backend .env file. Please add your key to continue.',
+      });
+    }
+
+    const systemPrompt = `Bạn là một chuyên gia phân tích kinh tế và biên tập viên tài chính xuất sắc. Nhiệm vụ của bạn là dựa vào tiêu đề bài viết do người dùng cung cấp để tạo ra một bài viết phân tích tài chính sâu sắc, hấp dẫn và chuyên nghiệp bằng cả tiếng Việt và tiếng Anh.
+Hãy đảm bảo bài viết có cấu trúc rõ ràng, sử dụng các luận điểm thuyết phục và ngôn từ sắc bén. Độ dài khoảng 300-500 từ cho mỗi ngôn ngữ.
+
+Bạn PHẢI trả về kết quả dưới dạng cấu trúc JSON chính xác như sau:
+{
+  "title_vi": "Tiêu đề tiếng Việt (được hiệu chỉnh cho thu hút nếu cần)",
+  "title_en": "Tiêu đề tiếng Anh tương ứng",
+  "content_vi": "Nội dung bài viết chi tiết bằng tiếng Việt (sử dụng xuống dòng \\n để phân tách các đoạn)",
+  "content_en": "Detailed article body in English (use \\n to split paragraphs)",
+  "tag_vi": "Chọn 1 tag phù hợp nhất từ: Kinh tế, Fintech, Công nghệ, Đầu tư, Thị trường",
+  "tag_en": "Chọn 1 tag tiếng Anh tương ứng từ: Economy, Fintech, Technology, Investment, Markets"
+}
+
+Lưu ý: Không bao gồm bất kỳ ký tự nào khác ngoài JSON. Không bao bọc JSON trong các block code kiểu \`\`\`json.`;
+
+    const response = await fetch(
+      'https://api.openai.com/v1/chat/completions',
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${openaiApiKey}`
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: `Tiêu đề: ${title}` }
+          ],
+          max_completion_tokens: 1500,
+          temperature: 0.7,
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`OpenAI API error: ${response.status} - ${errText}`);
+    }
+
+    const data = await response.json();
+    let replyText = data.choices?.[0]?.message?.content || '{}';
+    
+    // Sanitize in case LLM wraps the response in markdown blocks
+    replyText = replyText.replace(/```json/gi, '').replace(/```/g, '').trim();
+    
+    let generated;
+    try {
+      generated = JSON.parse(replyText);
+    } catch (parseError) {
+      console.error('Failed to parse OpenAI JSON response:', replyText);
+      throw new Error('AI returned an invalid JSON response format.');
+    }
+
+    return res.status(200).json({
+      success: true,
+      data: {
+        title_vi: generated.title_vi || title,
+        title_en: generated.title_en || '',
+        content_vi: generated.content_vi || '',
+        content_en: generated.content_en || '',
+        tag_vi: generated.tag_vi || 'Kinh tế',
+        tag_en: generated.tag_en || 'Economy'
+      }
+    });
+
+  } catch (error) {
+    console.error('OpenAI article generation error:', error);
+    return res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to auto-generate article content.'
+    });
+  }
+};
+
 module.exports = {
   getNews,
   getAdminNews,
@@ -186,4 +287,5 @@ module.exports = {
   updatePost,
   deletePost,
   toggleActive,
+  generateAiPost,
 };
