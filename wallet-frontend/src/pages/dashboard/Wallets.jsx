@@ -1679,7 +1679,7 @@ export default function WalletsPage() {
                           </div>
                         </button>
 
-                        <button
+                        {/* <button
                           disabled={!depositForm.amount || Number(depositForm.amount) <= 0}
                           onClick={handleConfirmDepositQR}
                           className="deposit-method-btn"
@@ -1691,7 +1691,7 @@ export default function WalletsPage() {
                             <p className="deposit-method-title">{t.wallets.depositViaPayos}</p>
                             <p className="deposit-method-desc">{t.wallets.depositViaPayosDesc}</p>
                           </div>
-                        </button>
+                        </button> */}
                       </div>
                     </div>
                   )}
