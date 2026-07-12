@@ -1,136 +1,209 @@
-# 📱 SmartWallet (E-Wallet Monorepo)
+# SmartWallet
 
-SmartWallet là một hệ thống ví điện tử toàn diện được mô phỏng theo mô hình hoạt động của các ứng dụng ví nổi tiếng như Momo, ZaloPay và Nimo. Dự án được phát triển dưới dạng Monorepo bao gồm mã nguồn Frontend React và Backend Node.js/Express tích hợp cơ sở dữ liệu MySQL thông qua Prisma ORM.
+SmartWallet is a digital e-wallet system for everyday money management — deposit, withdraw, transfer, bank payment, savings, KYC, and admin controls.
 
----
+The project is a monorepo with:
 
-## 📂 Cấu trúc thư mục dự án
-
-```
-backup_project2/
-├── wallet-frontend/      # Mã nguồn Frontend (React 19 + Vite 6 + Vanilla CSS)
-└── wallet-backend/       # Mã nguồn Backend (Express 5 + Prisma ORM + MySQL)
-```
+- **`wallet-frontend`** — React 19 + Vite 6 user & admin UI
+- **`wallet-backend`** — Express 5 + Prisma ORM + MySQL API
 
 ---
 
-## 🛠️ Công nghệ sử dụng & Cổng kết nối (Ports)
+===========LIVE DEMO===========
+Frontend: https://your-project.vercel.app
 
-| Dự án | Công nghệ chủ chốt | Cổng mặc định (Port) |
+## Deployment
+- Frontend: Vercel
+- Backend: Render
+- Database: Railway (MySQL)
+
+## Demo Note
+The backend is hosted on Render's free tier and may take up to 30-60 seconds to wake up on the first request.
+
+## Demo Account
+Admin:
+Email: admin@gmail.com
+Password: admin@12345678
+
+===========END LIVE DEMO===========
+
+
+## Project structure
+
+```
+smart-wallet/
+├── wallet-frontend/   # React frontend (port 3000)
+├── wallet-backend/    # Express API (port 5000)
+└── README.md
+```
+
+---
+
+## Tech stack
+
+| Layer | Stack | Default port |
 |---|---|---|
-| **Frontend** | React 19, Vite 6, Vanilla CSS (Thiết kế tùy chỉnh cao cấp), Framer Motion, Lucide Icons, Axios | `3000` |
-| **Backend** | Express 5, Prisma ORM, MySQL, JSON Web Tokens (JWT), Bcrypt, Nodemon | `5000` |
+| **Frontend** | React 19, Vite 6, Tailwind CSS, Framer Motion, Lucide, Axios, Recharts | `3000` |
+| **Backend** | Express 5, Prisma, MySQL, JWT, Bcrypt, Multer, Nodemailer, PayOS | `5000` |
 
 ---
 
-## ✨ Các chức năng chính của Ví
+## Main features
 
-1. **Nạp tiền (Deposit)**:
-   - Nạp tiền từ tài khoản ngân hàng đã liên kết (ngay lập tức).
-   - Nạp tiền qua mã QR MBBank tự động tích hợp cổng thử nghiệm **PayOS**.
-2. **Rút tiền (Withdraw)**:
-   - Rút tiền từ ví về tài khoản ngân hàng liên kết (yêu cầu mã PIN giao dịch 4 số).
-3. **Chuyển tiền (Transfer)**:
-   - **Chuyển tiền ví-qua-ví (SmartWallet)**: Chuyển tiền nhanh bằng Số điện thoại hoặc Email đã đăng ký thành viên. Tích hợp áp dụng **Mã giảm giá/Voucher** theo danh mục chi tiêu.
-   - **Chuyển tiền qua Ngân hàng Sandbox**: Nhập thủ công số tài khoản hoặc **Tải ảnh QR thanh toán lên để hệ thống tự động quét và phân tích thông tin**.
-4. **Liên kết ngân hàng**: Hỗ trợ liên kết tối đa 3 tài khoản ngân hàng đồng thời, hiển thị thanh tiến trình trực quan với cảnh báo giới hạn.
-5. **Xác thực danh tính (KYC)**:
-   - Tải lên ảnh mặt trước CCCD, mặt sau CCCD và ảnh selfie chân dung để xác thực tài khoản.
-   - Phân chia hạn mức và cấp quyền giao dịch dựa trên trạng thái KYC (Chưa xác thực, Đang chờ duyệt, Đã duyệt).
-6. **Đóng băng ví (Freeze)**: Khóa toàn bộ các giao dịch nạp/rút/chuyển trong trường hợp khẩn cấp để bảo vệ số dư.
-7. **Đa giao diện (Light/Dark Mode)**: Hỗ trợ chuyển đổi nhanh giao diện tối và giao diện sáng với biến CSS mượt mà.
-8. **Đa ngôn ngữ (VI/EN)**: Chuyển đổi linh hoạt toàn bộ giao diện và các hộp thoại modal giữa Tiếng Việt và Tiếng Anh.
+### User wallet
+- **Deposit** — from a linked bank account, or via PayOS QR payment
+- **Withdraw** — to a linked bank account (requires 4-digit transaction PIN)
+- **Transfer (SmartWallet)** — wallet-to-wallet by email/phone, with optional voucher
+- **Bank payment** — send money to an external bank account (`POST /wallet/payment`)
+- **Bank linking** — link up to 3 bank accounts
+- **KYC** — upload ID card (front/back) + selfie for verification
+- **Wallet freeze** — user can freeze their wallet; admin can unfreeze
+- **Notifications** — deposit, withdraw, transfer, KYC status updates
+- **Savings / investment** — savings vaults and accumulation options
+- **Offers & vouchers** — promo codes for eligible transfers
+- **Light/dark theme** and **VI/EN** language switch
 
----
-
-## 🚀 Hướng dẫn khởi chạy dự án
-
-### Yêu cầu hệ thống:
-- Node.js bản 18+
-- MySQL Server đang hoạt động (ví dụ: XAMPP, Laragon hoặc MySQL cục bộ trên cổng 3306).
+### Admin panel
+- User management (lock/unlock, freeze/unfreeze wallet)
+- KYC review (approve / reject)
+- Transaction and fraud log review
+- Fees, categories, vouchers, news, support, investment oversight
 
 ---
 
-### Bước 1: Cấu hình và Chạy Backend
+## Prerequisites
 
-1. Di chuyển vào thư mục backend:
-   ```bash
-   cd wallet-backend
-   npm install
-   ```
-
-2. Tạo tệp cấu hình môi trường `.env` nằm trong thư mục `wallet-backend/` với nội dung mẫu sau:
-   ```env
-   DATABASE_URL="mysql://root@localhost:3306/wallet_db"
-   JWT_SECRET=super_secret_jwt_key_12345
-   JWT_REFRESH_SECRET=super_secret_refresh_jwt_key_12345
-   EMAIL_USER=your@gmail.com
-   EMAIL_PASS=your_app_password
-   PORT=5000
-   ```
-
-3. Đồng bộ cơ sở dữ liệu và sinh Prisma Client:
-   ```bash
-   npx prisma db push
-   ```
-
-4. Khởi chạy cơ sở dữ liệu mẫu (Seed Users, KYC & Demo Data):
-   ```bash
-   # Tạo tài khoản thử nghiệm
-   node src/seedUsers.js
-   
-   # Xác thực danh tính KYC mặc định cho các tài khoản test
-   node src/seedKyc.js
-
-   # Tạo dữ liệu mẫu cho ví tiết kiệm, tích lũy và thống kê
-   node src/seedDemo.js
-   ```
-
-5. Khởi chạy máy chủ backend ở chế độ phát triển:
-   ```bash
-   npm run dev
-   ```
+- Node.js **18+**
+- MySQL running locally (e.g. XAMPP, Laragon, or MySQL on port `3306`)
 
 ---
 
-### Bước 2: Cấu hình và Chạy Frontend
+## Getting started
 
-1. Di chuyển vào thư mục frontend:
-   ```bash
-   cd ../wallet-frontend
-   npm install
-   ```
+### 1. Backend
 
-2. Khởi chạy máy chủ phát triển frontend:
-   ```bash
-   npm run dev
-   ```
+```bash
+cd wallet-backend
+npm install
+```
 
-3. Mở trình duyệt và truy cập: [http://localhost:3000](http://localhost:3000)
+Create `wallet-backend/.env`:
+
+```env
+DATABASE_URL="mysql://root:YOUR_PASSWORD@localhost:3306/wallet_db"
+JWT_SECRET=your_jwt_secret
+JWT_REFRESH_SECRET=your_refresh_secret
+EMAIL_USER=your@gmail.com
+EMAIL_PASS=your_gmail_app_password
+PORT=5000
+FRONTEND_URL=http://localhost:3000
+```
+
+Optional PayOS keys (for QR deposit):
+
+```env
+PAYOS_CLIENT_ID=...
+PAYOS_API_KEY=...
+PAYOS_CHECKSUM_KEY=...
+```
+
+Sync the database schema:
+
+```bash
+npx prisma db push
+# or, if you prefer migrations:
+# npx prisma migrate dev
+```
+
+Seed sample data (optional):
+
+```bash
+node src/seedUsers.js
+node src/seedKyc.js
+node src/seedDemo.js
+node src/seedNews.js
+```
+
+Create an admin account (if needed):
+
+```bash
+node src/createAdmin.js
+```
+
+Start the API:
+
+```bash
+npm run dev
+```
+
+Backend runs at: **http://localhost:5000**
 
 ---
 
-## 🔒 Danh sách tài khoản thử nghiệm có sẵn
+### 2. Frontend
 
-Quy ước mật khẩu chung: `<tên trước ký tự @ của email>@123456`
+```bash
+cd wallet-frontend
+npm install
+npm run dev
+```
 
-| Email | Vai trò (Role) | Trạng thái KYC | Số dư ví mặc định | Mật khẩu mặc định |
-|---|---|---|---|---|
-| **`rajpham@gmail.com`** | `USER` | **`VERIFIED`** | `100.000.000 ₫` | `rajpham@123456` |
-| **`thuan@smartwallet.com`** | `USER` | **`VERIFIED`** | `100.000.000 ₫` | `thuan@123456` |
-| **`duyen@smartwallet.com`** | `USER` | `UNVERIFIED` | `100.000.000 ₫` | `duyen@123456` |
-| **`phong@smartwallet.com`** | `USER` | `UNVERIFIED` | `100.000.000 ₫` | `phong@123456` |
-| **`admin@smartwallet.com`** | `ADMIN` | `VERIFIED` | *(Không có)* | `admin@123456` |
+Open: **http://localhost:3000**
 
 ---
 
-## 🧪 Kiểm thử tự động (Integration Testing)
+## Demo accounts
 
-Hệ thống đi kèm bộ kịch bản kiểm thử tích hợp tự động cho API giao dịch ví (Nạp tiền, Rút tiền, Chuyển tiền ví-ví, cấu hình PIN giao dịch):
+Password rule (seeded users): `<email-local-part>@123456`
 
-1. Đảm bảo cổng `5555` không bị chiếm dụng.
-2. Di chuyển vào thư mục `wallet-backend` và chạy lệnh:
-   ```bash
-   node src/test_wallet.js
-   ```
-Kịch bản sẽ tự động khởi tạo máy chủ test, chạy kiểm thử các luồng API và tự động tắt máy chủ khi hoàn thành.
+| Email | Role | Notes |
+|---|---|---|
+| `admin@gmail.com` / `admin@smartwallet.com` | `ADMIN` | Created via `createAdmin.js` or seed |
+| Seeded user emails (see `seedUsers.js`) | `USER` | Some may be KYC-verified |
+
+> Exact seed emails and balances depend on your seed scripts. Prefer checking `wallet-backend/src/seedUsers.js` and `createAdmin.js` after seeding.
+
+---
+
+## Useful API groups
+
+| Prefix | Purpose |
+|---|---|
+| `/api/auth` | Register, login, OTP, PIN, notifications |
+| `/api/users` | Profile, password, disable account, freeze wallet |
+| `/api/wallet` | Stats, transactions, deposit, withdraw, transfer, payment |
+| `/api/banks` | Link / unlink bank accounts |
+| `/api/kyc` | Submit / update KYC |
+| `/api/admin` | Users, KYC review, wallets, fraud logs |
+| `/api/payos` | Create / verify PayOS payment links |
+| `/api/vouchers` | Public & admin voucher APIs |
+| `/api/statistics` | Spending / dashboard statistics |
+
+---
+
+## Scripts
+
+**Backend (`wallet-backend`)**
+
+```bash
+npm run dev      # nodemon
+npm start        # production
+npx prisma studio
+```
+
+**Frontend (`wallet-frontend`)**
+
+```bash
+npm run dev
+npm run build
+npm run preview
+```
+
+---
+
+## Notes
+
+- Uploaded images (avatar, KYC) are stored under `wallet-backend/uploads/` and served as static files.
+- Sensitive wallet actions (withdraw, transfer, payment) require a verified transaction PIN.
+- KYC must be **VERIFIED** before deposit, withdraw, transfer, and bank payment.
+- locked accounts cannot log in until an admin reactivates or unlocks them.
